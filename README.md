@@ -1,7 +1,7 @@
 # 🃏 Poker Training – Importeur de Ranges
 
 Ce projet est un **importeur et gestionnaire de ranges de poker** en Python.  
-Il scanne un dossier de fichiers JSON exportés depuis ton éditeur de ranges, les parse et les stocke dans une base **SQLite**.  
+Il scanne un dossier de fichiers JSON exportés depuis [poker-range-editor](https://site2wouf.fr/poker-range-editor.php) , les parse et les stocke dans une base **SQLite**.  
 Chaque contexte de range est enrichi avec des métadonnées (positions détectées, actions, confiance).
 
 ---
