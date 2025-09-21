@@ -96,3 +96,81 @@ python poker-training.py
   - **range_hands** : chaque main associée à une range, avec `frequency` (1.0 par défaut).
 
 ---
+
+enrich_ranges.py — Enrichisseur interactif (V4)
+
+But : compléter les métadonnées des contextes importés en base (SQLite) et générer des noms d’affichage (display_name) prêts pour la création de questions d’entraînement.
+
+Prérequis
+
+Avoir déjà importé au moins un fichier JSON avec poker-training.py (ce qui crée data/poker_trainer.db).
+
+Python ≥ 3.10.
+
+Ce que fait le script
+
+Liste les contextes trouvés dans range_contexts.
+
+Pose des questions globales (format de jeu, variante, format de table).
+
+Pour chaque contexte :
+
+détection avancée automatique (positions, action, stack, etc.),
+
+questions ciblées pour compléter/corriger,
+
+propose plusieurs display_name (long et court),
+
+enregistre le tout dans enriched_metadata avec un marqueur de version v4 et question_friendly (booléen).
+
+Fournit des menus pour :
+
+enrichir, 2) voir un résumé global V4, 3) lister les display_name créés, 4) debug des métadonnées V4.
+
+Lancer
+
+python enrich_ranges.py
+
+
+Si la base n’existe pas encore, lance d’abord :
+
+python poker-training.py
+
+
+Menu
+
+Enrichissement interactif – guide pas à pas (questions globales puis par contexte).
+
+Résumé des enrichissements – totaux, part des contextes V4, prêts pour questions, confiance moyenne.
+
+Liste des noms d’affichage – affiche display_name et display_name_short pour tous les contextes V4.
+
+Debug métadonnées – imprime le JSON enriched_metadata V4 (utile pour du troubleshooting).
+
+Quitter.
+
+Champs stockés (enriched_metadata, V4)
+
+game_format, variant, table_format
+
+hero_position, vs_position, primary_action, stack_depth, sizing
+
+description, confidence, enriched_by_user, enrichment_date
+
+Nouveaux V4 : display_name, display_name_short, question_friendly, version: "v4"
+
+Bon à savoir
+
+Les booléens (ex. question_friendly) sont normalisés à la lecture ('true', true, 1 → True).
+
+Le résumé et les listes V4 utilisent json_extract (extension JSON de SQLite, fournie avec Python standard).
+
+Le score confidence passe à 1.0 après enrichissement manuel.
+
+Workflow recommandé
+
+python poker-training.py → import des JSON (création/MAJ DB)
+
+python enrich_ranges.py → enrichissement V4 + display_name
+
+(optionnel) exploiter display_name pour générer/nommer des questions dans un module de training.
