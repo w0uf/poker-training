@@ -310,8 +310,7 @@ JSON → Import → Standardisation → Enrichissement → Questions → Entraî
 
 ---
 
-**📝 Usage de ce README**: Partagez ce document en début de chaque conversation avec Claude pour maintenir le contexte du projet.
-
+ 
 **🔄 Dernière mise à jour**: Session du 25/09/2025 - Bug critique standardiseur résolu
 HU: BTN, BB
 ```
