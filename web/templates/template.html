@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🃏 Poker Training - Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* HEADER */
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .nav-pills {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .nav-pill {
+            padding: 12px 24px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            text-decoration: none;
+            border-radius: 25px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .nav-pill:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .nav-pill.active {
+            background: linear-gradient(45deg, #764ba2, #667eea);
+        }
+
+        /* STATS CARDS */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 25px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.1));
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* MAIN CONTENT */
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .card-header {
+            padding: 25px 25px 0;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .card-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .card-body {
+            padding: 25px;
+        }
+
+        /* RECENT IMPORTS */
+        .import-item {
+            display: flex;
+            align-items: center;
+            padding: 15px 0;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .import-item:last-child {
+            border-bottom: none;
+        }
+
+        .import-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            font-size: 1.2rem;
+        }
+
+        .import-success { background: linear-gradient(45deg, #4CAF50, #45a049); color: white; }
+        .import-warning { background: linear-gradient(45deg, #FF9800, #f57c00); color: white; }
+        .import-error { background: linear-gradient(45deg, #f44336, #d32f2f); color: white; }
+
+        .import-details h4 {
+            font-size: 0.9rem;
+            margin-bottom: 5px;
+            color: #333;
+        }
+
+        .import-meta {
+            font-size: 0.8rem;
+            color: #666;
+        }
+
+        .confidence-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 500;
+            margin-left: 8px;
+        }
+
+        .confidence-high { background: #4CAF50; color: white; }
+        .confidence-medium { background: #FF9800; color: white; }
+        .confidence-low { background: #f44336; color: white; }
+
+        /* CONTEXTS TABLE */
+        .contexts-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .contexts-table th {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 15px 12px;
+            text-align: left;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        .contexts-table td {
+            padding: 12px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            font-size: 0.9rem;
+        }
+
+        .contexts-table tr:hover {
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .context-name {
+            font-weight: 600;
+            color: #333;
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .context-meta {
+            font-size: 0.8rem;
+            color: #666;
+        }
+
+        /* LOADING */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(102, 126, 234, 0.3);
+            border-radius: 50%;
+            border-top-color: #667eea;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 768px) {
+            .content-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .nav-pills {
+                flex-wrap: wrap;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .contexts-table {
+                font-size: 0.8rem;
+            }
+        }
+
+        /* EMPTY STATE */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+
+        .empty-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- HEADER -->
+        <div class="header">
+            <h1>🃏 Poker Training Dashboard</h1>
+            <div class="nav-pills">
+                <a href="/" class="nav-pill active">📊 Dashboard</a>
+                <a href="/import" class="nav-pill">📥 Import</a>
+                <a href="/enrich" class="nav-pill">✨ Enrichir</a>
+                <a href="/quiz" class="nav-pill">🎯 Quiz</a>
+            </div>
+        </div>
+
+        <!-- STATS CARDS -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">📁</div>
+                <div class="stat-value" id="total-files">-</div>
+                <div class="stat-label">Fichiers importés</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">📋</div>
+                <div class="stat-value" id="total-contexts">-</div>
+                <div class="stat-label">Contextes</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🎯</div>
+                <div class="stat-value" id="total-ranges">-</div>
+                <div class="stat-label">Ranges</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🃏</div>
+                <div class="stat-value" id="total-hands">-</div>
+                <div class="stat-label">Mains</div>
+            </div>
+        </div>
+
+        <!-- MAIN CONTENT -->
+        <div class="content-grid">
+            <!-- CONTEXTES -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">📋 Contextes importés</h2>
+                </div>
+                <div class="card-body" style="padding: 0; max-height: 600px; overflow-y: auto;">
+                    <div id="contexts-loading" class="loading">
+                        <div class="spinner"></div>
+                        <p>Chargement des contextes...</p>
+                    </div>
+                    <div id="contexts-content" style="display: none;">
+                        <table class="contexts-table">
+                            <thead>
+                                <tr>
+                                    <th>Contexte</th>
+                                    <th>Position</th>
+                                    <th>Action</th>
+                                    <th>Confiance</th>
+                                    <th>Ranges</th>
+                                    <th>Mains</th>
+                                </tr>
+                            </thead>
+                            <tbody id="contexts-list">
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="contexts-empty" class="empty-state" style="display: none;">
+                        <div class="empty-icon">📭</div>
+                        <h3>Aucun contexte trouvé</h3>
+                        <p>Commencez par importer des fichiers de ranges</p>
+                        <a href="/import" class="nav-pill" style="margin-top: 20px; display: inline-block;">📥 Aller à l'import</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SIDEBAR -->
+            <div style="display: flex; flex-direction: column; gap: 20px;">
+                <!-- IMPORTS RÉCENTS -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">📥 Imports récents</h3>
+                    </div>
+                    <div class="card-body">
+                        <div id="recent-imports-loading" class="loading" style="padding: 20px;">
+                            <div class="spinner"></div>
+                        </div>
+                        <div id="recent-imports-list" style="display: none;"></div>
+                        <div id="recent-imports-empty" class="empty-state" style="display: none; padding: 40px 20px;">
+                            <div class="empty-icon">📥</div>
+                            <p>Aucun import récent</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- GRAPHIQUE CONFIANCE -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">📊 Répartition par confiance</h3>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="confidenceChart" width="300" height="200"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State global
+        let confidenceChart = null;
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', function() {
+            loadDashboardData();
+            // Actualisation automatique toutes les 30 secondes
+            setInterval(loadDashboardData, 30000);
+        });
+
+        // Chargement des données
+        async function loadDashboardData() {
+            try {
+                // Charger stats et contextes en parallèle
+                const [statsResponse, contextsResponse] = await Promise.all([
+                    fetch('/api/dashboard/stats'),
+                    fetch('/api/dashboard/contexts')
+                ]);
+
+                if (statsResponse.ok) {
+                    const stats = await statsResponse.json();
+                    updateStats(stats);
+                    updateRecentImports(stats.recent_imports);
+                    updateConfidenceChart(stats.contexts_by_confidence);
+                }
+
+                if (contextsResponse.ok) {
+                    const contexts = await contextsResponse.json();
+                    updateContextsList(contexts);
+                }
+
+            } catch (error) {
+                console.error('Erreur chargement dashboard:', error);
+                showError('Erreur de connexion au serveur');
+            }
+        }
+
+        // Mise à jour des statistiques
+        function updateStats(stats) {
+            document.getElementById('total-files').textContent = formatNumber(stats.total_files);
+            document.getElementById('total-contexts').textContent = formatNumber(stats.total_contexts);
+            document.getElementById('total-ranges').textContent = formatNumber(stats.total_ranges);
+            document.getElementById('total-hands').textContent = formatNumber(stats.total_hands);
+        }
+
+        // Mise à jour des imports récents
+        function updateRecentImports(imports) {
+            const loading = document.getElementById('recent-imports-loading');
+            const list = document.getElementById('recent-imports-list');
+            const empty = document.getElementById('recent-imports-empty');
+
+            loading.style.display = 'none';
+
+            if (imports.length === 0) {
+                empty.style.display = 'block';
+                list.style.display = 'none';
+                return;
+            }
+
+            empty.style.display = 'none';
+            list.style.display = 'block';
+
+            list.innerHTML = imports.map(imp => {
+                const confidence = imp.confidence || 0;
+                const confidenceClass = getConfidenceClass(confidence);
+                const iconClass = confidence >= 0.8 ? 'import-success' : confidence >= 0.5 ? 'import-warning' : 'import-error';
+
+                return `
+                    <div class="import-item">
+                        <div class="import-icon ${iconClass}">
+                            ${confidence >= 0.8 ? '✅' : confidence >= 0.5 ? '⚠️' : '❌'}
+                        </div>
+                        <div class="import-details">
+                            <h4>${imp.context_name || imp.filename}
+                                <span class="confidence-badge ${confidenceClass}">
+                                    ${Math.round(confidence * 100)}%
+                                </span>
+                            </h4>
+                            <div class="import-meta">
+                                ${formatDate(imp.imported_at)} • ${imp.filename}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Mise à jour de la liste des contextes
+        function updateContextsList(contexts) {
+            const loading = document.getElementById('contexts-loading');
+            const content = document.getElementById('contexts-content');
+            const empty = document.getElementById('contexts-empty');
+            const tbody = document.getElementById('contexts-list');
+
+            loading.style.display = 'none';
+
+            if (contexts.length === 0) {
+                empty.style.display = 'block';
+                content.style.display = 'none';
+                return;
+            }
+
+            empty.style.display = 'none';
+            content.style.display = 'block';
+
+            tbody.innerHTML = contexts.map(ctx => {
+                const confidenceClass = getConfidenceClass(ctx.confidence);
+
+                return `
+                    <tr>
+                        <td>
+                            <div class="context-name" title="${ctx.name}">${ctx.name}</div>
+                            <div class="context-meta">${ctx.filename}</div>
+                        </td>
+                        <td>${ctx.hero_position || '-'}</td>
+                        <td>${ctx.primary_action || '-'}</td>
+                        <td>
+                            <span class="confidence-badge ${confidenceClass}">
+                                ${Math.round(ctx.confidence * 100)}%
+                            </span>
+                        </td>
+                        <td>${formatNumber(ctx.ranges_count)}</td>
+                        <td>${formatNumber(ctx.hands_count)}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // Mise à jour du graphique de confiance
+        function updateConfidenceChart(confidenceData) {
+            const canvas = document.getElementById('confidenceChart');
+            const ctx = canvas.getContext('2d');
+
+            // Détruire l'ancien graphique s'il existe
+            if (confidenceChart) {
+                confidenceChart.destroy();
+            }
+
+            const data = {
+                labels: ['Haute (≥80%)', 'Moyenne (50-80%)', 'Faible (<50%)'],
+                datasets: [{
+                    data: [
+                        confidenceData.high || 0,
+                        confidenceData.medium || 0,
+                        confidenceData.low || 0
+                    ],
+                    backgroundColor: [
+                        '#4CAF50',
+                        '#FF9800',
+                        '#f44336'
+                    ],
+                    borderWidth: 0
+                }]
+            };
+
+            confidenceChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: data,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 20,
+                                font: {
+                                    size: 12
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Utilitaires
+        function formatNumber(num) {
+            if (num >= 1000000) {
+                return (num / 1000000).toFixed(1) + 'M';
+            } else if (num >= 1000) {
+                return (num / 1000).toFixed(1) + 'K';
+            }
+            return num.toString();
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '-';
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('fr-FR', {
+                day: '2-digit',
+                month: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        function getConfidenceClass(confidence) {
+            if (confidence >= 0.8) return 'confidence-high';
+            if (confidence >= 0.5) return 'confidence-medium';
+            return 'confidence-low';
+        }
+
+        function showError(message) {
+            // Simple error display - could be enhanced with toast notifications
+            console.error(message);
+            const statsCards = document.querySelectorAll('.stat-value');
+            statsCards.forEach(card => {
+                if (card.textContent === '-') {
+                    card.textContent = 'Erreur';
+                    card.style.color = '#f44336';
+                }
+            });
+        }
+
+        // Auto-refresh indicator
+        function showRefreshIndicator() {
+            // Could add a subtle refresh indicator
+        }
+    </script>
+</body>
+</html>

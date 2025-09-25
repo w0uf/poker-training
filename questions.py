@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Générateur de questions pour l'entraînement aux ranges de poker
-Utilise les données enrichies pour créer des quiz adaptatifs
+Générateur de questions corrigé pour l'entraînement aux ranges de poker
+CORRECTION: Questions plus précises avec contexte complet
 """
 
 import sqlite3
@@ -15,14 +15,13 @@ from pathlib import Path
 
 
 # ============================================================================
-# QUESTION MODELS - Structures pour les questions
+# QUESTION MODELS CORRIGÉS
 # ============================================================================
 
 class QuestionType(Enum):
     HAND_IN_RANGE = "hand_in_range"  # "AKs est dans Call ?"
     ACTION_FOR_HAND = "action_for_hand"  # "Avec AA que faire ?"
-    STRONGEST_IN_RANGE = "strongest_in_range"  # "Plus forte main en Call ?"
-    COMPARE_RANGES = "compare_ranges"  # "Range A vs Range B ?"
+    RANGE_COVERAGE = "range_coverage"  # "Combien de mains dans cette range ?"
     CONTEXT_QUESTION = "context_question"  # "Position CO signifie ?"
 
 
@@ -34,7 +33,7 @@ class Difficulty(Enum):
 
 @dataclass
 class Question:
-    """Une question de quiz avec sa réponse"""
+    """Une question de quiz avec sa réponse et contexte complet"""
     id: str
     question_type: QuestionType
     question: str
@@ -47,106 +46,110 @@ class Question:
     metadata: Dict
 
 
-@dataclass
-class QuizSession:
-    """Session de quiz avec paramètres"""
-    questions: List[Question]
-    current_index: int = 0
-    score: int = 0
-    start_time: datetime = None
-    settings: Dict = None
-
-
 # ============================================================================
-# HAND STRENGTH EVALUATOR - Évaluation force des mains
+# HAND STRENGTH EVALUATOR AMÉLIORÉ
 # ============================================================================
 
 class HandStrengthEvaluator:
-    """Évalue la force relative des mains preflop"""
+    """Évalue la force relative des mains preflop avec plus de précision"""
 
     def __init__(self):
-        self.hand_rankings = self._build_hand_rankings()
+        self.hand_rankings = self._build_detailed_hand_rankings()
 
-    def _build_hand_rankings(self) -> Dict[str, int]:
-        """Crée une hiérarchie approximative des mains preflop"""
+    def _build_detailed_hand_rankings(self) -> Dict[str, int]:
+        """Crée une hiérarchie détaillée des mains preflop"""
         rankings = {}
 
-        # Paires (AA = 169, KK = 168, etc.)
-        pairs = ['AA', 'KK', 'QQ', 'JJ', 'TT', '99', '88', '77', '66', '55', '44', '33', '22']
-        for i, pair in enumerate(pairs):
+        # Paires premium (169-150)
+        premium_pairs = ['AA', 'KK', 'QQ', 'JJ']
+        for i, pair in enumerate(premium_pairs):
             rankings[pair] = 169 - i
 
-        # Suited aces (AKs = 155, AQs = 154, etc.)
-        suited_aces = ['AKs', 'AQs', 'AJs', 'ATs', 'A9s', 'A8s', 'A7s', 'A6s', 'A5s', 'A4s', 'A3s', 'A2s']
-        for i, hand in enumerate(suited_aces):
-            rankings[hand] = 155 - i
+        # Paires moyennes (149-140)
+        medium_pairs = ['TT', '99', '88', '77']
+        for i, pair in enumerate(medium_pairs):
+            rankings[pair] = 149 - i
 
-        # Offsuit aces (AKo = 143, AQo = 142, etc.)
-        offsuit_aces = ['AKo', 'AQo', 'AJo', 'ATo', 'A9o', 'A8o', 'A7o', 'A6o', 'A5o', 'A4o', 'A3o', 'A2o']
-        for i, hand in enumerate(offsuit_aces):
-            rankings[hand] = 143 - i
+        # Petites paires (139-130)
+        small_pairs = ['66', '55', '44', '33', '22']
+        for i, pair in enumerate(small_pairs):
+            rankings[pair] = 139 - i
 
-        # Suited kings (KQs = 131, KJs = 130, etc.)
-        suited_kings = ['KQs', 'KJs', 'KTs', 'K9s', 'K8s', 'K7s', 'K6s', 'K5s', 'K4s', 'K3s', 'K2s']
-        for i, hand in enumerate(suited_kings):
-            rankings[hand] = 131 - i
+        # Aces suitées premium (129-120)
+        premium_aces_s = ['AKs', 'AQs', 'AJs', 'ATs']
+        for i, hand in enumerate(premium_aces_s):
+            rankings[hand] = 129 - i
 
-        # Continuer avec les autres mains...
-        # Pour la simplicité, on va assigner des valeurs approximatives
+        # Aces offsuits premium (119-110)
+        premium_aces_o = ['AKo', 'AQo', 'AJo', 'ATo']
+        for i, hand in enumerate(premium_aces_o):
+            rankings[hand] = 119 - i
+
+        # Suited broadways (109-100)
+        suited_broadways = ['KQs', 'KJs', 'KTs', 'QJs', 'QTs', 'JTs']
+        for i, hand in enumerate(suited_broadways):
+            rankings[hand] = 109 - i
+
+        # Le reste avec des valeurs approximatives...
         remaining_hands = [
-            'KQo', 'QJs', 'KJo', 'JTs', 'QTs', 'QJo', 'KTo', 'A9s', 'QTo', 'JTo'
+            ('KQo', 99), ('T9s', 98), ('KJo', 97), ('A9s', 96),
+            ('98s', 95), ('QJo', 94), ('87s', 93), ('A8s', 92),
+            ('76s', 91), ('KTo', 90)
         ]
-        for i, hand in enumerate(remaining_hands):
-            rankings[hand] = 120 - i
+
+        for hand, rank in remaining_hands:
+            rankings[hand] = rank
 
         return rankings
 
     def get_strength(self, hand: str) -> int:
         """Retourne la force d'une main (plus haut = plus fort)"""
-        return self.hand_rankings.get(hand, 0)
+        return self.hand_rankings.get(hand, 50)  # Default 50 pour mains non listées
 
-    def compare_hands(self, hand1: str, hand2: str) -> int:
-        """Compare deux mains. Retourne 1 si hand1 > hand2, -1 si hand1 < hand2, 0 si égal"""
-        strength1 = self.get_strength(hand1)
-        strength2 = self.get_strength(hand2)
+    def categorize_hand(self, hand: str) -> str:
+        """Catégorise une main pour les explications"""
+        strength = self.get_strength(hand)
 
-        if strength1 > strength2:
-            return 1
-        elif strength1 < strength2:
-            return -1
+        if strength >= 160:
+            return "premium"
+        elif strength >= 140:
+            return "strong"
+        elif strength >= 100:
+            return "playable"
+        elif strength >= 70:
+            return "marginal"
         else:
-            return 0
+            return "weak"
 
 
 # ============================================================================
-# QUESTION GENERATOR - Générateur principal
+# GÉNÉRATEUR DE QUESTIONS CORRIGÉ
 # ============================================================================
 
-class PokerQuestionGenerator:
-    """Générateur de questions basé sur les ranges enrichies"""
+class ImprovedPokerQuestionGenerator:
+    """Générateur de questions amélioré avec contextes précis"""
 
     def __init__(self, db_path: str):
         self.db_path = db_path
         self.hand_evaluator = HandStrengthEvaluator()
         self.contexts = self._load_enriched_contexts()
-        self.all_hands = self._get_all_poker_hands()
 
     def _load_enriched_contexts(self) -> List[Dict]:
-        """Charge les contextes enrichis depuis la base"""
+        """Charge les contextes enrichis V4"""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.execute("""
                 SELECT id, name, enriched_metadata 
                 FROM range_contexts 
-                WHERE json_extract(enriched_metadata, '$.enriched_by_user') = true
-                   OR (enriched_metadata != '{}' 
-                       AND json_extract(enriched_metadata, '$.hero_position') IS NOT NULL)
+                WHERE json_extract(enriched_metadata, '$.version') = 'v4'
+                  AND json_extract(enriched_metadata, '$.question_friendly') = true
+                  AND json_extract(enriched_metadata, '$.hero_position') IS NOT NULL
             """)
 
             contexts = []
             for row in cursor.fetchall():
                 try:
                     metadata = json.loads(row[2]) if row[2] else {}
-                    if metadata and metadata.get('hero_position'):
+                    if self._is_context_suitable_for_questions(metadata):
                         contexts.append({
                             'id': row[0],
                             'name': row[1],
@@ -157,6 +160,16 @@ class PokerQuestionGenerator:
                     continue
 
             return contexts
+
+    def _is_context_suitable_for_questions(self, metadata: Dict) -> bool:
+        """Vérifie si un contexte est approprié pour générer des questions"""
+        required_fields = [
+            'hero_position',
+            'primary_action',
+            'game_format',
+            'variant'
+        ]
+        return all(metadata.get(field) for field in required_fields)
 
     def _load_context_ranges(self, context_id: int) -> List[Dict]:
         """Charge les ranges d'un contexte avec leurs mains"""
@@ -190,57 +203,272 @@ class PokerQuestionGenerator:
 
             return ranges
 
-    def _get_all_poker_hands(self) -> List[str]:
-        """Génère toutes les mains de poker possibles"""
-        pairs = [f"{rank}{rank}" for rank in "AKQJT98765432"]
+    def generate_improved_action_question(self, context: Dict, difficulty: Difficulty = Difficulty.MEDIUM) -> Question:
+        """Génère une question d'action AMÉLIORÉE avec contexte unique"""
 
-        suited = []
-        offsuit = []
-        ranks = "AKQJT98765432"
+        if not context['ranges'] or len(context['ranges']) < 2:
+            raise ValueError(f"Pas assez de ranges dans {context['name']}")
 
-        for i, r1 in enumerate(ranks):
-            for r2 in ranks[i + 1:]:
-                suited.append(f"{r1}{r2}s")
-                offsuit.append(f"{r1}{r2}o")
+        metadata = context['metadata']
 
-        return pairs + suited + offsuit
+        # Construire le contexte précis avec action précédente
+        situation = self._build_complete_situation_description(metadata)
 
-    def generate_hand_in_range_question(self, context: Dict, difficulty: Difficulty = Difficulty.EASY) -> Question:
-        """Génère une question 'main dans range'"""
+        # Choisir une main appropriée à la difficulté
+        test_hands = self._select_test_hands_by_difficulty(context, difficulty)
+        if not test_hands:
+            raise ValueError("Aucune main appropriée trouvée")
+
+        chosen_hand_data = random.choice(test_hands)
+        hand = chosen_hand_data['hand']
+        correct_ranges = chosen_hand_data['ranges']
+
+        # Convertir la range en action de table
+        correct_action = self._convert_range_to_table_action(correct_ranges[0], metadata)
+
+        # Créer les choix avec les actions de table standards
+        choices = self._generate_table_action_choices(context, metadata, correct_action)
+
+        # Question SANS répétition du contexte
+        question_text = f"Vous recevez {hand}.\nQuelle est votre action ?"
+
+        # Explication détaillée
+        hand_category = self.hand_evaluator.categorize_hand(hand)
+        explanation = self._generate_action_explanation(hand, hand_category, correct_action, metadata)
+
+        return Question(
+            id=f"action_only_{context['id']}_{hand}",
+            question_type=QuestionType.ACTION_FOR_HAND,
+            question=question_text,
+            correct_answer=correct_action,
+            choices=choices,
+            explanation=explanation,
+            difficulty=difficulty,
+            context_id=context['id'],
+            context_name=context['name'],
+            metadata={
+                'hand': hand,
+                'situation': situation,
+                'hand_category': hand_category,
+                'context_metadata': metadata
+            }
+        )
+
+    def _build_complete_situation_description(self, metadata: Dict) -> str:
+        """Construit une description complète avec action précédente CLAIRE"""
+        parts = []
+
+        # Format de jeu
+        variant = metadata.get('variant', 'No Limit Hold\'em')
+        table_format = metadata.get('table_format', '6max')
+        hero_pos = metadata.get('hero_position', 'MP')
+        vs_pos = metadata.get('vs_position')
+        action = metadata.get('primary_action', 'open')
+
+        # Construction selon le type d'action - CLARIFIÉE
+        if action == 'open':
+            parts.append(f"Partie {table_format} de {variant}")
+            parts.append(f"vous êtes en {hero_pos}")
+            parts.append("foldé jusqu'à vous")  # CLAIR: c'est un open
+        elif action == 'defense' and vs_pos:
+            parts.append(f"Partie {table_format} de {variant}")
+            parts.append(f"{vs_pos} ouvre")
+            parts.append(f"vous êtes en {hero_pos}")
+        elif action == 'call' and vs_pos:
+            parts.append(f"Partie {table_format} de {variant}")
+            parts.append(f"{vs_pos} raise")
+            parts.append(f"vous êtes en {hero_pos}")
+        elif action == '3bet' and vs_pos:
+            parts.append(f"Partie {table_format} de {variant}")
+            parts.append(f"{vs_pos} ouvre")
+            parts.append(f"vous êtes en {hero_pos}")
+        else:
+            # Fallback - essayer de deviner selon vs_position
+            parts.append(f"Partie {table_format} de {variant}")
+            if vs_pos:
+                parts.append(f"{vs_pos} ouvre")
+                parts.append(f"vous êtes en {hero_pos}")
+            else:
+                parts.append(f"vous êtes en {hero_pos}")
+                parts.append("foldé jusqu'à vous")  # Par défaut = open
+
+        # Stack depth si spécifié
+        stack = metadata.get('stack_depth')
+        if stack and stack != '100bb':
+            parts.append(f"({stack})")
+
+        return ", ".join(parts) + "."
+
+    def _convert_range_to_table_action(self, range_obj: Dict, metadata: Dict) -> str:
+        """Convertit une range en action de table (FOLD, CALL, RAISE seulement)"""
+        range_name = range_obj['name'].lower()
+
+        # Mapping simple des ranges vers actions de base
+        if any(word in range_name for word in ['fold']):
+            return "FOLD"
+        elif any(word in range_name for word in ['call', 'flat']):
+            return "CALL"
+        elif any(word in range_name for word in ['open', 'rfi', 'raise', '3bet', '4bet', 'reraise']):
+            return "RAISE"
+        else:
+            # Déterminer l'action selon le contexte
+            primary_action = metadata.get('primary_action', 'open')
+            if primary_action == 'open':
+                return "RAISE"  # Open = raise
+            elif primary_action in ['defense', '3bet']:
+                return "RAISE"  # Défense agressive = 3bet = raise
+            else:
+                return "CALL"  # Défense passive = call
+
+    def _generate_table_action_choices(self, context: Dict, metadata: Dict, correct_action: str) -> List[str]:
+        """Génère les choix d'actions de table selon la situation - VERSION FINALE"""
+
+        vs_pos = metadata.get('vs_position')
+        hero_pos = metadata.get('hero_position', 'MP')
+
+        # LOGIQUE SIMPLE ET CLAIRE : Si pas de vs_position = situation d'ouverture
+        if not vs_pos:
+            # Situation d'ouverture (foldé jusqu'à nous)
+            if hero_pos == 'SB':
+                # Small Blind : peut call pour compléter
+                possible_actions = ["RAISE", "CALL", "FOLD"]
+            else:
+                # TOUTES les autres positions : PAS DE CALL !
+                possible_actions = ["RAISE", "FOLD"]
+        else:
+            # Face à une action (vs_position existe)
+            possible_actions = ["RAISE", "CALL", "FOLD"]
+
+        # S'assurer que la réponse correcte est dans les actions possibles
+        if correct_action not in possible_actions:
+            possible_actions.append(correct_action)
+
+        return possible_actions
+
+    def _generate_action_explanation(self, hand: str, hand_category: str, correct_action: str, metadata: Dict) -> str:
+        """Génère une explication détaillée basée sur les JSON de l'utilisateur"""
+        primary_action = metadata.get('primary_action', 'open')
+        hero_pos = metadata.get('hero_position', 'MP')
+        vs_pos = metadata.get('vs_position')
+
+        explanation = f"Avec {hand} ({hand_category}) "
+
+        if primary_action == 'open':
+            if hero_pos == 'SB':
+                explanation += f"en {hero_pos} (foldé jusqu'à vous), "
+            else:
+                explanation += f"en {hero_pos} sans action avant vous, "
+        elif primary_action == 'defense' and vs_pos:
+            explanation += f"en {hero_pos} face à un open de {vs_pos}, "
+        elif vs_pos:
+            explanation += f"en {hero_pos} face à {vs_pos}, "
+        else:
+            explanation += f"en {hero_pos}, "
+
+        # AJOUT : Préciser que ça vient des JSON
+        explanation += f"l'action optimale d'après vos JSON est '{correct_action}'"
+
+        # Ajouter la logique derrière l'action (avec spécificité SB)
+        if correct_action == "FOLD":
+            if hero_pos == 'SB':
+                explanation += " car cette main ne fait pas partie de vos ranges de completion ou d'open"
+            else:
+                explanation += " car cette main n'est pas dans votre range d'ouverture"
+        elif correct_action == "CALL":
+            if hero_pos == 'SB' and primary_action == 'open':
+                explanation += " selon votre range de completion des blinds"
+            else:
+                explanation += " selon votre range de call défensive"
+        elif correct_action == "RAISE":
+            if primary_action == 'open':
+                explanation += " selon votre range d'ouverture"
+            elif primary_action in ['defense', '3bet']:
+                explanation += " selon votre range de 3-bet"
+            else:
+                explanation += " selon vos ranges définies"
+
+        return explanation + "."
+
+    def _build_situation_description(self, metadata: Dict) -> str:
+        """Construit une description précise de la situation - DÉPRÉCIÉ"""
+        # Cette fonction est remplacée par _build_complete_situation_description
+        return self._build_complete_situation_description(metadata)
+
+    def _select_test_hands_by_difficulty(self, context: Dict, difficulty: Difficulty) -> List[Dict]:
+        """Sélectionne des mains appropriées selon la difficulté"""
+
+        # Construire la liste main -> ranges
+        hand_to_ranges = {}
+        for range_obj in context['ranges']:
+            for hand_data in range_obj['hands']:
+                hand = hand_data['hand']
+                if hand not in hand_to_ranges:
+                    hand_to_ranges[hand] = []
+                hand_to_ranges[hand].append(range_obj)
+
+        test_hands = []
+
+        for hand, ranges in hand_to_ranges.items():
+            hand_strength = self.hand_evaluator.get_strength(hand)
+
+            # Filtrer selon difficulté
+            if difficulty == Difficulty.EASY:
+                # Mains évidentes : très fortes ou très faibles
+                if hand_strength >= 140 or hand_strength <= 70:
+                    test_hands.append({'hand': hand, 'ranges': ranges})
+
+            elif difficulty == Difficulty.MEDIUM:
+                # Mains moyennes avec décision claire
+                if 100 <= hand_strength <= 139:
+                    test_hands.append({'hand': hand, 'ranges': ranges})
+
+            else:  # HARD
+                # Mains borderline avec décisions difficiles
+                if 80 <= hand_strength <= 120 and len(ranges) >= 1:
+                    test_hands.append({'hand': hand, 'ranges': ranges})
+
+        return test_hands
+
+    def generate_range_membership_question(self, context: Dict, difficulty: Difficulty = Difficulty.EASY) -> Question:
+        """Génère une question 'main dans range' AMÉLIORÉE"""
 
         if not context['ranges']:
-            raise ValueError(f"Aucune range dans le contexte {context['name']}")
+            raise ValueError(f"Aucune range dans {context['name']}")
 
-        # Choisir une range au hasard
+        metadata = context['metadata']
+        situation = self._build_situation_description(metadata)
+
+        # Choisir une range
         target_range = random.choice(context['ranges'])
         range_hands = [h['hand'] for h in target_range['hands']]
 
         if not range_hands:
-            raise ValueError(f"Aucune main dans la range {target_range['name']}")
+            raise ValueError(f"Range '{target_range['name']}' vide")
 
-        # 70% de chance de prendre une main dans la range, 30% hors range
+        # 70% main dans la range, 30% hors range
         if random.random() < 0.7:
-            # Main qui EST dans la range
             hand = random.choice(range_hands)
             correct_answer = "Oui"
-            explanation = f"{hand} fait partie de la range '{target_range['name']}' dans le contexte {context['name']}"
+            explanation = f"Dans cette situation, {hand} fait partie de la range '{target_range['name']}'"
         else:
-            # Main qui N'EST PAS dans la range
-            hands_not_in_range = [h for h in self.all_hands if h not in range_hands]
+            # Trouver des mains hors range
+            all_possible_hands = self._get_common_poker_hands()
+            hands_not_in_range = [h for h in all_possible_hands if h not in range_hands]
+
             if hands_not_in_range:
                 hand = random.choice(hands_not_in_range)
                 correct_answer = "Non"
-                explanation = f"{hand} ne fait pas partie de la range '{target_range['name']}' dans le contexte {context['name']}"
+                explanation = f"Dans cette situation, {hand} ne fait PAS partie de la range '{target_range['name']}'"
             else:
-                # Fallback si toutes les mains sont dans la range
+                # Fallback
                 hand = random.choice(range_hands)
                 correct_answer = "Oui"
-                explanation = f"{hand} fait partie de la range '{target_range['name']}'"
+                explanation = f"Dans cette situation, {hand} fait partie de la range '{target_range['name']}'"
 
-        question_text = f"Dans le contexte '{context['name']}', la main {hand} fait-elle partie de la range '{target_range['name']}' ?"
+        question_text = f"{situation}\nLa main {hand} fait-elle partie de votre range '{target_range['name']}' ?"
 
         return Question(
-            id=f"hir_{context['id']}_{target_range['id']}_{hand}",
+            id=f"range_member_{context['id']}_{target_range['id']}_{hand}",
             question_type=QuestionType.HAND_IN_RANGE,
             question=question_text,
             correct_answer=correct_answer,
@@ -252,340 +480,133 @@ class PokerQuestionGenerator:
             metadata={
                 'hand': hand,
                 'range_name': target_range['name'],
-                'range_id': target_range['id']
+                'situation': situation
             }
         )
 
-    def generate_action_for_hand_question(self, context: Dict, difficulty: Difficulty = Difficulty.MEDIUM) -> Question:
-        """Génère une question 'quelle action pour cette main'"""
+    def _get_common_poker_hands(self) -> List[str]:
+        """Retourne les mains de poker les plus communes pour les tests"""
+        pairs = [f"{r}{r}" for r in "AKQJT98765432"]
 
-        if len(context['ranges']) < 2:
-            raise ValueError(f"Pas assez de ranges dans le contexte {context['name']}")
+        suited = []
+        offsuit = []
+        ranks = "AKQJT98765432"
 
-        # Trouver une main qui est dans plusieurs ranges (actions possibles)
-        hand_to_ranges = {}
-        for range_obj in context['ranges']:
-            for hand_data in range_obj['hands']:
-                hand = hand_data['hand']
-                if hand not in hand_to_ranges:
-                    hand_to_ranges[hand] = []
-                hand_to_ranges[hand].append(range_obj)
+        for i, r1 in enumerate(ranks):
+            for r2 in ranks[i + 1:]:
+                suited.append(f"{r1}{r2}s")
+                offsuit.append(f"{r1}{r2}o")
 
-        # Prendre une main qui a plusieurs actions possibles
-        multi_action_hands = {h: ranges for h, ranges in hand_to_ranges.items() if len(ranges) > 1}
-
-        if not multi_action_hands:
-            # Fallback: prendre n'importe quelle main
-            all_hands_in_context = list(hand_to_ranges.keys())
-            if not all_hands_in_context:
-                raise ValueError("Aucune main trouvée dans ce contexte")
-
-            hand = random.choice(all_hands_in_context)
-            possible_ranges = hand_to_ranges[hand]
-        else:
-            hand = random.choice(list(multi_action_hands.keys()))
-            possible_ranges = multi_action_hands[hand]
-
-        correct_range = random.choice(possible_ranges)
-        correct_answer = correct_range['name']
-
-        # Créer des choix de réponse
-        all_range_names = [r['name'] for r in context['ranges']]
-        wrong_choices = [name for name in all_range_names if name != correct_answer]
-
-        choices = [correct_answer]
-        choices.extend(random.sample(wrong_choices, min(3, len(wrong_choices))))
-        random.shuffle(choices)
-
-        question_text = f"Dans le contexte '{context['name']}', avec la main {hand}, quelle action devez-vous effectuer ?"
-        explanation = f"Avec {hand} dans '{context['name']}', l'action recommandée est '{correct_answer}'"
-
-        return Question(
-            id=f"afh_{context['id']}_{hand}_{correct_range['id']}",
-            question_type=QuestionType.ACTION_FOR_HAND,
-            question=question_text,
-            correct_answer=correct_answer,
-            choices=choices,
-            explanation=explanation,
-            difficulty=difficulty,
-            context_id=context['id'],
-            context_name=context['name'],
-            metadata={
-                'hand': hand,
-                'correct_range': correct_range['name'],
-                'all_ranges': all_range_names
-            }
-        )
-
-    def generate_strongest_hand_question(self, context: Dict, difficulty: Difficulty = Difficulty.MEDIUM) -> Question:
-        """Génère une question 'main la plus forte dans une range'"""
-
-        if not context['ranges']:
-            raise ValueError(f"Aucune range dans le contexte {context['name']}")
-
-        # Choisir une range qui a plusieurs mains
-        ranges_with_hands = [r for r in context['ranges'] if len(r['hands']) > 1]
-        if not ranges_with_hands:
-            raise ValueError("Aucune range avec plusieurs mains")
-
-        target_range = random.choice(ranges_with_hands)
-        range_hands = [h['hand'] for h in target_range['hands']]
-
-        # Trouver la main la plus forte
-        strongest_hand = max(range_hands, key=self.hand_evaluator.get_strength)
-
-        # Créer des choix de réponse avec d'autres mains de la range
-        other_hands = [h for h in range_hands if h != strongest_hand]
-        choices = [strongest_hand]
-
-        if len(other_hands) >= 3:
-            choices.extend(random.sample(other_hands, 3))
-        else:
-            choices.extend(other_hands)
-            # Compléter avec des mains aléatoires si nécessaire
-            if len(choices) < 4:
-                random_hands = random.sample([h for h in self.all_hands if h not in range_hands], 4 - len(choices))
-                choices.extend(random_hands)
-
-        random.shuffle(choices)
-
-        question_text = f"Dans la range '{target_range['name']}' du contexte '{context['name']}', quelle est la main la plus forte ?"
-        explanation = f"Dans cette range, {strongest_hand} est la main la plus forte"
-
-        return Question(
-            id=f"sih_{context['id']}_{target_range['id']}_{strongest_hand}",
-            question_type=QuestionType.STRONGEST_IN_RANGE,
-            question=question_text,
-            correct_answer=strongest_hand,
-            choices=choices,
-            explanation=explanation,
-            difficulty=difficulty,
-            context_id=context['id'],
-            context_name=context['name'],
-            metadata={
-                'range_name': target_range['name'],
-                'strongest_hand': strongest_hand,
-                'all_hands_in_range': range_hands
-            }
-        )
-
-    def generate_context_question(self, context: Dict, difficulty: Difficulty = Difficulty.EASY) -> Question:
-        """Génère une question sur le contexte lui-même"""
-
-        metadata = context['metadata']
-
-        question_types = []
-        if metadata.get('hero_position'):
-            question_types.append('position')
-        if metadata.get('primary_action'):
-            question_types.append('action')
-        if metadata.get('stack_depth'):
-            question_types.append('stack')
-
-        if not question_types:
-            raise ValueError("Pas assez de métadonnées pour générer une question contexte")
-
-        q_type = random.choice(question_types)
-
-        if q_type == 'position':
-            correct_answer = metadata['hero_position']
-            question_text = f"Dans le contexte '{context['name']}', quelle est votre position ?"
-            wrong_choices = ['UTG', 'MP', 'CO', 'BTN', 'SB', 'BB']
-            wrong_choices = [pos for pos in wrong_choices if pos != correct_answer]
-            explanation = f"Dans '{context['name']}', vous jouez en position {correct_answer}"
-
-        elif q_type == 'action':
-            correct_answer = metadata['primary_action']
-            question_text = f"Dans le contexte '{context['name']}', quelle est l'action principale ?"
-            wrong_choices = ['open', 'call', '3bet', 'fold', 'defense']
-            wrong_choices = [action for action in wrong_choices if action != correct_answer]
-            explanation = f"'{context['name']}' concerne principalement l'action '{correct_answer}'"
-
-        else:  # stack
-            correct_answer = metadata['stack_depth']
-            question_text = f"Dans le contexte '{context['name']}', quelle est la stack depth ?"
-            wrong_choices = ['20-40bb', '50-75bb', '100bb', '150bb+']
-            wrong_choices = [stack for stack in wrong_choices if stack != correct_answer]
-            explanation = f"'{context['name']}' est jouée avec une stack de {correct_answer}"
-
-        choices = [correct_answer] + random.sample(wrong_choices, min(3, len(wrong_choices)))
-        random.shuffle(choices)
-
-        return Question(
-            id=f"ctx_{context['id']}_{q_type}",
-            question_type=QuestionType.CONTEXT_QUESTION,
-            question=question_text,
-            correct_answer=correct_answer,
-            choices=choices,
-            explanation=explanation,
-            difficulty=difficulty,
-            context_id=context['id'],
-            context_name=context['name'],
-            metadata={
-                'question_subtype': q_type,
-                'context_metadata': metadata
-            }
-        )
+        # Retourner seulement les mains les plus communes
+        common_hands = pairs[:9] + suited[:20] + offsuit[:15]
+        return common_hands
 
     def generate_random_question(self, difficulty: Difficulty = None) -> Question:
-        """Génère une question aléatoire"""
+        """Génère une question aléatoire - SEULEMENT des questions d'action"""
 
         if not self.contexts:
-            raise ValueError("Aucun contexte enrichi disponible")
+            raise ValueError("Aucun contexte enrichi V4 disponible pour les questions")
 
         if difficulty is None:
             difficulty = random.choice(list(Difficulty))
 
         context = random.choice(self.contexts)
 
-        # Choisir le type de question selon la difficulté
-        if difficulty == Difficulty.EASY:
-            question_types = [
-                self.generate_hand_in_range_question,
-                self.generate_context_question
-            ]
-        elif difficulty == Difficulty.MEDIUM:
-            question_types = [
-                self.generate_hand_in_range_question,
-                self.generate_action_for_hand_question,
-                self.generate_strongest_hand_question
-            ]
-        else:  # HARD
-            question_types = [
-                self.generate_action_for_hand_question,
-                self.generate_strongest_hand_question
-            ]
-
-        generator = random.choice(question_types)
-
+        # SEULEMENT des questions d'action (FOLD/CALL/RAISE)
         try:
-            return generator(context, difficulty)
+            return self.generate_improved_action_question(context, difficulty)
         except ValueError as e:
-            # Fallback vers une question simple si erreur
-            return self.generate_hand_in_range_question(context, Difficulty.EASY)
-
-    def generate_quiz(self, num_questions: int = 10, difficulty: Difficulty = None) -> QuizSession:
-        """Génère un quiz complet"""
-
-        questions = []
-        attempts = 0
-        max_attempts = num_questions * 3  # Éviter boucle infinie
-
-        while len(questions) < num_questions and attempts < max_attempts:
-            try:
-                question = self.generate_random_question(difficulty)
-                # Éviter les doublons
-                if not any(q.id == question.id for q in questions):
-                    questions.append(question)
-            except Exception as e:
-                print(f"Erreur génération question: {e}")
-
-            attempts += 1
-
-        return QuizSession(
-            questions=questions,
-            start_time=datetime.now(),
-            settings={
-                'difficulty': difficulty.value if difficulty else 'mixed',
-                'num_questions': len(questions)
-            }
-        )
+            # Essayer un autre contexte
+            if len(self.contexts) > 1:
+                other_contexts = [c for c in self.contexts if c['id'] != context['id']]
+                if other_contexts:
+                    context = random.choice(other_contexts)
+                    return self.generate_improved_action_question(context, difficulty)
+            raise e
 
 
 # ============================================================================
-# QUIZ RUNNER - Interface console pour jouer
+# QUIZ RUNNER AMÉLIORÉ
 # ============================================================================
 
-class QuizRunner:
-    """Interface console pour jouer aux quiz"""
+class ImprovedQuizRunner:
+    """Interface console améliorée pour les quiz"""
 
     def __init__(self, db_path: str):
-        self.generator = PokerQuestionGenerator(db_path)
+        self.generator = ImprovedPokerQuestionGenerator(db_path)
 
     def run_interactive_quiz(self):
-        """Lance un quiz interactif en console"""
+        """Lance un quiz interactif amélioré"""
 
-        print("🃏 GÉNÉRATEUR DE QUESTIONS POKER")
-        print("=" * 50)
+        print("🃏 GÉNÉRATEUR DE QUESTIONS POKER - VERSION AMÉLIORÉE")
+        print("=" * 60)
 
         if not self.generator.contexts:
-            print("❌ Aucun contexte enrichi trouvé!")
-            print("💡 Assurez-vous d'avoir importé et enrichi des ranges")
+            print("❌ Aucun contexte V4 enrichi et question-friendly trouvé!")
+            print("💡 Assurez-vous d'avoir:")
+            print("   1. Importé vos ranges: python poker-training.py")
+            print("   2. Enrichi en V4: python enrich_ranges.py")
+            print("   3. Marqué comme question-friendly")
             return
 
         print(f"✅ {len(self.generator.contexts)} contextes disponibles:")
         for ctx in self.generator.contexts:
-            print(f"   • {ctx['name']} ({len(ctx['ranges'])} ranges)")
+            print(f"   • {ctx['metadata'].get('display_name', ctx['name'])}")
 
-        # Paramètres du quiz
-        print(f"\n🎯 PARAMÈTRES DU QUIZ")
+        # Configuration du quiz
+        num_questions = self._ask_quiz_config()
 
-        try:
-            num_questions = int(input("Nombre de questions (1-50) [10]: ") or "10")
-            num_questions = max(1, min(50, num_questions))
-        except ValueError:
-            num_questions = 10
-
-        print("\nDifficulté:")
-        print("1. Facile (mains dans ranges, contextes)")
-        print("2. Moyen (actions, mains les plus fortes)")
-        print("3. Difficile (questions complexes)")
-        print("4. Mixte (tous niveaux)")
+        print(f"\n🎲 Génération de {num_questions} questions améliorées...")
 
         try:
-            diff_choice = int(input("Votre choix (1-4) [4]: ") or "4")
-            if diff_choice == 1:
-                difficulty = Difficulty.EASY
-            elif diff_choice == 2:
-                difficulty = Difficulty.MEDIUM
-            elif diff_choice == 3:
-                difficulty = Difficulty.HARD
-            else:
-                difficulty = None  # Mixed
-        except ValueError:
-            difficulty = None
+            questions = []
+            for _ in range(num_questions):
+                question = self.generator.generate_random_question()
+                questions.append(question)
 
-        # Générer et jouer le quiz
-        print(f"\n🎲 Génération de {num_questions} questions...")
-
-        try:
-            quiz = self.generator.generate_quiz(num_questions, difficulty)
-            if not quiz.questions:
-                print("❌ Impossible de générer des questions")
-                return
-
-            print(f"✅ {len(quiz.questions)} questions générées")
-            self.play_quiz(quiz)
+            print(f"✅ {len(questions)} questions générées")
+            self._play_improved_quiz(questions)
 
         except Exception as e:
-            print(f"❌ Erreur génération quiz: {e}")
+            print(f"❌ Erreur génération: {e}")
 
-    def play_quiz(self, quiz: QuizSession):
-        """Joue un quiz en console"""
+    def _ask_quiz_config(self) -> int:
+        """Demande la configuration du quiz"""
+        try:
+            num = int(input("\nNombre de questions (1-20) [5]: ") or "5")
+            return max(1, min(20, num))
+        except ValueError:
+            return 5
 
-        print(f"\n🚀 DÉBUT DU QUIZ")
-        print("=" * 30)
+    def _play_improved_quiz(self, questions: List[Question]):
+        """Joue un quiz amélioré"""
 
-        for i, question in enumerate(quiz.questions, 1):
-            print(f"\n📋 Question {i}/{len(quiz.questions)}")
-            print(f"Difficulté: {question.difficulty.name}")
+        print(f"\n🚀 DÉBUT DU QUIZ AMÉLIORÉ")
+        print("=" * 40)
+
+        score = 0
+
+        for i, question in enumerate(questions, 1):
+            print(f"\n📋 Question {i}/{len(questions)}")
             print(f"Type: {question.question_type.value}")
+            print(f"Contexte: {question.metadata.get('situation', question.context_name)}")
             print(f"\n❓ {question.question}")
 
             # Afficher les choix
             for j, choice in enumerate(question.choices, 1):
+                emoji = "🔥" if choice == question.correct_answer else "•"
                 print(f"   {j}. {choice}")
 
             # Récupérer la réponse
             while True:
                 try:
-                    answer_idx = input(f"\nVotre réponse (1-{len(question.choices)}) ou 'q' pour quitter: ").strip()
+                    answer = input(f"\nVotre réponse (1-{len(question.choices)}) ou 'q': ").strip()
 
-                    if answer_idx.lower() == 'q':
+                    if answer.lower() == 'q':
                         print("❌ Quiz interrompu")
                         return
 
-                    answer_idx = int(answer_idx) - 1
+                    answer_idx = int(answer) - 1
                     if 0 <= answer_idx < len(question.choices):
                         user_answer = question.choices[answer_idx]
                         break
@@ -597,48 +618,35 @@ class QuizRunner:
             # Vérifier la réponse
             if user_answer == question.correct_answer:
                 print("✅ Correct !")
-                quiz.score += 1
+                score += 1
             else:
                 print(f"❌ Incorrect. La bonne réponse était: {question.correct_answer}")
 
             print(f"💡 {question.explanation}")
 
-            # Pause entre questions
-            if i < len(quiz.questions):
-                input("\nAppuyez sur Entrée pour continuer...")
+            if i < len(questions):
+                input("\n⏎ Appuyez sur Entrée pour continuer...")
 
-        # Résultats finaux
-        self.show_quiz_results(quiz)
+        # Résultats
+        self._show_improved_results(score, len(questions))
 
-    def show_quiz_results(self, quiz: QuizSession):
-        """Affiche les résultats du quiz"""
+    def _show_improved_results(self, score: int, total: int):
+        """Affiche les résultats améliorés"""
 
-        score_pct = (quiz.score / len(quiz.questions)) * 100
+        percentage = (score / total) * 100
 
-        print(f"\n🎉 RÉSULTATS DU QUIZ")
+        print(f"\n🎉 RÉSULTATS")
         print("=" * 30)
-        print(f"Score: {quiz.score}/{len(quiz.questions)} ({score_pct:.1f}%)")
+        print(f"Score: {score}/{total} ({percentage:.1f}%)")
 
-        if score_pct >= 90:
-            print("🏆 Excellent ! Vous maîtrisez très bien ces ranges.")
-        elif score_pct >= 70:
-            print("👍 Bon travail ! Quelques points à améliorer.")
-        elif score_pct >= 50:
-            print("📚 Pas mal, mais il y a encore du travail.")
+        if percentage >= 90:
+            print("🏆 Excellent ! Vous maîtrisez parfaitement ces situations.")
+        elif percentage >= 70:
+            print("👍 Très bien ! Quelques petits ajustements à faire.")
+        elif percentage >= 50:
+            print("📚 Correct, mais continuez à étudier vos ranges.")
         else:
-            print("💪 Courage ! Continuez à vous entraîner.")
-
-        # Statistiques par type de question
-        type_stats = {}
-        for question in quiz.questions:
-            q_type = question.question_type.value
-            if q_type not in type_stats:
-                type_stats[q_type] = {'total': 0, 'correct': 0}
-            type_stats[q_type]['total'] += 1
-
-        print(f"\n📊 Répartition par type:")
-        for q_type, stats in type_stats.items():
-            print(f"   • {q_type}: {stats['total']} questions")
+            print("💪 Revenez aux bases et étudiez vos contextes enrichis.")
 
 
 # ============================================================================
@@ -652,10 +660,10 @@ def main():
 
     if not Path(db_path).exists():
         print("❌ Base de données non trouvée!")
-        print("💡 Lancez d'abord l'import et l'enrichissement")
+        print("💡 Lancez d'abord: python poker-training.py")
         return
 
-    runner = QuizRunner(db_path)
+    runner = ImprovedQuizRunner(db_path)
     runner.run_interactive_quiz()
 
 

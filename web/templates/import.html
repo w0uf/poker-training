@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📥 Import - Poker Training</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* HEADER */
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .nav-pills {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .nav-pill {
+            padding: 12px 24px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            text-decoration: none;
+            border-radius: 25px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .nav-pill:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .nav-pill.active {
+            background: linear-gradient(45deg, #764ba2, #667eea);
+        }
+
+        /* UPLOAD SECTION */
+        .upload-section {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .upload-zone {
+            border: 3px dashed #667eea;
+            border-radius: 20px;
+            padding: 60px 20px;
+            text-align: center;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .upload-zone:hover,
+        .upload-zone.dragover {
+            border-color: #764ba2;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+            transform: translateY(-2px);
+        }
+
+        .upload-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            color: #667eea;
+        }
+
+        .upload-text h3 {
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .upload-text p {
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        .upload-btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .upload-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        /* FILES LIST */
+        .files-section {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .section-header {
+            padding: 25px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .section-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .import-all-btn {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 20px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+        }
+
+        .import-all-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+        }
+
+        .import-all-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .files-list {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            padding: 20px 25px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            transition: background-color 0.3s ease;
+        }
+
+        .file-item:hover {
+            background: rgba(102, 126, 234, 0.03);
+        }
+
+        .file-item:last-child {
+            border-bottom: none;
+        }
+
+        .file-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-right: 20px;
+            color: white;
+        }
+
+        .file-icon.pending { background: linear-gradient(45deg, #FF9800, #f57c00); }
+        .file-icon.imported { background: linear-gradient(45deg, #4CAF50, #45a049); }
+        .file-icon.error { background: linear-gradient(45deg, #f44336, #d32f2f); }
+
+        .file-details {
+            flex: 1;
+        }
+
+        .file-name {
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #333;
+        }
+
+        .file-meta {
+            font-size: 0.8rem;
+            color: #666;
+            display: flex;
+            gap: 15px;
+        }
+
+        .file-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .action-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 15px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-import {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-import:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-import:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-delete {
+            background: linear-gradient(45deg, #f44336, #d32f2f);
+            color: white;
+        }
+
+        .btn-delete:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(244, 67, 54, 0.4);
+        }
+
+        /* STATUS BADGES */
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-pending { background: #FFF3E0; color: #FF9800; }
+        .status-imported { background: #E8F5E8; color: #4CAF50; }
+        .status-error { background: #FFEBEE; color: #f44336; }
+        .status-importing { background: #E3F2FD; color: #2196F3; }
+
+        /* PROGRESS */
+        .progress-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .progress-modal {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .progress-spinner {
+            width: 60px;
+            height: 60px;
+            border: 6px solid #f3f3f3;
+            border-top: 6px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .progress-text {
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .progress-details {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        /* CONSOLE OUTPUT */
+        .console-output {
+            background: #1e1e1e;
+            color: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 20px;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .console-output:empty {
+            display: none;
+        }
+
+        /* ALERTS */
+        .alert {
+            padding: 15px 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .alert-success {
+            background: #E8F5E8;
+            color: #4CAF50;
+            border-left: 4px solid #4CAF50;
+        }
+
+        .alert-error {
+            background: #FFEBEE;
+            color: #f44336;
+            border-left: 4px solid #f44336;
+        }
+
+        .alert-warning {
+            background: #FFF3E0;
+            color: #FF9800;
+            border-left: 4px solid #FF9800;
+        }
+
+        /* LOADING */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(102, 126, 234, 0.3);
+            border-radius: 50%;
+            border-top-color: #667eea;
+            animation: spin 1s ease-in-out infinite;
+            margin: 0 auto 20px;
+        }
+
+        /* EMPTY STATE */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+
+        .empty-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 768px) {
+            .nav-pills {
+                flex-wrap: wrap;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .upload-zone {
+                padding: 40px 20px;
+            }
+
+            .file-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
+            }
+
+            .file-actions {
+                width: 100%;
+                justify-content: flex-end;
+            }
+
+            .section-header {
+                flex-direction: column;
+                gap: 15px;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- HEADER -->
+        <div class="header">
+            <h1>📥 Import de Ranges</h1>
+            <div class="nav-pills">
+                <a href="/" class="nav-pill">📊 Dashboard</a>
+                <a href="/import" class="nav-pill active">📥 Import</a>
+                <a href="/enrich" class="nav-pill">✨ Enrichir</a>
+                <a href="/quiz" class="nav-pill">🎯 Quiz</a>
+            </div>
+        </div>
+
+        <!-- ALERTS -->
+        <div id="alert-success" class="alert alert-success"></div>
+        <div id="alert-error" class="alert alert-error"></div>
+        <div id="alert-warning" class="alert alert-warning"></div>
+
+        <!-- UPLOAD SECTION -->
+        <div class="upload-section">
+            <div class="upload-zone" id="uploadZone">
+                <div class="upload-icon">📁</div>
+                <div class="upload-text">
+                    <h3>Glissez vos fichiers JSON ici</h3>
+                    <p>ou cliquez pour sélectionner des fichiers</p>
+                    <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
+                        Choisir les fichiers
+                    </button>
+                </div>
+            </div>
+            <input type="file" id="fileInput" accept=".json" multiple>
+        </div>
+
+        <!-- FILES LIST -->
+        <div class="files-section">
+            <div class="section-header">
+                <h2 class="section-title">📋 Fichiers disponibles</h2>
+                <button id="importAllBtn" class="import-all-btn" onclick="importAllFiles()">
+                    🚀 Importer tout
+                </button>
+            </div>
+
+            <div id="files-loading" class="loading">
+                <div class="loading-spinner"></div>
+                <p>Chargement des fichiers...</p>
+            </div>
+
+            <div id="files-content" class="files-list" style="display: none;"></div>
+
+            <div id="files-empty" class="empty-state" style="display: none;">
+                <div class="empty-icon">📭</div>
+                <h3>Aucun fichier trouvé</h3>
+                <p>Uploadez des fichiers JSON pour commencer</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- PROGRESS OVERLAY -->
+    <div id="progressOverlay" class="progress-overlay">
+        <div class="progress-modal">
+            <div class="progress-spinner"></div>
+            <div class="progress-text" id="progressText">Import en cours...</div>
+            <div class="progress-details" id="progressDetails">Veuillez patienter</div>
+            <div class="console-output" id="consoleOutput"></div>
+        </div>
+    </div>
+
+    <script>
+        // État global
+        let filesData = [];
+        let activeImports = new Set();
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeUpload();
+            loadFiles();
+
+            // Actualisation périodique
+            setInterval(loadFiles, 10000);
+        });
+
+        // Initialisation du système d'upload
+        function initializeUpload() {
+            const uploadZone = document.getElementById('uploadZone');
+            const fileInput = document.getElementById('fileInput');
+
+            // Drag & Drop
+            uploadZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadZone.classList.add('dragover');
+            });
+
+            uploadZone.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                uploadZone.classList.remove('dragover');
+            });
+
+            uploadZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadZone.classList.remove('dragover');
+                handleFiles(e.dataTransfer.files);
+            });
+
+            // Click to select
+            uploadZone.addEventListener('click', () => {
+                fileInput.click();
+            });
+
+            fileInput.addEventListener('change', (e) => {
+                handleFiles(e.target.files);
+            });
+        }
+
+        // Gestion des fichiers uploadés
+        async function handleFiles(files) {
+            const validFiles = Array.from(files).filter(file => file.name.endsWith('.json'));
+
+            if (validFiles.length === 0) {
+                showAlert('error', 'Seuls les fichiers JSON sont acceptés');
+                return;
+            }
+
+            showProgress('Upload en cours...', `${validFiles.length} fichier(s) à uploader`);
+
+            let successCount = 0;
+            let errorCount = 0;
+
+            for (const file of validFiles) {
+                try {
+                    const formData = new FormData();
+                    formData.append('file', file);
+
+                    const response = await fetch('/api/import/upload', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    if (response.ok) {
+                        successCount++;
+                    } else {
+                        const error = await response.json();
+                        console.error(`Erreur upload ${file.name}:`, error.error);
+                        errorCount++;
+                    }
+                } catch (error) {
+                    console.error(`Erreur upload ${file.name}:`, error);
+                    errorCount++;
+                }
+            }
+
+            hideProgress();
+
+            if (successCount > 0) {
+                showAlert('success', `${successCount} fichier(s) uploadé(s) avec succès`);
+                loadFiles(); // Recharger la liste
+            }
+
+            if (errorCount > 0) {
+                showAlert('error', `${errorCount} fichier(s) ont échoué lors de l'upload`);
+            }
+        }
+
+        // Chargement de la liste des fichiers
+        async function loadFiles() {
+            try {
+                const response = await fetch('/api/import/files');
+                if (!response.ok) throw new Error('Erreur serveur');
+
+                const files = await response.json();
+                filesData = files;
+                updateFilesList(files);
+
+            } catch (error) {
+                console.error('Erreur chargement fichiers:', error);
+                showAlert('error', 'Erreur lors du chargement des fichiers');
+            }
+        }
+
+        // Mise à jour de l'affichage des fichiers
+        function updateFilesList(files) {
+            const loading = document.getElementById('files-loading');
+            const content = document.getElementById('files-content');
+            const empty = document.getElementById('files-empty');
+
+            loading.style.display = 'none';
+
+            if (files.length === 0) {
+                empty.style.display = 'block';
+                content.style.display = 'none';
+                return;
+            }
+
+            empty.style.display = 'none';
+            content.style.display = 'block';
+
+            content.innerHTML = files.map(file => {
+                const isImporting = activeImports.has(file.name);
+                const status = isImporting ? 'importing' : file.status;
+
+                return `
+                    <div class="file-item">
+                        <div class="file-icon ${status}">
+                            ${getFileIcon(status)}
+                        </div>
+                        <div class="file-details">
+                            <div class="file-name">${file.name}</div>
+                            <div class="file-meta">
+                                <span>📏 ${formatFileSize(file.size)}</span>
+                                <span>📅 ${formatDate(file.modified)}</span>
+                                <span class="status-badge status-${status}">
+                                    ${getStatusText(status)}
+                                </span>
+                                ${file.imported_at ? `<span>📥 ${formatDate(file.imported_at)}</span>` : ''}
+                            </div>
+                        </div>
+                        <div class="file-actions">
+                            <button class="action-btn btn-import"
+                                    onclick="importFile('${file.name}')"
+                                    ${status === 'importing' || activeImports.has(file.name) ? 'disabled' : ''}>
+                                ${isImporting ? '⏳ Import...' : '📥 Importer'}
+                            </button>
+                            <button class="action-btn btn-delete"
+                                    onclick="deleteFile('${file.name}')"
+                                    ${isImporting ? 'disabled' : ''}>
+                                🗑️ Supprimer
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Mettre à jour le bouton d'import global
+            const importAllBtn = document.getElementById('importAllBtn');
+            const hasImportable = files.some(f => f.status === 'pending' && !activeImports.has(f.name));
+            const hasActive = activeImports.size > 0;
+
+            importAllBtn.disabled = !hasImportable || hasActive;
+            importAllBtn.textContent = hasActive ? '⏳ Import en cours...' : '🚀 Importer tout';
+        }
+
+        // Import d'un fichier spécifique
+        async function importFile(filename) {
+            if (activeImports.has(filename)) return;
+
+            activeImports.add(filename);
+            updateFilesList(filesData); // Rafraîchir l'affichage
+
+            try {
+                showProgress(`Import de ${filename}...`, 'Traitement avec détection de doublons');
+
+                // Lancer l'import
+                const response = await fetch('/api/import/run', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ filename })
+                });
+
+                if (!response.ok) throw new Error('Erreur serveur');
+
+                const result = await response.json();
+                const jobId = result.job_id;
+
+                // Suivre le progrès
+                await pollImportStatus(jobId, filename);
+
+            } catch (error) {
+                console.error(`Erreur import ${filename}:`, error);
+                showAlert('error', `Erreur lors de l'import de ${filename}: ${error.message}`);
+            } finally {
+                activeImports.delete(filename);
+                hideProgress();
+                loadFiles(); // Recharger la liste
+            }
+        }
+
+        // Import de tous les fichiers
+        async function importAllFiles() {
+            const importableFiles = filesData.filter(f =>
+                f.status === 'pending' && !activeImports.has(f.name)
+            );
+
+            if (importableFiles.length === 0) {
+                showAlert('warning', 'Aucun fichier à importer');
+                return;
+            }
+
+            // Marquer tous comme en cours
+            importableFiles.forEach(f => activeImports.add(f.name));
+            updateFilesList(filesData);
+
+            try {
+                showProgress('Import global en cours...', `${importableFiles.length} fichier(s) à traiter`);
+
+                // Lancer l'import global
+                const response = await fetch('/api/import/run', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({}) // Pas de filename = import tout
+                });
+
+                if (!response.ok) throw new Error('Erreur serveur');
+
+                const result = await response.json();
+                const jobId = result.job_id;
+
+                // Suivre le progrès
+                await pollImportStatus(jobId, 'all');
+
+            } catch (error) {
+                console.error('Erreur import global:', error);
+                showAlert('error', `Erreur lors de l'import global: ${error.message}`);
+            } finally {
+                // Nettoyer les imports actifs
+                importableFiles.forEach(f => activeImports.delete(f.name));
+                hideProgress();
+                loadFiles(); // Recharger la liste
+            }
+        }
+
+        // Suivi du statut d'import
+        async function pollImportStatus(jobId, filename) {
+            const maxAttempts = 60; // 5 minutes max
+            let attempts = 0;
+
+            while (attempts < maxAttempts) {
+                try {
+                    const response = await fetch(`/api/import/status/${jobId}`);
+                    if (!response.ok) break;
+
+                    const status = await response.json();
+
+                    if (status.status === 'running') {
+                        // Toujours en cours
+                        updateProgress(`Import de ${filename}...`,
+                                     `Tentative ${attempts + 1}/${maxAttempts}`);
+                    } else if (status.status === 'completed') {
+                        // Terminé
+                        if (status.success) {
+                            showAlert('success', `Import de ${filename} terminé avec succès`);
+
+                            // Afficher la sortie console si disponible
+                            if (status.stdout) {
+                                updateConsoleOutput(status.stdout);
+                            }
+                        } else {
+                            showAlert('error', `Erreur durant l'import de ${filename}`);
+                            if (status.stderr) {
+                                updateConsoleOutput(`ERREUR:\n${status.stderr}`);
+                            }
+                        }
+                        return;
+                    }
+
+                    attempts++;
+                    await sleep(5000); // Attendre 5 secondes
+
+                } catch (error) {
+                    console.error('Erreur suivi import:', error);
+                    break;
+                }
+            }
+
+            // Timeout ou erreur
+            showAlert('error', `Timeout lors du suivi de l'import de ${filename}`);
+        }
+
+        // Suppression d'un fichier
+        async function deleteFile(filename) {
+            if (!confirm(`Êtes-vous sûr de vouloir supprimer ${filename} ?`)) {
+                return;
+            }
+
+            try {
+                // Note: Cette fonctionnalité nécessiterait une route API supplémentaire
+                showAlert('warning', 'Fonctionnalité de suppression à implémenter');
+
+            } catch (error) {
+                console.error(`Erreur suppression ${filename}:`, error);
+                showAlert('error', `Erreur lors de la suppression de ${filename}`);
+            }
+        }
+
+        // Utilitaires d'affichage
+        function showProgress(text, details) {
+            document.getElementById('progressText').textContent = text;
+            document.getElementById('progressDetails').textContent = details;
+            document.getElementById('consoleOutput').textContent = '';
+            document.getElementById('progressOverlay').style.display = 'flex';
+        }
+
+        function updateProgress(text, details) {
+            document.getElementById('progressText').textContent = text;
+            document.getElementById('progressDetails').textContent = details;
+        }
+
+        function updateConsoleOutput(output) {
+            const consoleElement = document.getElementById('consoleOutput');
+            consoleElement.textContent = output;
+            consoleElement.scrollTop = consoleElement.scrollHeight;
+        }
+
+        function hideProgress() {
+            document.getElementById('progressOverlay').style.display = 'none';
+        }
+
+        function showAlert(type, message) {
+            hideAllAlerts();
+            const alertElement = document.getElementById(`alert-${type}`);
+            if (alertElement) {
+                alertElement.textContent = message;
+                alertElement.style.display = 'block';
+
+                // Auto-hide après 5 secondes
+                setTimeout(() => {
+                    alertElement.style.display = 'none';
+                }, 5000);
+            }
+        }
+
+        function hideAllAlerts() {
+            document.querySelectorAll('.alert').forEach(alert => {
+                alert.style.display = 'none';
+            });
+        }
+
+        // Utilitaires de formatage
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '-';
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('fr-FR', {
+                day: '2-digit',
+                month: '2-digit',
+                year: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        function getFileIcon(status) {
+            switch (status) {
+                case 'imported': return '✅';
+                case 'importing': return '⏳';
+                case 'error': return '❌';
+                case 'pending':
+                default: return '📄';
+            }
+        }
+
+        function getStatusText(status) {
+            switch (status) {
+                case 'imported': return 'Importé';
+                case 'importing': return 'En cours';
+                case 'error': return 'Erreur';
+                case 'pending':
+                default: return 'En attente';
+            }
+        }
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        // Gestion des clicks sur la zone d'upload
+        document.addEventListener('click', function(e) {
+            // Empêcher le déclenchement sur les boutons
+            if (e.target.closest('.action-btn') || e.target.closest('.import-all-btn')) {
+                return;
+            }
+        });
+
+        // Auto-refresh des statuts pendant les imports
+        setInterval(() => {
+            if (activeImports.size > 0) {
+                loadFiles();
+            }
+        }, 3000);
+    </script>
+</body>
+</html>

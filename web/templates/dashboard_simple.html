@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🃏 Poker Training - Dashboard Simple</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #667eea;
+            margin-bottom: 30px;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .stat {
+            text-align: center;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        }
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .debug {
+            background: #f3f4f6;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 0.9em;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #5a67d8;
+        }
+        .nav {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .nav a {
+            color: white;
+            text-decoration: none;
+            background: rgba(255,255,255,0.2);
+            padding: 10px 20px;
+            margin: 0 5px;
+            border-radius: 20px;
+            display: inline-block;
+        }
+        .nav a:hover {
+            background: rgba(255,255,255,0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🃏 Poker Training Dashboard - Mode Debug</h1>
+
+        <div class="nav">
+            <a href="/">Dashboard</a>
+            <a href="/import">Import</a>
+            <button onclick="runAllTests()">🧪 Test Toutes les APIs</button>
+            <button onclick="loadSimpleData()">📊 Charger Données</button>
+        </div>
+
+        <!-- STATS SIMPLES -->
+        <div class="card">
+            <h2>📊 Statistiques</h2>
+            <div class="stats">
+                <div class="stat">
+                    <div class="stat-value" id="files">?</div>
+                    <div>Fichiers</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="contexts">?</div>
+                    <div>Contextes</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="ranges">?</div>
+                    <div>Ranges</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="hands">?</div>
+                    <div>Mains</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- IMPORTS RÉCENTS -->
+        <div class="card">
+            <h2>📥 Imports Récents</h2>
+            <div id="imports">
+                <div class="loading">Chargement...</div>
+            </div>
+        </div>
+
+        <!-- CONTEXTES -->
+        <div class="card">
+            <h2>📋 Contextes</h2>
+            <div id="contexts-list">
+                <div class="loading">Chargement...</div>
+            </div>
+        </div>
+
+        <!-- DEBUG -->
+        <div class="card">
+            <h2>🔧 Debug Console</h2>
+            <div id="debug-output" class="debug">Cliquez sur "Test Toutes les APIs" pour commencer...</div>
+        </div>
+    </div>
+
+    <script>
+        let debugOutput = document.getElementById('debug-output');
+
+        function log(message) {
+            console.log(message);
+            debugOutput.textContent += new Date().toLocaleTimeString() + ': ' + message + '\n';
+            debugOutput.scrollTop = debugOutput.scrollHeight;
+        }
+
+        // Test simple de toutes les APIs
+        async function runAllTests() {
+            debugOutput.textContent = '';
+            log('🚀 Début des tests...');
+
+            // Test 1: Chemins
+            try {
+                log('📁 Test des chemins...');
+                const pathsResponse = await fetch('/api/debug/paths');
+                const paths = await pathsResponse.json();
+                log('✅ Chemins OK: ' + JSON.stringify(paths, null, 2));
+            } catch (error) {
+                log('❌ Erreur chemins: ' + error.message);
+            }
+
+            // Test 2: Base de données
+            try {
+                log('🗄️ Test base de données...');
+                const dbResponse = await fetch('/api/debug/db');
+                const dbData = await dbResponse.json();
+                log('✅ Base OK - Tables: ' + dbData.tables.join(', '));
+                log('📊 Comptages: ' + JSON.stringify(dbData.data, null, 2));
+            } catch (error) {
+                log('❌ Erreur base: ' + error.message);
+            }
+
+            // Test 3: API Stats
+            try {
+                log('📊 Test API stats...');
+                const statsResponse = await fetch('/api/dashboard/stats');
+                if (statsResponse.ok) {
+                    const stats = await statsResponse.json();
+                    log('✅ Stats OK: ' + JSON.stringify(stats, null, 2));
+                    updateSimpleStats(stats);
+                } else {
+                    const errorText = await statsResponse.text();
+                    log('❌ Stats erreur HTTP ' + statsResponse.status + ': ' + errorText);
+                }
+            } catch (error) {
+                log('❌ Erreur stats: ' + error.message);
+            }
+
+            // Test 4: API Contexts
+            try {
+                log('📋 Test API contexts...');
+                const contextsResponse = await fetch('/api/dashboard/contexts');
+                if (contextsResponse.ok) {
+                    const contexts = await contextsResponse.json();
+                    log('✅ Contexts OK: ' + contexts.length + ' contextes trouvés');
+                    updateSimpleContexts(contexts);
+                } else {
+                    const errorText = await contextsResponse.text();
+                    log('❌ Contexts erreur HTTP ' + contextsResponse.status + ': ' + errorText);
+                }
+            } catch (error) {
+                log('❌ Erreur contexts: ' + error.message);
+            }
+
+            log('🎉 Tests terminés!');
+        }
+
+        // Chargement simple des données
+        async function loadSimpleData() {
+            log('📊 Chargement des données simples...');
+
+            try {
+                // Utiliser directement l'API debug pour avoir les stats de base
+                const dbResponse = await fetch('/api/debug/db');
+                const dbData = await dbResponse.json();
+
+                if (dbData.data) {
+                    document.getElementById('files').textContent = dbData.data.range_files || 0;
+                    document.getElementById('contexts').textContent = dbData.data.range_contexts || 0;
+                    document.getElementById('ranges').textContent = dbData.data.ranges || 0;
+                    document.getElementById('hands').textContent = dbData.data.range_hands || 0;
+                    log('✅ Stats mises à jour depuis debug DB');
+                }
+
+                // Afficher les imports récents depuis les données debug
+                if (dbData.recent_imports_test) {
+                    const importsHtml = dbData.recent_imports_test.map(imp => `
+                        <div style="padding: 10px; border-bottom: 1px solid #eee;">
+                            <strong>${imp.context_name || imp.filename}</strong><br>
+                            <small>${imp.filename} • ${imp.imported_at} • ${Math.round((imp.confidence || 0) * 100)}%</small>
+                        </div>
+                    `).join('');
+                    document.getElementById('imports').innerHTML = importsHtml;
+                    log('✅ Imports récents affichés');
+                }
+
+                // Afficher quelques contextes
+                if (dbData.range_contexts_examples) {
+                    const contextsHtml = dbData.range_contexts_examples.map(ctx => `
+                        <div style="padding: 10px; border-bottom: 1px solid #eee;">
+                            <strong>${ctx.name}</strong><br>
+                            <small>ID: ${ctx.id} • Confiance: ${Math.round((ctx.confidence || 0) * 100)}%</small>
+                        </div>
+                    `).join('');
+                    document.getElementById('contexts-list').innerHTML = contextsHtml;
+                    log('✅ Contextes affichés');
+                }
+
+            } catch (error) {
+                log('❌ Erreur chargement simple: ' + error.message);
+            }
+        }
+
+        function updateSimpleStats(stats) {
+            document.getElementById('files').textContent = stats.total_files || 0;
+            document.getElementById('contexts').textContent = stats.total_contexts || 0;
+            document.getElementById('ranges').textContent = stats.total_ranges || 0;
+            document.getElementById('hands').textContent = stats.total_hands || 0;
+
+            if (stats.recent_imports && stats.recent_imports.length > 0) {
+                const importsHtml = stats.recent_imports.map(imp => `
+                    <div style="padding: 10px; border-bottom: 1px solid #eee;">
+                        <strong>${imp.context_name || imp.filename}</strong><br>
+                        <small>${imp.filename} • ${imp.imported_at} • ${Math.round((imp.confidence || 0) * 100)}%</small>
+                    </div>
+                `).join('');
+                document.getElementById('imports').innerHTML = importsHtml;
+            }
+        }
+
+        function updateSimpleContexts(contexts) {
+            if (contexts && contexts.length > 0) {
+                const contextsHtml = contexts.map(ctx => `
+                    <div style="padding: 10px; border-bottom: 1px solid #eee;">
+                        <strong>${ctx.name}</strong><br>
+                        <small>
+                            ${ctx.hero_position || '-'} • ${ctx.primary_action || '-'} •
+                            ${Math.round((ctx.confidence || 0) * 100)}% •
+                            ${ctx.ranges_count} ranges, ${ctx.hands_count} mains
+                        </small>
+                    </div>
+                `).join('');
+                document.getElementById('contexts-list').innerHTML = contextsHtml;
+            }
+        }
+
+        // Chargement automatique au démarrage
+        document.addEventListener('DOMContentLoaded', function() {
+            log('🚀 Dashboard simple chargé');
+            loadSimpleData();
+        });
+    </script>
+</body>
+</html>

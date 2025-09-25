@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🃏 Sélecteur de Contextes - Quiz Poker</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 20px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            color: #4CAF50;
+        }
+
+        .subtitle {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 12px;
+        }
+
+        .quiz-config {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .config-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .config-group label {
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+
+        .config-group input, .config-group select {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 6px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            font-size: 1em;
+        }
+
+        .start-quiz-btn {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            border: none;
+            padding: 12px 25px;
+            color: white;
+            font-size: 1.1em;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .start-quiz-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(76,175,80,0.4);
+        }
+
+        .start-quiz-btn:disabled {
+            background: #666;
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        .contexts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .context-card {
+            background: rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .context-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #4CAF50, #2196F3);
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+        }
+
+        .context-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+        }
+
+        .context-card:hover::before {
+            transform: translateX(0);
+        }
+
+        .context-card.selected {
+            border-color: #4CAF50;
+            background: rgba(76,175,80,0.2);
+        }
+
+        .context-card.disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            background: rgba(255,255,255,0.05);
+        }
+
+        .context-card.conflict {
+            border-color: #f44336;
+            background: rgba(244,67,54,0.2);
+        }
+
+        .context-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .context-checkbox {
+            width: 20px;
+            height: 20px;
+            margin-top: 2px;
+            accent-color: #4CAF50;
+        }
+
+        .context-info {
+            flex: 1;
+        }
+
+        .context-name {
+            font-size: 1.1em;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #4CAF50;
+        }
+
+        .context-display {
+            font-size: 0.9em;
+            opacity: 0.9;
+            margin-bottom: 10px;
+        }
+
+        .context-meta {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            font-size: 0.85em;
+        }
+
+        .meta-item {
+            background: rgba(255,255,255,0.1);
+            padding: 6px 10px;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .meta-label {
+            opacity: 0.8;
+        }
+
+        .meta-value {
+            font-weight: bold;
+            color: #4CAF50;
+        }
+
+        .context-stats {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255,255,255,0.2);
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85em;
+        }
+
+        .stat {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .conflict-warning {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #f44336;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.75em;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .selection-summary {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+        }
+
+        .summary-header {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #4CAF50;
+        }
+
+        .selected-contexts {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .selected-tag {
+            background: rgba(76,175,80,0.3);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            border: 1px solid #4CAF50;
+        }
+
+        .conflicts-section {
+            margin-top: 15px;
+            padding: 15px;
+            background: rgba(244,67,54,0.1);
+            border-radius: 8px;
+            border: 1px solid #f44336;
+        }
+
+        .conflicts-title {
+            color: #f44336;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .conflict-item {
+            font-size: 0.9em;
+            opacity: 0.9;
+            margin-bottom: 5px;
+        }
+
+        @media (max-width: 768px) {
+            .controls {
+                flex-direction: column;
+                gap: 20px;
+            }
+
+            .quiz-config {
+                flex-wrap: wrap;
+            }
+
+            .contexts-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🃏 Sélecteur de Contextes</h1>
+            <div class="subtitle">Choisissez vos contextes de ranges pour le quiz - Les conflits sont automatiquement détectés</div>
+        </div>
+
+        <div class="controls">
+            <div class="quiz-config">
+                <div class="config-group">
+                    <label for="numQuestions">Nombre de questions</label>
+                    <input type="number" id="numQuestions" min="1" max="50" value="10">
+                </div>
+                <div class="config-group">
+                    <label for="difficulty">Difficulté</label>
+                    <select id="difficulty">
+                        <option value="mixed">Mixte</option>
+                        <option value="easy">Facile</option>
+                        <option value="medium">Moyen</option>
+                        <option value="hard">Difficile</option>
+                    </select>
+                </div>
+            </div>
+            <button class="start-quiz-btn" id="startQuizBtn" disabled>
+                🚀 Démarrer le Quiz
+            </button>
+        </div>
+
+        <div class="contexts-grid" id="contextsGrid">
+            <!-- Contextes générés dynamiquement -->
+        </div>
+
+        <div class="selection-summary" id="selectionSummary" style="display: none;">
+            <div class="summary-header">📋 Résumé de la sélection</div>
+            <div class="selected-contexts" id="selectedContexts"></div>
+            <div id="conflictsSection" style="display: none;" class="conflicts-section">
+                <div class="conflicts-title">⚠️ Conflits détectés</div>
+                <div id="conflictsList"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Données simulées des contextes (normalement récupérées via API)
+        const contexts = [
+            {
+                id: 1,
+                name: "Défense CO vs Open MP",
+                display_name: "CO Defense vs MP",
+                display_name_short: "CO Def vMP",
+                hero_position: "CO",
+                vs_position: "MP",
+                primary_action: "defense",
+                table_format: "5max",
+                game_format: "cash game",
+                ranges_count: 4,
+                hands_count: 38,
+                confidence: 1.0
+            },
+            {
+                id: 2,
+                name: "5 Max-defense CO vs open",
+                display_name: "MP Defense",
+                display_name_short: "MP Def",
+                hero_position: "MP",
+                vs_position: null,
+                primary_action: "defense",
+                table_format: "5max",
+                game_format: "cash game",
+                ranges_count: 3,
+                hands_count: 25,
+                confidence: 1.0
+            },
+            {
+                id: 3,
+                name: "5 Max-defense CO vs open (élargi)",
+                display_name: "MP Defense Wide",
+                display_name_short: "MP Def Wide",
+                hero_position: "MP",
+                vs_position: null,
+                primary_action: "defense",
+                table_format: "5max",
+                game_format: "cash game",
+                ranges_count: 3,
+                hands_count: 32,
+                confidence: 1.0
+            },
+            {
+                id: 4,
+                name: "Open UTG 6max",
+                display_name: "UTG Open",
+                display_name_short: "UTG Open",
+                hero_position: "UTG",
+                vs_position: null,
+                primary_action: "open",
+                table_format: "6max",
+                game_format: "cash game",
+                ranges_count: 2,
+                hands_count: 45,
+                confidence: 0.9
+            },
+            {
+                id: 5,
+                name: "BTN vs SB 3bet",
+                display_name: "BTN vs SB 3bet",
+                display_name_short: "BTN v3B",
+                hero_position: "BTN",
+                vs_position: "SB",
+                primary_action: "call",
+                table_format: "6max",
+                game_format: "cash game",
+                ranges_count: 3,
+                hands_count: 28,
+                confidence: 0.85
+            }
+        ];
+
+        let selectedContexts = new Set();
+
+        function detectConflicts(contextA, contextB) {
+            const conflicts = [];
+
+            // Même position + même action = conflit majeur
+            if (contextA.hero_position === contextB.hero_position &&
+                contextA.primary_action === contextB.primary_action &&
+                contextA.vs_position === contextB.vs_position) {
+                conflicts.push("Même situation exacte (position + action + adversaire)");
+            }
+
+            // Positions identiques avec actions similaires
+            if (contextA.hero_position === contextB.hero_position &&
+                contextA.primary_action === contextB.primary_action) {
+                conflicts.push("Même position et même action");
+            }
+
+            // Défense sans vs_position défini
+            if (contextA.primary_action === 'defense' && !contextA.vs_position) {
+                conflicts.push("Défense sans adversaire spécifié");
+            }
+
+            return conflicts;
+        }
+
+        function getAllConflicts() {
+            const selected = Array.from(selectedContexts).map(id =>
+                contexts.find(c => c.id === parseInt(id))
+            );
+
+            const allConflicts = [];
+
+            for (let i = 0; i < selected.length; i++) {
+                for (let j = i + 1; j < selected.length; j++) {
+                    const conflicts = detectConflicts(selected[i], selected[j]);
+                    if (conflicts.length > 0) {
+                        allConflicts.push({
+                            contextA: selected[i],
+                            contextB: selected[j],
+                            issues: conflicts
+                        });
+                    }
+                }
+            }
+
+            return allConflicts;
+        }
+
+        function updateContextStates() {
+            const selected = Array.from(selectedContexts);
+            const conflicts = getAllConflicts();
+
+            // Marquer les contextes en conflit
+            const conflictingIds = new Set();
+            conflicts.forEach(conflict => {
+                conflictingIds.add(conflict.contextA.id);
+                conflictingIds.add(conflict.contextB.id);
+            });
+
+            contexts.forEach(context => {
+                const card = document.querySelector(`[data-context-id="${context.id}"]`);
+                const checkbox = card.querySelector('.context-checkbox');
+
+                // Réinitialiser les classes
+                card.classList.remove('selected', 'conflict', 'disabled');
+
+                if (selected.includes(context.id.toString())) {
+                    card.classList.add('selected');
+                    checkbox.checked = true;
+
+                    if (conflictingIds.has(context.id)) {
+                        card.classList.add('conflict');
+                    }
+                } else {
+                    checkbox.checked = false;
+                }
+            });
+
+            updateSelectionSummary(conflicts);
+        }
+
+        function updateSelectionSummary(conflicts) {
+            const summary = document.getElementById('selectionSummary');
+            const selectedContainer = document.getElementById('selectedContexts');
+            const conflictsSection = document.getElementById('conflictsSection');
+            const conflictsList = document.getElementById('conflictsList');
+            const startBtn = document.getElementById('startQuizBtn');
+
+            if (selectedContexts.size === 0) {
+                summary.style.display = 'none';
+                startBtn.disabled = true;
+                return;
+            }
+
+            summary.style.display = 'block';
+
+            // Afficher les contextes sélectionnés
+            selectedContainer.innerHTML = '';
+            selectedContexts.forEach(id => {
+                const context = contexts.find(c => c.id === parseInt(id));
+                const tag = document.createElement('div');
+                tag.className = 'selected-tag';
+                tag.textContent = context.display_name_short;
+                selectedContainer.appendChild(tag);
+            });
+
+            // Afficher les conflits
+            if (conflicts.length > 0) {
+                conflictsSection.style.display = 'block';
+                conflictsList.innerHTML = '';
+
+                conflicts.forEach(conflict => {
+                    conflict.issues.forEach(issue => {
+                        const item = document.createElement('div');
+                        item.className = 'conflict-item';
+                        item.textContent = `${conflict.contextA.display_name_short} ↔ ${conflict.contextB.display_name_short}: ${issue}`;
+                        conflictsList.appendChild(item);
+                    });
+                });
+
+                startBtn.disabled = true;
+                startBtn.textContent = '⚠️ Conflits détectés';
+            } else {
+                conflictsSection.style.display = 'none';
+                startBtn.disabled = selectedContexts.size === 0;
+                startBtn.textContent = '🚀 Démarrer le Quiz';
+            }
+        }
+
+        function createContextCard(context) {
+            const card = document.createElement('div');
+            card.className = 'context-card';
+            card.setAttribute('data-context-id', context.id);
+
+            const confidenceColor = context.confidence >= 0.9 ? '#4CAF50' :
+                                   context.confidence >= 0.7 ? '#FF9800' : '#f44336';
+
+            card.innerHTML = `
+                <div class="context-header">
+                    <input type="checkbox" class="context-checkbox">
+                    <div class="context-info">
+                        <div class="context-name">${context.display_name}</div>
+                        <div class="context-display">${context.name}</div>
+                    </div>
+                </div>
+
+                <div class="context-meta">
+                    <div class="meta-item">
+                        <span class="meta-label">Position:</span>
+                        <span class="meta-value">${context.hero_position}</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-label">Action:</span>
+                        <span class="meta-value">${context.primary_action}</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-label">Vs:</span>
+                        <span class="meta-value">${context.vs_position || 'N/A'}</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-label">Table:</span>
+                        <span class="meta-value">${context.table_format}</span>
+                    </div>
+                </div>
+
+                <div class="context-stats">
+                    <div class="stat">
+                        <span>🎯</span>
+                        <span>${context.ranges_count} ranges</span>
+                    </div>
+                    <div class="stat">
+                        <span>🃏</span>
+                        <span>${context.hands_count} mains</span>
+                    </div>
+                    <div class="stat">
+                        <span>📊</span>
+                        <span style="color: ${confidenceColor}">${Math.round(context.confidence * 100)}%</span>
+                    </div>
+                </div>
+            `;
+
+            // Event listeners
+            const checkbox = card.querySelector('.context-checkbox');
+
+            card.addEventListener('click', (e) => {
+                if (e.target !== checkbox) {
+                    checkbox.click();
+                }
+            });
+
+            checkbox.addEventListener('change', () => {
+                if (checkbox.checked) {
+                    selectedContexts.add(context.id.toString());
+                } else {
+                    selectedContexts.delete(context.id.toString());
+                }
+                updateContextStates();
+            });
+
+            return card;
+        }
+
+        function initializeInterface() {
+            const grid = document.getElementById('contextsGrid');
+
+            contexts.forEach(context => {
+                const card = createContextCard(context);
+                grid.appendChild(card);
+            });
+
+            // Event listener pour le bouton de démarrage
+            document.getElementById('startQuizBtn').addEventListener('click', () => {
+                if (selectedContexts.size > 0 && getAllConflicts().length === 0) {
+                    const numQuestions = document.getElementById('numQuestions').value;
+                    const difficulty = document.getElementById('difficulty').value;
+
+                    alert(`Quiz démarré avec ${selectedContexts.size} contextes, ${numQuestions} questions, difficulté: ${difficulty}`);
+                    // Ici on lancerait le quiz réel
+                }
+            });
+        }
+
+        // Initialiser l'interface au chargement
+        document.addEventListener('DOMContentLoaded', initializeInterface);
+    </script>
+</body>
+</html>

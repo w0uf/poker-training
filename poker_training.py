@@ -93,6 +93,10 @@ class RangeRepository(ABC):
     def get_all_contexts(self) -> List[RangeContext]:
         pass
 
+    @abstractmethod
+    def delete_contexts_for_file(self, file_id: int):
+        pass
+
 
 class SQLiteRangeRepository(RangeRepository):
     """Implémentation SQLite du repository"""
@@ -150,18 +154,32 @@ class SQLiteRangeRepository(RangeRepository):
     def save_range_file(self, range_file: RangeFile) -> int:
         """Sauvegarde un fichier de range"""
         with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.execute("""
-                INSERT OR REPLACE INTO range_files 
-                (filename, file_hash, imported_at, last_modified, status)
-                VALUES (?, ?, ?, ?, ?)
-            """, (
-                range_file.filename,
-                range_file.file_hash,
-                range_file.imported_at.isoformat(),
-                range_file.last_modified.isoformat(),
-                range_file.status
-            ))
-            return cursor.lastrowid
+            if range_file.id:
+                cursor = conn.execute("""
+                    UPDATE range_files 
+                    SET file_hash = ?, imported_at = ?, last_modified = ?, status = ?
+                    WHERE id = ?
+                """, (
+                    range_file.file_hash,
+                    range_file.imported_at.isoformat(),
+                    range_file.last_modified.isoformat(),
+                    range_file.status,
+                    range_file.id
+                ))
+                return range_file.id
+            else:
+                cursor = conn.execute("""
+                    INSERT OR REPLACE INTO range_files 
+                    (filename, file_hash, imported_at, last_modified, status)
+                    VALUES (?, ?, ?, ?, ?)
+                """, (
+                    range_file.filename,
+                    range_file.file_hash,
+                    range_file.imported_at.isoformat(),
+                    range_file.last_modified.isoformat(),
+                    range_file.status
+                ))
+                return cursor.lastrowid
 
     def get_range_file_by_name(self, filename: str) -> Optional[RangeFile]:
         """Récupère un fichier par son nom"""
@@ -246,6 +264,30 @@ class SQLiteRangeRepository(RangeRepository):
                     confidence=row[6]
                 ))
             return contexts
+
+    def delete_contexts_for_file(self, file_id: int):
+        """Supprime tous les contextes d'un fichier lors du réimport"""
+        with sqlite3.connect(self.db_path) as conn:
+            # Supprimer les mains d'abord
+            conn.execute("""
+                DELETE FROM range_hands 
+                WHERE range_id IN (
+                    SELECT r.id FROM ranges r 
+                    JOIN range_contexts rc ON r.context_id = rc.id 
+                    WHERE rc.file_id = ?
+                )
+            """, (file_id,))
+
+            # Supprimer les ranges
+            conn.execute("""
+                DELETE FROM ranges 
+                WHERE context_id IN (
+                    SELECT id FROM range_contexts WHERE file_id = ?
+                )
+            """, (file_id,))
+
+            # Supprimer les contextes
+            conn.execute("DELETE FROM range_contexts WHERE file_id = ?", (file_id,))
 
 
 # ============================================================================
@@ -475,25 +517,29 @@ class RangeImporter:
             return
 
         imported_count = 0
+        updated_count = 0
         error_count = 0
 
         for file_path in json_files:
             try:
-                if self.import_range_file(file_path):
+                result = self.import_range_file(file_path)
+                if result == "imported":
                     imported_count += 1
-                else:
-                    print(f"⏭️  {file_path.name} déjà à jour")
+                elif result == "updated":
+                    updated_count += 1
+                # "up_to_date" ne compte pas comme succès ou échec
             except Exception as e:
                 print(f"❌ Erreur import {file_path.name}: {e}")
                 error_count += 1
 
         print(f"\n📊 RÉSUMÉ D'IMPORT:")
-        print(f"✅ Importés: {imported_count}")
-        print(f"⏭️  Déjà à jour: {len(json_files) - imported_count - error_count}")
+        print(f"✅ Nouveaux: {imported_count}")
+        print(f"🔄 Mis à jour: {updated_count}")
+        print(f"⏭️  Déjà à jour: {len(json_files) - imported_count - updated_count - error_count}")
         print(f"❌ Erreurs: {error_count}")
 
-    def import_range_file(self, file_path: Path) -> bool:
-        """Importe un fichier de range. Retourne True si importé, False si déjà à jour"""
+    def import_range_file(self, file_path: Path) -> str:
+        """Importe un fichier de range. Retourne 'imported', 'updated', ou 'up_to_date'"""
 
         # Calculer hash pour détecter changements
         file_hash = self._calculate_file_hash(file_path)
@@ -502,7 +548,7 @@ class RangeImporter:
         # Vérifier si déjà importé
         existing = self.repository.get_range_file_by_name(file_path.name)
         if existing and existing.file_hash == file_hash:
-            return False
+            return "up_to_date"
 
         # Parser le fichier
         parser = self.parser_factory.get_parser(str(file_path))
@@ -511,6 +557,11 @@ class RangeImporter:
 
         print(f"📥 Import de {file_path.name}...")
         context, ranges, range_hands = parser.parse(str(file_path))
+
+        # Si fichier existant, supprimer les anciens contextes
+        if existing:
+            print(f"🔄 Réimport détecté, suppression des anciens contextes...")
+            self.repository.delete_contexts_for_file(existing.id)
 
         # Sauvegarder en base
         range_file = RangeFile(
@@ -550,7 +601,7 @@ class RangeImporter:
         print(f"   🃏 {hands_count} mains")
         print(f"   📊 Confiance: {context.confidence:.1%}")
 
-        return True
+        return "updated" if existing else "imported"
 
     def _calculate_file_hash(self, file_path: Path) -> str:
         """Calcule le hash MD5 du fichier"""

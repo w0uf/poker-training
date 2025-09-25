@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
 """
+v25092025
 Standardisateur de noms de ranges pour une détection d'action fiable
 Propose des noms normalisés basés sur les actions détectées
+VERSION CORRIGÉE: Validation des positions selon le format de table + corrections sécurisées
 """
 
 import sqlite3
 import json
 import re
 import shutil
+import tempfile
+import os
 from typing import Dict, List, Optional, Tuple
 from pathlib import Path
 from datetime import datetime
@@ -46,6 +50,56 @@ class RangeNameStandardizer:
             'BB': ['bb', 'big blind']
         }
 
+    def _validate_position_for_table_format(self, position: str, table_format: str) -> str:
+        """Valide et corrige une position selon le format de table"""
+
+        # Positions valides par format
+        valid_positions = {
+            '5max': ['UTG', 'CO', 'BTN', 'SB', 'BB'],
+            '6max': ['UTG', 'MP', 'CO', 'BTN', 'SB', 'BB'],
+            '9max': ['UTG', 'UTG1', 'MP', 'MP1', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB'],
+            'heads-up': ['BTN', 'BB']
+        }
+
+        # Mapping des positions invalides vers valides
+        position_mapping = {
+            '5max': {
+                'MP': 'CO',  # MP n'existe pas en 5max -> CO
+                'MP1': 'CO',  # MP+1 n'existe pas en 5max -> CO
+                'UTG1': 'CO',  # UTG+1 n'existe pas en 5max -> CO
+                'HJ': 'CO',  # HJ n'existe pas en 5max -> CO
+                'LJ': 'CO'  # LJ n'existe pas en 5max -> CO
+            },
+            '6max': {
+                'MP1': 'CO',  # MP+1 n'existe pas en 6max
+                'UTG1': 'MP',  # UTG+1 devient MP en 6max
+                'LJ': 'CO',  # LJ devient CO en 6max
+                'HJ': 'CO'  # HJ devient CO en 6max
+            }
+        }
+
+        # Si position valide pour ce format, la retourner
+        if position in valid_positions.get(table_format, []):
+            return position
+
+        # Sinon, mapper vers position valide
+        return position_mapping.get(table_format, {}).get(position, position)
+
+    def _detect_table_format_from_context_name(self, context_name: str) -> str:
+        """Détecte le format de table depuis le nom du contexte"""
+        name_lower = context_name.lower()
+
+        if any(indicator in name_lower for indicator in ['5max', '5-max', '5 max']):
+            return '5max'
+        elif any(indicator in name_lower for indicator in ['6max', '6-max', '6 max']):
+            return '6max'
+        elif any(indicator in name_lower for indicator in ['9max', '9-max', '9 max', 'full ring', 'fr']):
+            return '9max'
+        elif any(indicator in name_lower for indicator in ['hu', 'heads up', 'heads-up']):
+            return 'heads-up'
+        else:
+            return '6max'  # Défaut
+
     def analyze_context_names(self) -> List[Dict]:
         """Analyse les noms de contextes et propose des standardisations"""
 
@@ -74,9 +128,12 @@ class RangeNameStandardizer:
             return contexts
 
     def _standardize_context_name(self, context_name: str) -> str:
-        """Standardise le nom d'un contexte"""
+        """Standardise le nom d'un contexte - VERSION CORRIGÉE avec validation positions"""
 
         name = context_name.strip()
+
+        # Détecter le format de table AVANT de normaliser les positions
+        table_format = self._detect_table_format_from_context_name(name)
 
         # Normaliser les positions
         for standard_pos, variations in self.standard_positions.items():
@@ -84,6 +141,19 @@ class RangeNameStandardizer:
                 # Remplacer en respectant les majuscules/minuscules et espaces
                 pattern = r'\b' + re.escape(variation) + r'\b'
                 name = re.sub(pattern, standard_pos, name, flags=re.IGNORECASE)
+
+        # NOUVEAU: Valider les positions selon le format de table
+        # Extraire les positions du nom standardisé
+        positions_in_name = []
+        for std_pos in self.standard_positions.keys():
+            if std_pos in name:
+                positions_in_name.append(std_pos)
+
+        # Corriger les positions invalides
+        for position in positions_in_name:
+            corrected_position = self._validate_position_for_table_format(position, table_format)
+            if corrected_position != position:
+                name = name.replace(position, corrected_position)
 
         # Normaliser les termes courants
         replacements = {
@@ -128,7 +198,7 @@ class RangeNameStandardizer:
                 context_changes = self._apply_context_standardization(contexts_to_change)
                 print(f"✅ {context_changes} contextes standardisés")
             else:
-                print("⏭️ Standardisation des contextes ignorée")
+                print("⭐ Standardisation des contextes ignorée")
         else:
             print("✅ Tous les contextes ont déjà des noms standards")
 
@@ -200,6 +270,7 @@ class RangeNameStandardizer:
         name_lower = name.lower().strip()
         if 'défense' in name_lower or 'defense' in name_lower:
             return 'defense'
+
         # PRIORITÉ 1: Actions du héros au début du nom (plus importantes)
         hero_action_priority = [
             ('defense', ['def', 'déf', 'defend']),
@@ -363,7 +434,7 @@ class RangeNameStandardizer:
                 total_changes += changes_applied
                 print(f"✅ {changes_applied} ranges standardisées")
             else:
-                print("⏭️ Contexte ignoré")
+                print("⭐ Contexte ignoré")
 
         if total_changes > 0:
             print(f"\n🎉 STANDARDISATION TERMINÉE")
@@ -424,13 +495,286 @@ class RangeNameStandardizer:
 
         return changes_applied
 
-    def update_source_json_files(self):
-        """Met à jour les fichiers JSON sources avec les noms standardisés"""
+    def _prepare_json_updates(self) -> Dict[str, List[Tuple[str, str]]]:
+        """Version améliorée avec validation et gestion d'erreurs"""
+        file_updates = {}
 
-        print("\n🔄 MISE À JOUR DES FICHIERS JSON SOURCES")
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.execute("""
+                SELECT rf.filename, r.range_key, r.name, rc.original_data
+                FROM ranges r
+                JOIN range_contexts rc ON r.context_id = rc.id
+                JOIN range_files rf ON rc.file_id = rf.id
+                WHERE r.name != '' AND r.name IS NOT NULL
+                ORDER BY rf.filename, r.range_key
+            """)
+
+            processed_files = {}
+
+            for row in cursor.fetchall():
+                filename, range_key, current_name, original_data_str = row
+
+                try:
+                    # Parser le JSON original pour ce fichier (une seule fois par fichier)
+                    if filename not in processed_files:
+                        original_data = json.loads(original_data_str)
+                        processed_files[filename] = original_data
+
+                    original_data = processed_files[filename]
+                    original_ranges = original_data.get('data', {}).get('ranges', {})
+
+                    # Vérifier si le nom a changé par rapport au JSON original
+                    if range_key in original_ranges:
+                        original_name = original_ranges[range_key].get('name', '')
+
+                        if original_name and original_name != current_name:
+                            file_path = f"data/ranges/{filename}"
+
+                            if file_path not in file_updates:
+                                file_updates[file_path] = []
+
+                            # Éviter les doublons
+                            update_pair = (original_name, current_name)
+                            if update_pair not in file_updates[file_path]:
+                                file_updates[file_path].append(update_pair)
+
+                except json.JSONDecodeError as e:
+                    print(f"⚠️ Erreur JSON pour {filename}: {e}")
+                    continue
+                except Exception as e:
+                    print(f"⚠️ Erreur processing {filename}: {e}")
+                    continue
+
+        return file_updates
+
+    def _validate_json_structure(self, data: dict) -> bool:
+        """
+        Valide que le JSON a la structure attendue pour un fichier de ranges
+        """
+        try:
+            # Vérifications de base
+            if not isinstance(data, dict):
+                return False
+
+            # Vérifier la structure 'data' > 'ranges' et 'values'
+            if 'data' not in data:
+                return False
+
+            data_section = data['data']
+            if not isinstance(data_section, dict):
+                return False
+
+            if 'ranges' not in data_section or 'values' not in data_section:
+                return False
+
+            ranges = data_section['ranges']
+            values = data_section['values']
+
+            if not isinstance(ranges, dict) or not isinstance(values, dict):
+                return False
+
+            # Vérifier que chaque range a un nom et une couleur
+            for range_key, range_info in ranges.items():
+                if not isinstance(range_info, dict):
+                    return False
+                if 'name' not in range_info or 'color' not in range_info:
+                    return False
+
+            # Vérifier que values contient des listes d'entiers
+            for hand, range_ids in values.items():
+                if not isinstance(range_ids, list):
+                    return False
+                for range_id in range_ids:
+                    if not isinstance(range_id, int):
+                        return False
+
+            return True
+
+        except Exception:
+            return False
+
+    def _apply_updates_with_validation(
+            self,
+            data: dict,
+            updates: List[Tuple[str, str]]
+    ) -> int:
+        """
+        Applique les mises à jour avec validation de chaque changement
+        Retourne le nombre de changements effectivement appliqués
+        """
+        changes_applied = 0
+        ranges_data = data.get('data', {}).get('ranges', {})
+
+        for old_name, new_name in updates:
+            # Éviter les changements inutiles
+            if old_name == new_name:
+                continue
+
+            # Chercher et appliquer TOUS les matches (pas seulement le premier)
+            matches_found = 0
+            for range_key, range_info in ranges_data.items():
+                if range_info.get('name') == old_name:
+                    # Valider que le nouveau nom n'est pas vide
+                    if new_name and new_name.strip():
+                        range_info['name'] = new_name.strip()
+                        matches_found += 1
+
+            if matches_found > 0:
+                changes_applied += matches_found
+                print(f"   ✓ '{old_name}' → '{new_name}' ({matches_found} occurrences)")
+            else:
+                print(f"   ⚠️ '{old_name}' non trouvé dans le fichier")
+
+        return changes_applied
+
+    def _safe_update_single_file(self, file_path: str, updates: List[Tuple[str, str]]) -> str:
+        """
+        Met à jour un fichier JSON de manière sécurisée avec validation
+        """
+        print(f"\n📁 Traitement: {Path(file_path).name}")
+
+        # Vérifications préliminaires
+        if not Path(file_path).exists():
+            print(f"❌ Fichier non trouvé: {file_path}")
+            return "error"
+
+        if not updates:
+            print("ℹ️ Aucune mise à jour nécessaire")
+            return "no_changes"
+
+        temp_file = None
+        backup_path = None
+
+        try:
+            # Étape 1: Charger et valider le JSON original
+            print("📖 Chargement du JSON original...")
+            with open(file_path, 'r', encoding='utf-8') as f:
+                original_data = json.load(f)
+
+            # Valider la structure JSON
+            if not self._validate_json_structure(original_data):
+                print("❌ Structure JSON invalide")
+                return "error"
+
+            # Étape 2: Créer une copie de travail
+            modified_data = json.loads(json.dumps(original_data))  # Deep copy
+
+            # Étape 3: Appliquer les modifications avec validation
+            print(f"🔄 Application de {len(updates)} modifications...")
+            changes_applied = self._apply_updates_with_validation(modified_data, updates)
+
+            if changes_applied == 0:
+                print("ℹ️ Aucun changement appliqué")
+                return "no_changes"
+
+            # Étape 4: Valider le JSON modifié
+            if not self._validate_json_structure(modified_data):
+                print("❌ Structure JSON corrompue après modifications")
+                return "error"
+
+            # Étape 5: Test de sérialisation
+            try:
+                test_json = json.dumps(modified_data, indent=2, ensure_ascii=False)
+                json.loads(test_json)  # Vérifier que le JSON est valide
+            except Exception as e:
+                print(f"❌ Erreur de sérialisation: {e}")
+                return "error"
+
+            # Étape 6: Créer le backup
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            backup_path = f"{file_path}.backup.{timestamp}"
+            shutil.copy2(file_path, backup_path)
+            print(f"💾 Backup créé: {Path(backup_path).name}")
+
+            # Étape 7: Écriture atomique via fichier temporaire
+            temp_dir = Path(file_path).parent
+            with tempfile.NamedTemporaryFile(
+                    mode='w',
+                    encoding='utf-8',
+                    dir=temp_dir,
+                    delete=False,
+                    suffix='.json.tmp'
+            ) as temp_f:
+                temp_file = temp_f.name
+                json.dump(modified_data, temp_f, indent=2, ensure_ascii=False)
+                temp_f.flush()
+                os.fsync(temp_f.fileno())  # Forcer l'écriture sur disque
+
+            # Étape 8: Validation du fichier temporaire
+            with open(temp_file, 'r', encoding='utf-8') as f:
+                validation_data = json.load(f)
+
+            if not self._validate_json_structure(validation_data):
+                print("❌ Validation du fichier temporaire échouée")
+                return "error"
+
+            # Étape 9: Remplacement atomique
+            shutil.move(temp_file, file_path)
+            temp_file = None  # Éviter le cleanup
+
+            print(f"✅ Fichier mis à jour avec succès ({changes_applied} modifications)")
+
+            # Afficher les changements appliqués
+            for old_name, new_name in updates[:3]:  # Limiter l'affichage
+                print(f"   '{old_name}' → '{new_name}'")
+            if len(updates) > 3:
+                print(f"   ... et {len(updates) - 3} autres")
+
+            return "success"
+
+        except json.JSONDecodeError as e:
+            print(f"❌ Erreur JSON: {e}")
+            return "error"
+        except Exception as e:
+            print(f"❌ Erreur inattendue: {e}")
+            return "error"
+
+        finally:
+            # Cleanup du fichier temporaire si nécessaire
+            if temp_file and Path(temp_file).exists():
+                try:
+                    os.unlink(temp_file)
+                except Exception:
+                    pass
+
+    def _update_json_files(self, file_updates: Dict[str, List[Tuple[str, str]]]) -> int:
+        """
+        Version sécurisée - Met à jour les fichiers JSON avec validation complète
+        """
+        results = {}
+        success_count = 0
+
+        if not file_updates:
+            return 0
+
+        print(f"🔧 MISE À JOUR SÉCURISÉE DE {len(file_updates)} FICHIERS JSON")
+        print("=" * 60)
+
+        for file_path, updates in file_updates.items():
+            result = self._safe_update_single_file(file_path, updates)
+            results[file_path] = result
+            if result == "success":
+                success_count += 1
+
+        # Résumé
+        error_count = sum(1 for status in results.values() if status == "error")
+        no_changes_count = sum(1 for status in results.values() if status == "no_changes")
+
+        print(f"\n📊 RÉSUMÉ:")
+        print(f"✅ Succès: {success_count}")
+        print(f"❌ Erreurs: {error_count}")
+        print(f"ℹ️ Aucun changement: {no_changes_count}")
+
+        return success_count
+
+    def update_source_json_files(self):
+        """
+        Version sécurisée de update_source_json_files
+        """
+        print("🔄 MISE À JOUR DES FICHIERS JSON SOURCES")
         print("=" * 50)
 
-        # Récupérer les fichiers et leurs ranges actuelles
+        # Préparer les mises à jour
         file_updates = self._prepare_json_updates()
 
         if not file_updates:
@@ -439,93 +783,31 @@ class RangeNameStandardizer:
 
         print(f"📁 {len(file_updates)} fichiers à mettre à jour")
 
+        # Afficher un aperçu
         for file_path, updates in file_updates.items():
-            print(f"\n📄 {file_path}:")
-            for old_name, new_name in updates:
+            file_name = Path(file_path).name
+            print(f"📄 {file_name}:")
+
+            # Afficher les premières modifications
+            for old_name, new_name in updates[:4]:
                 print(f"  '{old_name}' → '{new_name}'")
+            if len(updates) > 4:
+                print(f"  ... et {len(updates) - 4} autres")
 
-        confirm = input(f"\n💾 Mettre à jour les fichiers JSON sources ? (o/n): ").strip().lower()
+        # Demander confirmation
+        confirm = input(f"💾 Mettre à jour les fichiers JSON sources ? (o/n): ").strip().lower()
 
-        if confirm.startswith('o'):
-            updated_count = self._update_json_files(file_updates)
-            print(f"✅ {updated_count} fichiers mis à jour")
+        if not confirm.startswith('o'):
+            print("❌ Mise à jour annulée")
+            return
+
+        # Appliquer les mises à jour
+        success_count = self._update_json_files(file_updates)
+
+        if success_count > 0:
+            print(f"✅ {success_count} fichiers mis à jour")
         else:
-            print("❌ Mise à jour des JSON annulée")
-
-    def _prepare_json_updates(self) -> Dict[str, List[Tuple[str, str]]]:
-        """Prépare les mises à jour nécessaires pour les fichiers JSON"""
-
-        file_updates = {}
-
-        with sqlite3.connect(self.db_path) as conn:
-            # Récupérer les informations de tous les fichiers et ranges
-            cursor = conn.execute("""
-                SELECT rf.filename, r.range_key, r.name, rc.original_data
-                FROM ranges r
-                JOIN range_contexts rc ON r.context_id = rc.id
-                JOIN range_files rf ON rc.file_id = rf.id
-                ORDER BY rf.filename, r.range_key
-            """)
-
-            current_file = None
-            current_data = None
-
-            for row in cursor.fetchall():
-                filename, range_key, current_name, original_data_str = row
-
-                if filename != current_file:
-                    current_file = filename
-                    current_data = json.loads(original_data_str)
-
-                # Vérifier si le nom a changé par rapport au JSON original
-                original_name = current_data.get('data', {}).get('ranges', {}).get(range_key, {}).get('name', '')
-
-                if original_name and original_name != current_name:
-                    file_path = f"data/ranges/{filename}"
-
-                    if file_path not in file_updates:
-                        file_updates[file_path] = []
-
-                    file_updates[file_path].append((original_name, current_name))
-
-        return file_updates
-
-    def _update_json_files(self, file_updates: Dict[str, List[Tuple[str, str]]]) -> int:
-        """Met à jour les fichiers JSON avec les nouveaux noms"""
-
-        updated_count = 0
-
-        for file_path, updates in file_updates.items():
-            try:
-                # Backup du fichier original
-                backup_path = f"{file_path}.backup.{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-                shutil.copy2(file_path, backup_path)
-                print(f"💾 Backup créé: {backup_path}")
-
-                # Charger le JSON
-                with open(file_path, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-
-                # Appliquer les changements
-                ranges_data = data.get('data', {}).get('ranges', {})
-
-                for old_name, new_name in updates:
-                    for range_key, range_info in ranges_data.items():
-                        if range_info.get('name') == old_name:
-                            range_info['name'] = new_name
-                            break
-
-                # Sauvegarder le JSON modifié
-                with open(file_path, 'w', encoding='utf-8') as f:
-                    json.dump(data, f, indent=2, ensure_ascii=False)
-
-                updated_count += 1
-                print(f"✅ {file_path} mis à jour")
-
-            except Exception as e:
-                print(f"❌ Erreur mise à jour {file_path}: {e}")
-
-        return updated_count
+            print("❌ Aucun fichier mis à jour")
 
 
 def main():
