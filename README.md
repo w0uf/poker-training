@@ -1,4 +1,4 @@
-# Poker Training
+# Poker Training 27092025
 
 
 
@@ -48,19 +48,18 @@ mkdir -p data/ranges
 # 1. Placer vos fichiers JSON dans data/ranges/
 cp mes_ranges/*.json data/ranges/
 
-# 2. Import automatique
+# 2. Import intégré (standardisation + enrichissement + validation)
 python poker_training.py
 
-# 3. Standardisation (optionnel)
-python range_name_standardizer.py
-
-# 4. Interface web
+# 3. Interface web
 cd web/
 python app.py
 
-# 5. Accéder à l'interface
+# 4. Accéder à l'interface
 # http://localhost:5000
 ```
+
+L'import traite automatiquement tous les aspects : standardisation des noms, enrichissement des métadonnées, et validation de compatibilité. Les contextes prêts pour l'entraînement sont immédiatement disponibles.
 
 ## Architecture
 
@@ -173,8 +172,23 @@ L'interface expose des endpoints pour l'intégration externe (documentation à v
 ## Workflow de développement
 
 ```
-JSON Sources → Import → Base SQLite → Standardisation → Enrichissement → Questions → Entraînement
+JSON Sources → Import intégré (standardisation + enrichissement + corrections) → Module questions (contextes compatibles)
 ```
+
+### Pipeline d'import intelligent
+
+L'import traite automatiquement chaque fichier JSON pour :
+- **Standardisation** des noms et positions selon le format de table
+- **Enrichissement** des métadonnées (positions, actions, contexte vs)
+- **Correction** des incohérences détectables (overlaps, fréquences, etc.)
+- **Validation** de compatibilité pour le module questions
+
+### Résultat par contexte
+
+- **Vert** : Contexte prêt pour l'entraînement
+- **Rouge** : Contexte non exploitable (avec explication)
+
+Le module questions sélectionne automatiquement les contextes compatibles pour un entraînement optimal.
 
 ## Contribution
 
