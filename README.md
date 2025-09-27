@@ -220,4 +220,4 @@ Projet sous licence libre - voir [LICENSE](LICENSE) pour plus de détails.
 
 ---
 
-**Dernière mise à jour**: 25/09/2025 - Standardiseur sécurisé validé
+**Dernière mise à jour**: 27/09/2025 - Standardiseur sécurisé validé
