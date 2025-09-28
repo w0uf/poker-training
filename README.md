@@ -1,21 +1,20 @@
-# Poker Training 27092025
+# Poker Training 28092025
 
-
-
-Interface web locale pour l'entraînement de ranges de poker avec import automatique et standardisation intelligente.
+Interface web locale pour l'entraînement de ranges de poker avec pipeline intégré automatique.
 
 ## Vue d'ensemble
 
-**poker-training** est une interface web locale permettant d'importer, standardiser et s'entraîner sur des ranges de poker. Les ranges sont créées via l'[éditeur de ranges](https://site2wouf.fr/poker-range-editor.php) puis automatiquement analysées et standardisées pour l'entraînement.
+**poker-training** est une interface web locale permettant d'importer, standardiser et enrichir automatiquement des ranges de poker. Les ranges sont créées via l'[éditeur de ranges](https://site2wouf.fr/poker-range-editor.php) puis automatiquement analysées et standardisées pour l'entraînement.
 
 ## Fonctionnalités
 
-- Import automatique de fichiers JSON avec détection de changements
+- Pipeline intégré automatique : import → standardisation → enrichissement en une seule opération
 - Interface web Flask avec dashboard temps réel
-- Standardisation intelligente des noms et positions
-- Analyse automatique des métadonnées (positions, actions)
 - Architecture modulaire extensible
+- Standardisation intelligente des noms et positions
+- Enrichissement automatique des métadonnées (mode web sans interaction)
 - Base SQLite optimisée avec index
+- Analyse automatique des métadonnées (positions, actions)
 
 ## Installation
 
@@ -36,7 +35,7 @@ python3 -m venv mon_env
 source mon_env/bin/activate
 
 # Installer dépendances
-pip install flask pathlib
+pip install flask
 
 # Créer structure de données
 mkdir -p data/ranges
@@ -48,20 +47,21 @@ mkdir -p data/ranges
 # 1. Placer vos fichiers JSON dans data/ranges/
 cp mes_ranges/*.json data/ranges/
 
-# 2. Import intégré (standardisation + enrichissement + validation)
-python poker_training.py
-
-# 3. Interface web
+# 2. Lancer l'interface web
 cd web/
 python app.py
 
-# 4. Accéder à l'interface
+# 3. Accéder à l'interface
 # http://localhost:5000
+
+# 4. Cliquer sur "Import Pipeline" pour traitement complet
 ```
 
-L'import traite automatiquement tous les aspects : standardisation des noms, enrichissement des métadonnées, et validation de compatibilité. Les contextes prêts pour l'entraînement sont immédiatement disponibles.
+Le pipeline intégré traite automatiquement tous les aspects : import, standardisation des noms, enrichissement des métadonnées, et sauvegarde. Les contextes prêts pour l'entraînement sont immédiatement disponibles.
 
 ## Architecture
+
+### Structure actuelle
 
 ```
 poker-training/
@@ -70,14 +70,37 @@ poker-training/
 │   └── ranges/                   # Répertoire des fichiers JSON
 ├── web/
 │   ├── app.py                    # Serveur Flask principal
-│   └── templates/                # Interface utilisateur
-├── poker_training.py             # Import des ranges
-├── range_name_standardizer.py    # Standardisation
-├── enrich_ranges.py              # Enrichissement métadonnées
-└── questions.py                  # Génération de questions
+│   └── templates/
+│       └── dashboard.html        # Interface utilisateur principale
+├── modules/                      # Architecture modulaire
+│   ├── json_parser.py            # Extraction données JSON
+│   ├── name_standardizer.py      # Standardisation noms et positions
+│   ├── metadata_enricher.py      # Enrichissement automatique
+│   ├── database_manager.py       # Gestion base de données
+│   └── pipeline_runner.py        # Orchestrateur principal
+├── integrated_pipeline.py        # Point d'entrée pipeline intégré
+└── README.md
 ```
 
-## Système d'import
+### Fichiers obsolètes
+
+Les fichiers suivants ne sont plus utilisés avec l'architecture modulaire :
+- `poker_training.py` (remplacé par le pipeline intégré)
+- `range_name_standardizer.py` (remplacé par le module)
+- `enrich_ranges.py` (remplacé par le module)
+- `questions.py` (en cours de refactoring)
+- Templates non utilisés : `import.html`, `enrich.html`, etc.
+
+## Pipeline intégré
+
+### Fonctionnement
+
+Le pipeline traite chaque contexte de A à Z dans une seule boucle :
+
+1. **Parsing JSON** : Extraction des ranges depuis les fichiers
+2. **Standardisation** : Détection automatique des positions, actions, formats de table
+3. **Enrichissement** : Ajout des métadonnées globales et génération des noms d'affichage
+4. **Sauvegarde** : Persistance complète en base de données
 
 ### Format JSON supporté
 
@@ -96,12 +119,12 @@ poker-training/
 }
 ```
 
-### Fonctionnalités d'import
+### Fonctionnalités automatiques
 
-- **Détection de changements**: Hash MD5 pour éviter les réimports inutiles
-- **Parsing intelligent**: Extraction automatique des métadonnées
-- **Gestion d'erreurs**: Logs détaillés et validation
-- **Architecture extensible**: Support futur pour GTO+, PIOSolver
+- **Détection intelligente** : Positions, actions, formats de table
+- **Enrichissement automatique** : Métadonnées par défaut (Cash Game, NLHE, 6max, 100bb)
+- **Gestion d'erreurs** : Les contextes problématiques sont marqués en erreur
+- **Architecture extensible** : Support futur pour GTO+, PIOSolver
 
 ## Standardisation automatique
 
@@ -114,101 +137,113 @@ poker-training/
 
 ### Actions standardisées
 
-- **Primaires**: call, fold, 3bet_value, 3bet_bluff, 4bet_value, 4bet_bluff
-- **Spéciales**: squeeze_value, squeeze_bluff, open_raise, defense
-- **Support**: check, shove, limp
+- **Primaires**: open, call, 3bet, 4bet, fold, check, defense
+- **Détection prioritaire** pour "defense" (gestion français/anglais)
 
 ### Exemples d'analyse
 
 ```
-"5 Max-défense BB vs UTG"  → hero: BB, vs: UTG, action: defense
-"CO Open 100bb"           → hero: CO, action: open
-"3Bet vs BTN steal"        → action: 3bet, vs: BTN
+"5max open utg"     → table: 5max, hero: UTG, action: open
+"BB Defense vs CO"  → hero: BB, vs: CO, action: defense
+"CO 3Bet vs BTN"    → hero: CO, vs: BTN, action: 3bet
 ```
 
 ## Base de données
 
-### Structure SQLite
+### Structure SQLite (auto-créée)
 
 - `range_files`: Fichiers importés avec hash et timestamps
-- `range_contexts`: Contextes de jeu avec métadonnées
-- `ranges`: Ranges individuelles avec actions
+- `range_contexts`: Contextes de jeu avec métadonnées enrichies
+- `ranges`: Ranges individuelles avec actions et couleurs
 - `range_hands`: Mains avec fréquences
 
 ### Index optimisés
 
 - Requêtes par range: `idx_range_hands_range_id`
 - Recherche par main: `idx_range_hands_hand`
+- Contextes par ID: `idx_ranges_context_id`
 
 ## Interface web
 
-### Pages disponibles
+### Dashboard principal
 
-- **Dashboard**: Statistiques et aperçu général
-- **Import**: Interface d'import avec logs temps réel
-- **Enrichissement**: Gestion des métadonnées (en développement)
+- **Statistiques temps réel** : Fichiers, contextes, ranges, mains
+- **Import Pipeline** : Bouton unique pour traitement complet
+- **État des contextes** : Confiance et prêt pour quiz
+- **Feedback visuel** : Progression et résultats en temps réel
 
 ### API REST
 
-L'interface expose des endpoints pour l'intégration externe (documentation à venir).
+- `/api/import_pipeline` : Lance le pipeline complet
+- `/api/debug/db` : Statistiques de base de données
+- `/api/dashboard/contexts` : Liste des contextes avec métadonnées
+- `/api/quiz/check` : Vérification de l'état pour le quiz (en développement)
+
+## Test du pipeline standalone
+
+```bash
+# Test direct du pipeline
+python integrated_pipeline.py
+
+# Test avec statut seulement
+python modules/pipeline_runner.py --status
+```
 
 ## État du développement
 
 ### Composants fonctionnels
 
-- Système d'import modulaire avec Repository pattern
-- Interface web Flask avec templates responsive  
-- Standardiseur sécurisé avec validation complète
-- Base de données avec relations optimisées
-- Analyse automatique des métadonnées
+- Pipeline intégré avec architecture modulaire
+- Interface web Flask responsive
+- Standardiseur avec détection robuste
+- Enrichisseur automatique (mode web)
+- Base de données auto-créée avec relations optimisées
+- Gestion d'erreurs avec continuité de traitement
 
 ### En développement
 
-- Enrichissement V4 des métadonnées
-- Intégration web complète
-- Système de génération de questions
-- Tests d'intégration
+- Module questions (génération de quiz)
+- Interface de validation pour cas ambigus
+- Support formats supplémentaires (PIO, GTO+)
+- Tests d'intégration complets
 
 ## Workflow de développement
 
 ```
-JSON Sources → Import intégré (standardisation + enrichissement + corrections) → Module questions (contextes compatibles)
+JSON Sources → Pipeline intégré → Contextes question-ready
 ```
 
-### Pipeline d'import intelligent
+### Pipeline unifié
 
-L'import traite automatiquement chaque fichier JSON pour :
-- **Standardisation** des noms et positions selon le format de table
-- **Enrichissement** des métadonnées (positions, actions, contexte vs)
-- **Correction** des incohérences détectables (overlaps, fréquences, etc.)
-- **Validation** de compatibilité pour le module questions
+Le pipeline traite automatiquement chaque fichier JSON pour :
+- **Import** et parsing des données
+- **Standardisation** des noms selon le format détecté
+- **Enrichissement** avec métadonnées par défaut
+- **Validation** et marquage question-friendly
+- **Sauvegarde** complète en base
 
 ### Résultat par contexte
 
-- **Vert** : Contexte prêt pour l'entraînement
-- **Rouge** : Contexte non exploitable (avec explication)
+- **Question-ready** : Contexte prêt pour l'entraînement
+- **Erreur** : Contexte non exploitable (avec message d'erreur)
 
-Le module questions sélectionne automatiquement les contextes compatibles pour un entraînement optimal.
+## Architecture modulaire
 
-## Contribution
+### Principes de conception
 
-Ce projet utilise les bonnes pratiques suivantes :
+- **Responsabilité unique** : Chaque module a un rôle spécifique
+- **Faible couplage** : Modules indépendants et réutilisables
+- **Gestion d'erreurs** : Robustesse avec rollback automatique
+- **Type hints** : Code auto-documenté
+- **Tests unitaires** : Validation par composant
 
-- **Repository pattern** pour l'accès aux données
-- **Factory pattern** pour les parsers extensibles
-- **Type hints** systématiques
-- **Validation robuste** à chaque étape
-- **Gestion d'erreurs** avec rollback automatique
-- **Documentation** des fonctions critiques
+### Évolution
 
-## Sessions de développement planifiées
-
-### Prochaines étapes
-
-1. **Tests d'intégration Flask**: Validation du workflow complet via interface web
-2. **Correction encodage UTF-8**: Standardisation sur tout le projet
-3. **Enrichissement V4**: Interface web pour les métadonnées
-4. **Génération de questions**: Pipeline complet d'entraînement
+L'architecture modulaire facilite :
+- Ajout de nouveaux formats d'import
+- Amélioration des algorithmes de détection
+- Intégration de nouvelles sources de données
+- Tests et debugging ciblés
 
 ## Support
 
@@ -220,4 +255,4 @@ Projet sous licence libre - voir [LICENSE](LICENSE) pour plus de détails.
 
 ---
 
-**Dernière mise à jour**: 27/09/2025 - Standardiseur sécurisé validé
+**Dernière mise à jour**: 28/09/2025 - Pipeline intégré opérationnel
