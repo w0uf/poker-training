@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Validation du contexte - Poker Training</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container { max-width: 900px; margin: 0 auto; }
+
+        .header {
+            background: white;
+            padding: 20px 30px;
+            border-radius: 10px 10px 0 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .header h1 { color: #333; font-size: 24px; margin-bottom: 10px; }
+
+        .context-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 15px;
+        }
+
+        .context-info p { color: #666; margin: 5px 0; font-size: 14px; }
+        .context-info strong { color: #333; }
+
+        .form-container {
+            background: white;
+            padding: 30px;
+            border-radius: 0 0 10px 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .form-section { margin-bottom: 30px; }
+        .form-section h2 {
+            color: #333; font-size: 18px; margin-bottom: 15px;
+            padding-bottom: 10px; border-bottom: 2px solid #667eea;
+        }
+        .form-section.optional h2 { border-bottom-color: #95a5a6; }
+
+        .form-group { margin-bottom: 20px; }
+        .form-group label {
+            display: block; color: #555; font-weight: 600;
+            margin-bottom: 8px; font-size: 14px;
+        }
+        .form-group label .required { color: #e74c3c; margin-left: 3px; }
+
+        .form-group select, .form-group input {
+            width: 100%; padding: 12px; border: 2px solid #e0e0e0;
+            border-radius: 5px; font-size: 14px; transition: border-color 0.3s;
+        }
+        .form-group select:focus, .form-group input:focus {
+            outline: none; border-color: #667eea;
+        }
+
+        .button-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 10px; margin-top: 8px;
+        }
+
+        .btn-option {
+            padding: 10px; border: 2px solid #e0e0e0; background: white;
+            border-radius: 5px; cursor: pointer; transition: all 0.3s;
+            font-size: 13px; font-weight: 500;
+        }
+        .btn-option:hover { border-color: #667eea; background: #f8f9ff; }
+        .btn-option.selected { background: #667eea; color: white; border-color: #667eea; }
+        .btn-option:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .actions {
+            display: flex; gap: 15px; margin-top: 30px;
+            padding-top: 20px; border-top: 1px solid #e0e0e0;
+        }
+        .btn { flex: 1; padding: 15px 30px; border: none; border-radius: 5px;
+              font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.3s; }
+        .btn-primary { background: #667eea; color: white; }
+        .btn-primary:hover { background: #5568d3; transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3); }
+        .btn-secondary { background: #95a5a6; color: white; }
+        .btn-secondary:hover { background: #7f8c8d; }
+        .btn-danger { background: #e74c3c; color: white; }
+        .btn-danger:hover { background: #c0392b; }
+
+        .message { padding: 15px 20px; border-radius: 5px; margin-bottom: 20px; font-weight: 500; }
+        .message.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .message.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+
+        .ranges-list {
+            background: #f8f9fa; padding: 15px; border-radius: 5px; margin-top: 10px;
+        }
+        .range-item {
+            display: flex; align-items: center; padding: 8px; margin: 5px 0;
+            background: white; border-radius: 3px; font-size: 13px;
+        }
+        .range-color { width: 20px; height: 20px; border-radius: 3px; margin-right: 10px; }
+        .range-name { font-weight: 600; color: #333; flex: 1; }
+        .range-count { color: #666; font-size: 12px; }
+
+        /* --- Ajouts pour titre/slug & chips résumé --- */
+        .badges, .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+        .badge, .chip {
+            font-size: 12px; font-weight: 600; padding: 6px 10px; border-radius: 999px;
+            background: #eef2ff; color: #334155; border: 1px solid #e2e8f0;
+        }
+        .badge--key { background: #e6fffa; color: #134e4a; border-color: #99f6e4; }
+        .slug-row { display: flex; align-items: center; gap: 8px; }
+        .copy-btn {
+            padding: 6px 10px; font-size: 12px; border: 1px solid #e2e8f0; border-radius: 6px;
+            background: white; cursor: pointer;
+        }
+        .copy-btn:hover { background: #f8fafc; }
+        .small-dim { font-size: 12px; color: #666; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔧 Validation du contexte</h1>
+
+            <div class="context-info">
+                <p><strong>Fichier :</strong> <span id="filename">-</span></p>
+                <p><strong>Nom original :</strong> <span id="original-name">-</span></p>
+                <p><strong>Ranges :</strong> <span id="range-count">0</span></p>
+
+                <!-- Ajouts : titre humain, slug + copier, résumé sous-ranges -->
+                <p><strong>Titre :</strong> <span id="human-title">—</span></p>
+                <p class="slug-row">
+                  <strong>Slug :</strong> <code id="slug">—</code>
+                  <button type="button" class="copy-btn" onclick="copySlug()">Copier</button>
+                </p>
+                <div>
+                  <strong>Résumé sous-ranges :</strong>
+                  <div class="chips" id="subranges-summary">
+                    <span class="small-dim">Aucun sous-range détecté</span>
+                  </div>
+                </div>
+
+                <div class="ranges-list" id="ranges-list"></div>
+            </div>
+        </div>
+
+        <div class="form-container">
+            <div id="message-container"></div>
+
+            <form id="validation-form">
+                <!-- Métadonnées obligatoires -->
+                <div class="form-section">
+                    <h2>📋 Métadonnées obligatoires</h2>
+
+                    <div class="form-group">
+                        <label>Format de table <span class="required">*</span></label>
+                        <div class="button-grid" id="table-format-buttons">
+                            <button type="button" class="btn-option" data-value="6max">6max</button>
+                            <button type="button" class="btn-option" data-value="9max">9max</button>
+                            <button type="button" class="btn-option" data-value="5max">5max</button>
+                            <button type="button" class="btn-option" data-value="HU">HU</button>
+                        </div>
+                        <input type="hidden" id="table-format" name="table_format" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Position héros <span class="required">*</span></label>
+                        <div class="button-grid" id="hero-position-buttons">
+                            <!-- Dynamiquement rempli selon le format -->
+                        </div>
+                        <input type="hidden" id="hero-position" name="hero_position" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Action principale <span class="required">*</span></label>
+                        <div class="button-grid">
+                            <button type="button" class="btn-option action-btn" data-value="open">Open</button>
+                            <button type="button" class="btn-option action-btn" data-value="call">Call</button>
+                            <button type="button" class="btn-option action-btn" data-value="3bet">3bet</button>
+                            <button type="button" class="btn-option action-btn" data-value="4bet">4bet</button>
+                            <button type="button" class="btn-option action-btn" data-value="fold">Fold</button>
+                            <button type="button" class="btn-option action-btn" data-value="defense">Defense</button>
+                            <button type="button" class="btn-option action-btn" data-value="check">Check</button>
+                            <button type="button" class="btn-option action-btn" data-value="raise">Raise</button>
+                        </div>
+                        <input type="hidden" id="primary-action" name="primary_action" required>
+                    </div>
+                </div>
+
+                <!-- Métadonnées optionnelles -->
+                <div class="form-section optional">
+                    <h2>⚙️ Métadonnées optionnelles</h2>
+
+                    <div class="form-group">
+                        <label>Position adversaire</label>
+                        <div class="button-grid" id="vs-position-buttons">
+                            <button type="button" class="btn-option vs-btn" data-value="N/A">N/A</button>
+                            <!-- Dynamiquement rempli selon le format -->
+                        </div>
+                        <input type="hidden" id="vs-position" name="vs_position">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Profondeur de stack</label>
+                        <select id="stack-depth" name="stack_depth">
+                            <option value="100bb" selected>100bb (Standard)</option>
+                            <option value="20bb">20bb (Short)</option>
+                            <option value="50bb">50bb (Medium)</option>
+                            <option value="200bb">200bb+ (Deep)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Type de jeu</label>
+                        <select id="game-type" name="game_type">
+                            <option value="Cash Game" selected>Cash Game</option>
+                            <option value="Tournament">Tournament</option>
+                            <option value="Sit & Go">Sit & Go</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Variante</label>
+                        <select id="variant" name="variant">
+                            <option value="NLHE" selected>NLHE (No Limit Hold'em)</option>
+                            <option value="PLO">PLO (Pot Limit Omaha)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Sizing</label>
+                        <input type="text" id="sizing" name="sizing" placeholder="ex: 2.5x, 3bb, pot...">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Stakes</label>
+                        <input type="text" id="stakes" name="stakes" placeholder="ex: NL10, NL25, NL50...">
+                    </div>
+                </div>
+
+                <!-- Checkbox pour mise à jour JSON -->
+                <div class="form-group" style="margin-top: 20px; padding-top: 20px; border-top: 2px solid #e0e0e0;">
+                    <label style="display: flex; align-items: center; cursor: pointer;">
+                        <input type="checkbox" id="update-json" name="update_json" style="width: auto; margin-right: 10px;">
+                        <span>✓ Mettre à jour le fichier JSON source avec ces métadonnées</span>
+                    </label>
+                    <p style="font-size: 12px; color: #666; margin-top: 5px; margin-left: 30px;">
+                        Les métadonnées validées seront sauvegardées dans le fichier JSON d'origine.
+                        Cela permettra une détection automatique à 100% lors du prochain import.
+                    </p>
+                </div>
+
+                <div class="actions">
+                    <button type="button" class="btn btn-secondary" onclick="window.location.href='/'">
+                        ← Annuler
+                    </button>
+                    <button type="button" class="btn btn-danger" id="btn-ignore">
+                        🗑️ Marquer non exploitable
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        ✓ Valider et sauvegarder
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const POSITIONS_BY_FORMAT = {
+            '5max': ['UTG', 'CO', 'BTN', 'SB', 'BB'],
+            '6max': ['UTG', 'MP', 'CO', 'BTN', 'SB', 'BB'],
+            '9max': ['UTG', 'UTG+1', 'MP', 'MP+1', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB'],
+            'HU': ['BTN', 'BB']
+        };
+
+        // Labels canons lisibles
+        const LABELS = {
+          OPEN: "Open",
+          CALL: "Call / Complete",
+          R3_VALUE: "3bet Value",
+          R3_BLUFF: "3bet Bluff",
+          R4_VALUE: "4bet Value",
+          R4_BLUFF: "4bet Bluff",
+          ISO_VALUE: "Iso Value",
+          ISO_BLUFF: "Iso Bluff",
+          CHECK: "Check",
+          UNKNOWN: "Autre"
+        };
+
+        let contextId = null;
+        let contextData = null;
+
+        // Charger les données du contexte
+        async function loadContext() {
+            const urlParams = new URLSearchParams(window.location.search);
+            contextId = urlParams.get('id');
+
+            if (!contextId) {
+                showMessage('Erreur : ID de contexte manquant', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/validation/context/${contextId}`);
+                const data = await response.json();
+
+                if (data.error) {
+                    showMessage(data.error, 'error');
+                    return;
+                }
+
+                contextData = data;
+                displayContextInfo(data);
+                prefillForm(data);
+            } catch (error) {
+                showMessage('Erreur lors du chargement du contexte', 'error');
+                console.error(error);
+            }
+        }
+
+        // Afficher les informations du contexte
+        function displayContextInfo(data) {
+            document.getElementById('filename').textContent = data.filename || '-';
+            document.getElementById('original-name').textContent = data.original_name || '-';
+            document.getElementById('range-count').textContent = (data.ranges && data.ranges.length) || 0;
+
+            // Nouveaux champs (safe si absents)
+            const ht = document.getElementById('human-title');
+            const sl = document.getElementById('slug');
+            if (ht) ht.textContent = data.human_title || '—';
+            if (sl) sl.textContent = data.slug || '—';
+
+            // Résumé des sous-ranges normalisés
+            renderSummaryChips(data.subranges_summary || {});
+
+            // Liste détaillée des ranges (avec label canon)
+            const rangesList = document.getElementById('ranges-list');
+            rangesList.innerHTML = '';
+
+            (data.ranges || []).forEach(range => {
+                const canon = range.label_canon || 'UNKNOWN';
+                const label = LABELS[canon] || canon;
+                const color = range.color || '#e2e8f0';
+
+                const item = document.createElement('div');
+                item.className = 'range-item';
+                item.innerHTML = `
+                    <div class="range-color" style="background-color: ${color}"></div>
+                    <span class="range-name">${range.name || range.action || '(sans nom)'}
+                      <span class="small-dim">· ${label}</span>
+                    </span>
+                    <span class="range-count">${range.hand_count || 0} mains</span>
+                `;
+                rangesList.appendChild(item);
+            });
+        }
+
+        // Rendu des chips du résumé
+        function renderSummaryChips(summary) {
+          const box = document.getElementById('subranges-summary');
+          if (!box) return;
+          box.innerHTML = '';
+          const keys = Object.keys(summary || {});
+          if (keys.length === 0) {
+            box.innerHTML = '<span class="small-dim">Aucun sous-range détecté</span>';
+            return;
+          }
+          keys.forEach(key => {
+            const chip = document.createElement('span');
+            chip.className = 'chip';
+            const label = LABELS[key] || key;
+            chip.textContent = `${label} · ${summary[key]}`;
+            box.appendChild(chip);
+          });
+        }
+
+        // Copier le slug
+        function copySlug() {
+          const slugEl = document.getElementById('slug');
+          if (!slugEl || !slugEl.textContent) return;
+          navigator.clipboard.writeText(slugEl.textContent.trim()).then(() => {
+            showMessage('Slug copié dans le presse-papiers ✅', 'success');
+          });
+        }
+
+        // Pré-remplir le formulaire avec les données existantes
+        function prefillForm(data) {
+            if (data.table_format) selectOption('table-format', data.table_format);
+            if (data.hero_position) selectOption('hero-position', data.hero_position);
+            if (data.primary_action) selectOption('primary-action', data.primary_action);
+            if (data.vs_position) selectOption('vs-position', data.vs_position);
+            if (data.stack_depth) document.getElementById('stack-depth').value = data.stack_depth;
+            if (data.game_type) document.getElementById('game-type').value = data.game_type;
+            if (data.variant) document.getElementById('variant').value = data.variant;
+            if (data.sizing) document.getElementById('sizing').value = data.sizing;
+            if (data.stakes) document.getElementById('stakes').value = data.stakes;
+        }
+
+        // Sélectionner une option dans les boutons
+        function selectOption(fieldId, value) {
+            const buttons = document.querySelectorAll(`#${fieldId}-buttons .btn-option`);
+            buttons.forEach(btn => {
+                if (btn.dataset.value === value) {
+                    btn.click();
+                }
+            });
+        }
+
+        // Gérer la sélection du format de table
+        document.getElementById('table-format-buttons').addEventListener('click', (e) => {
+            if (e.target.classList.contains('btn-option')) {
+                document.querySelectorAll('#table-format-buttons .btn-option').forEach(btn => {
+                    btn.classList.remove('selected');
+                });
+                e.target.classList.add('selected');
+                const format = e.target.dataset.value;
+                document.getElementById('table-format').value = format;
+                updatePositionButtons(format);
+            }
+        });
+
+        // Mettre à jour les boutons de position selon le format
+        function updatePositionButtons(format) {
+            const positions = POSITIONS_BY_FORMAT[format];
+
+            // Héros
+            const heroContainer = document.getElementById('hero-position-buttons');
+            heroContainer.innerHTML = '';
+            positions.forEach(pos => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'btn-option hero-btn';
+                btn.dataset.value = pos;
+                btn.textContent = pos;
+                heroContainer.appendChild(btn);
+            });
+
+            // Adversaire
+            const vsContainer = document.getElementById('vs-position-buttons');
+            vsContainer.innerHTML = '<button type="button" class="btn-option vs-btn selected" data-value="N/A">N/A</button>';
+            document.getElementById('vs-position').value = 'N/A';
+
+            positions.forEach(pos => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'btn-option vs-btn';
+                btn.dataset.value = pos;
+                btn.textContent = pos;
+                vsContainer.appendChild(btn);
+            });
+
+            // Réinitialiser les sélections
+            document.getElementById('hero-position').value = '';
+            document.querySelectorAll('.hero-btn').forEach(btn => btn.classList.remove('selected'));
+        }
+
+        // Gérer les clics sur les boutons d'action
+        document.querySelectorAll('.action-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.action-btn').forEach(b => b.classList.remove('selected'));
+                btn.classList.add('selected');
+                document.getElementById('primary-action').value = btn.dataset.value;
+            });
+        });
+
+        // Gérer les positions héros (délégation d'événement)
+        document.getElementById('hero-position-buttons').addEventListener('click', (e) => {
+            if (e.target.classList.contains('hero-btn')) {
+                document.querySelectorAll('.hero-btn').forEach(b => b.classList.remove('selected'));
+                e.target.classList.add('selected');
+                document.getElementById('hero-position').value = e.target.dataset.value;
+            }
+        });
+
+        // Gérer les positions adversaire (délégation d'événement)
+        document.getElementById('vs-position-buttons').addEventListener('click', (e) => {
+            if (e.target.classList.contains('vs-btn')) {
+                document.querySelectorAll('.vs-btn').forEach(b => b.classList.remove('selected'));
+                e.target.classList.add('selected');
+                document.getElementById('vs-position').value = e.target.dataset.value;
+            }
+        });
+
+        // Soumettre le formulaire
+        document.getElementById('validation-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const formData = {
+                table_format: document.getElementById('table-format').value,
+                hero_position: document.getElementById('hero-position').value,
+                primary_action: document.getElementById('primary-action').value,
+                vs_position: document.getElementById('vs-position').value,
+                stack_depth: document.getElementById('stack-depth').value,
+                game_type: document.getElementById('game-type').value,
+                variant: document.getElementById('variant').value,
+                sizing: document.getElementById('sizing').value,
+                stakes: document.getElementById('stakes').value,
+                update_json: document.getElementById('update-json').checked
+            };
+
+            if (!formData.table_format || !formData.hero_position || !formData.primary_action) {
+                showMessage('Veuillez remplir tous les champs obligatoires', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/validation/validate/${contextId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showMessage(result.message, 'success');
+                    setTimeout(() => { window.location.href = '/?validated=true'; }, 1500);
+                } else {
+                    showMessage(result.message, 'error');
+                }
+            } catch (error) {
+                showMessage('Erreur lors de la validation', 'error');
+                console.error(error);
+            }
+        });
+
+        // Marquer comme non exploitable
+        document.getElementById('btn-ignore').addEventListener('click', async () => {
+            if (!confirm('Êtes-vous sûr de vouloir marquer ce contexte comme non exploitable ?')) return;
+
+            try {
+                const response = await fetch(`/api/validation/ignore/${contextId}`, { method: 'POST' });
+                const result = await response.json();
+
+                if (result.success) {
+                    showMessage('Contexte marqué comme non exploitable', 'success');
+                    setTimeout(() => { window.location.href = '/'; }, 1500);
+                } else {
+                    showMessage(result.message, 'error');
+                }
+            } catch (error) {
+                showMessage('Erreur lors de l\'opération', 'error');
+                console.error(error);
+            }
+        });
+
+        // Afficher un message
+        function showMessage(text, type) {
+            const container = document.getElementById('message-container');
+            container.innerHTML = `<div class="message ${type}">${text}</div>`;
+            if (type === 'success') setTimeout(() => { container.innerHTML = ''; }, 3000);
+        }
+
+        // Charger au démarrage
+        loadContext();
+    </script>
+</body>
+</html>

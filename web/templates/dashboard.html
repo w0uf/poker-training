@@ -59,6 +59,10 @@
             font-weight: 500;
             transition: all 0.3s ease;
             box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+            border: none;
+            cursor: pointer;
+            font-size: inherit;
+            font-family: inherit;
         }
 
         .nav-pill:hover {
@@ -68,6 +72,21 @@
 
         .nav-pill.active {
             background: linear-gradient(45deg, #764ba2, #667eea);
+        }
+
+        .nav-pill:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .nav-pill.validation-pill {
+            background: linear-gradient(45deg, #f39c12, #e67e22);
+            box-shadow: 0 4px 15px rgba(243, 156, 18, 0.3);
+        }
+
+        .nav-pill.validation-pill:hover {
+            box-shadow: 0 6px 20px rgba(243, 156, 18, 0.4);
         }
 
         .stats-grid {
@@ -187,31 +206,45 @@
             margin: 10px 0;
         }
 
-        .context-item, .import-item {
+        .context-item {
             padding: 15px;
             border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            position: relative;
+            transition: all 0.3s ease;
         }
 
-        .context-item:last-child, .import-item:last-child {
+        .context-item:last-child {
             border-bottom: none;
         }
 
-        .context-info, .import-info {
+        .context-item:hover {
+            background: rgba(102, 126, 234, 0.03);
+        }
+
+        .context-item.pending-validation {
+            background: rgba(243, 156, 18, 0.08);
+            border-left: 4px solid #f39c12;
+            padding-left: 11px;
+        }
+
+        .context-info {
             flex: 1;
         }
 
-        .context-name, .import-name {
+        .context-name {
             font-weight: 600;
             margin-bottom: 5px;
             color: #333;
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
         }
 
-        .context-meta, .import-meta {
+        .context-meta {
             font-size: 0.8rem;
             color: #666;
+            margin-top: 5px;
         }
 
         .context-stats {
@@ -226,19 +259,74 @@
             border-radius: 12px;
             font-size: 0.7rem;
             font-weight: 500;
-            margin-left: 8px;
         }
 
         .confidence-high { background: #4CAF50; color: white; }
         .confidence-medium { background: #FF9800; color: white; }
         .confidence-low { background: #f44336; color: white; }
 
+        .validation-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            background: #f39c12;
+            color: white;
+            border-radius: 5px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .context-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(0, 0, 0, 0.06);
+        }
+
+        .btn-validate {
+            flex: 1;
+            padding: 10px 16px;
+            background: linear-gradient(45deg, #f39c12, #e67e22);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 2px 8px rgba(243, 156, 18, 0.3);
+        }
+
+        .btn-validate:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(243, 156, 18, 0.4);
+        }
+
         .empty-state {
             text-align: center;
             padding: 60px 20px;
             color: #666;
         }
+        .btn-edit {
+    flex: 1;
+    padding: 10px 16px;
+    background: linear-gradient(45deg, #667eea, #764ba2);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
 
+.btn-edit:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
         .empty-icon {
             font-size: 4rem;
             margin-bottom: 20px;
@@ -255,6 +343,7 @@
             font-weight: 500;
             z-index: 1000;
             display: none;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         }
 
         .status-loading {
@@ -265,34 +354,33 @@
 
         .status-success {
             background: #E8F5E8;
-            color: #4CAF50;
+            color: #2E7D32;
             border-left: 4px solid #4CAF50;
         }
 
         .status-error {
             background: #FFEBEE;
-            color: #f44336;
+            color: #C62828;
             border-left: 4px solid #f44336;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- STATUS INDICATOR -->
         <div id="status-indicator" class="status-indicator"></div>
 
-        <!-- HEADER -->
         <div class="header">
             <h1>🃏 Poker Training Dashboard</h1>
             <div class="nav-pills">
                 <a href="/" class="nav-pill active">📊 Dashboard</a>
-                <a href="/import" class="nav-pill">📥 Import</a>
-                <a href="/enrich" class="nav-pill">✨ Enrichir</a>
-                <a href="/quiz" class="nav-pill">🎯 Quiz</a>
+                <button id="import-btn" class="nav-pill">📥 Import Pipeline</button>
+                <button id="validation-btn" class="nav-pill validation-pill" style="display: none;">
+                    🔧 Valider les contextes (<span id="nav-validation-count">0</span>)
+                </button>
+                <button id="quiz-btn" class="nav-pill">🎯 Quiz</button>
             </div>
         </div>
 
-        <!-- STATS CARDS -->
         <div class="stats-grid">
             <div class="stat-card">
                 <div class="stat-icon">📁</div>
@@ -316,16 +404,14 @@
             </div>
         </div>
 
-        <!-- MAIN CONTENT -->
         <div class="content-grid">
-            <!-- CONTEXTES -->
             <div class="card">
                 <div class="card-header">
                     <h2 class="card-title">📋 Contextes importés</h2>
                 </div>
                 <div class="card-body">
                     <div id="contexts-container">
-                        <div id="contexts-loading" class="loading">
+                        <div class="loading">
                             <div class="spinner"></div>
                             <p>Chargement des contextes...</p>
                         </div>
@@ -333,19 +419,16 @@
                 </div>
             </div>
 
-            <!-- SIDEBAR -->
             <div style="display: flex; flex-direction: column; gap: 20px;">
-                <!-- IMPORTS RÉCENTS -->
                 <div class="card">
                     <div class="card-header">
-                        <h3 class="card-title">📥 Imports récents</h3>
+                        <h3 class="card-title">📊 Statuts des contextes</h3>
                     </div>
                     <div class="card-body">
-                        <div id="imports-container">
-                            <div id="imports-loading" class="loading" style="padding: 20px;">
-                                <div class="spinner"></div>
-                                <p>Chargement...</p>
-                            </div>
+                        <div id="status-summary" style="font-size: 1.1rem; line-height: 2.5;">
+                            <div>🟢 Prêts quiz: <strong id="ready-count">0</strong></div>
+                            <div>🟡 À valider: <strong id="validation-count">0</strong></div>
+                            <div>🔴 Erreurs: <strong id="error-count">0</strong></div>
                         </div>
                     </div>
                 </div>
@@ -354,254 +437,310 @@
     </div>
 
     <script>
-        console.log('🚀 Dashboard chargé');
-
-        // État global
         let isLoading = false;
 
-        // Initialisation
         document.addEventListener('DOMContentLoaded', function() {
             loadDashboard();
-            // Auto-refresh toutes les 30 secondes
             setInterval(loadDashboard, 30000);
+            setupActionButtons();
+            checkValidationSuccess();
         });
 
-        // Fonction principale de chargement
+        function setupActionButtons() {
+            document.getElementById('import-btn').addEventListener('click', handleImportPipeline);
+            document.getElementById('validation-btn').addEventListener('click', showValidationList);
+            document.getElementById('quiz-btn').addEventListener('click', handleQuiz);
+        }
+
+        function checkValidationSuccess() {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('validated') === 'true') {
+                showStatus('✓ Contexte validé avec succès !', 'success');
+                window.history.replaceState({}, '', '/');
+                setTimeout(hideStatus, 4000);
+            }
+        }
+
+        async function handleImportPipeline() {
+            const btn = document.getElementById('import-btn');
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = '⏳ Import en cours...';
+            showStatus('Démarrage du pipeline d\'import...', 'loading');
+
+            try {
+                const response = await fetch('/api/import_pipeline', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'}
+                });
+
+                if (!response.ok) throw new Error(`Erreur ${response.status}: ${response.statusText}`);
+
+                const result = await response.json();
+
+                if (result.success) {
+                    const stats = result.stats || {};
+                    const message = `✅ Pipeline terminé !\n\n` +
+                                  `📁 Fichiers : ${stats.total_files || 0}\n` +
+                                  `🎯 Contextes : ${stats.total_contexts || 0}\n` +
+                                  `🟢 Prêts quiz : ${stats.quiz_ready || 0}\n` +
+                                  `🟡 À valider : ${stats.needs_validation || 0}\n` +
+                                  `🔴 Erreurs : ${stats.errors || 0}`;
+
+                    showStatus('Pipeline d\'import terminé avec succès !', 'success');
+
+                    // Si des contextes nécessitent validation, proposer d'y aller
+                    if (stats.needs_validation > 0 && result.contexts_to_validate && result.contexts_to_validate.length > 0) {
+                        setTimeout(() => {
+                            const goToValidation = confirm(
+                                `${stats.needs_validation} contexte(s) nécessitent une validation manuelle.\n\n` +
+                                `Voulez-vous les valider maintenant ?`
+                            );
+
+                            if (goToValidation) {
+                                window.location.href = `/validate?id=${result.contexts_to_validate[0].id}`;
+                                return;
+                            } else {
+                                loadDashboard();
+                            }
+                        }, 1000);
+                    } else {
+                        setTimeout(() => loadDashboard(), 1000);
+                    }
+                }
+            } catch (error) {
+                showStatus('Erreur lors du pipeline: ' + error.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = originalText;
+                setTimeout(hideStatus, 5000);
+            }
+        }
+
+        async function handleQuiz() {
+            showStatus('Vérification de l\'état des données...', 'loading');
+            try {
+                const response = await fetch('/api/quiz/check');
+                if (!response.ok) throw new Error('Erreur vérification quiz');
+
+                const result = await response.json();
+                if (result.ready) {
+                    showStatus('Redirection vers le quiz...', 'success');
+                    window.location.href = '/quiz';
+                } else {
+                    showStatus('Aucun contexte prêt pour le quiz.', 'error');
+                }
+            } catch (error) {
+                showStatus('Quiz non disponible actuellement', 'error');
+            }
+            setTimeout(hideStatus, 3000);
+        }
+
         async function loadDashboard() {
             if (isLoading) return;
             isLoading = true;
 
-            showStatus('Chargement des données...', 'loading');
-
             try {
-                // Charger les stats
-                console.log('📊 Chargement stats...');
                 await loadStats();
-
-                // Charger les contextes
-                console.log('📋 Chargement contextes...');
                 await loadContexts();
-
-                showStatus('Données chargées avec succès', 'success');
-                setTimeout(hideStatus, 3000);
-
+                await updateValidationButton();
             } catch (error) {
-                console.error('❌ Erreur chargement:', error);
                 showStatus('Erreur de chargement: ' + error.message, 'error');
             } finally {
                 isLoading = false;
             }
         }
 
-        // Chargement des statistiques
         async function loadStats() {
-            try {
-                // Utiliser l'API debug qui fonctionne au lieu de l'API stats
-                const response = await fetch('/api/debug/db');
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
+            const response = await fetch('/api/debug/db');
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
-                const debugData = await response.json();
-                console.log('📊 Debug data reçues:', debugData);
+            const debugData = await response.json();
 
-                // Mise à jour des stats depuis les données debug
-                document.getElementById('total-files').textContent = debugData.data.range_files || 0;
-                document.getElementById('total-contexts').textContent = debugData.data.range_contexts || 0;
-                document.getElementById('total-ranges').textContent = debugData.data.ranges || 0;
-                document.getElementById('total-hands').textContent = debugData.data.range_hands || 0;
-
-                // Pour les imports récents, faire une requête simple séparée
-                try {
-                    const statsResponse = await fetch('/api/dashboard/stats');
-                    if (statsResponse.ok) {
-                        const stats = await statsResponse.json();
-                        updateRecentImports(stats.recent_imports || []);
-                    } else {
-                        // Fallback : pas d'imports récents
-                        updateRecentImports([]);
-                    }
-                } catch (error) {
-                    console.warn('Imports récents non disponibles:', error);
-                    updateRecentImports([]);
-                }
-
-            } catch (error) {
-                console.error('❌ Erreur stats:', error);
-                document.getElementById('imports-container').innerHTML =
-                    `<div class="error">Erreur chargement stats: ${error.message}</div>`;
-                throw error;
-            }
-        }
-
-        // Chargement des contextes
-        async function loadContexts() {
-            try {
-                // Utiliser d'abord l'API debug pour les données de base
-                const debugResponse = await fetch('/api/debug/db');
-                if (!debugResponse.ok) {
-                    throw new Error('Erreur accès debug DB');
-                }
-
-                const debugData = await debugResponse.json();
-
-                // Si on a des exemples de contextes dans debug, les utiliser
-                if (debugData.range_contexts_examples && debugData.range_contexts_examples.length > 0) {
-                    console.log('📋 Utilisation des exemples debug pour contextes');
-                    const simpleContexts = debugData.range_contexts_examples.map(ctx => ({
-                        id: ctx.id,
-                        name: ctx.name,
-                        confidence: ctx.confidence || 0,
-                        filename: 'Voir debug pour détails',
-                        imported_at: 'N/A',
-                        ranges_count: '?',
-                        hands_count: '?',
-                        hero_position: 'N/A',
-                        primary_action: 'N/A',
-                        vs_position: 'N/A'
-                    }));
-
-                    updateContextsList(simpleContexts);
-                    return;
-                }
-
-                // Sinon essayer l'API normale avec timeout
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 secondes timeout
-
-                try {
-                    const response = await fetch('/api/dashboard/contexts', {
-                        signal: controller.signal
-                    });
-                    clearTimeout(timeoutId);
-
-                    if (response.ok) {
-                        const contexts = await response.json();
-                        console.log('📋 Contexts API réussie:', contexts);
-                        updateContextsList(contexts);
-                    } else {
-                        throw new Error(`HTTP ${response.status}`);
-                    }
-                } catch (fetchError) {
-                    clearTimeout(timeoutId);
-                    if (fetchError.name === 'AbortError') {
-                        throw new Error('Timeout - API trop lente');
-                    }
-                    throw fetchError;
-                }
-
-            } catch (error) {
-                console.error('❌ Erreur contexts:', error);
-
-                // Affichage d'erreur avec bouton retry
-                document.getElementById('contexts-container').innerHTML = `
-                    <div class="error">
-                        <p>Erreur chargement contextes: ${error.message}</p>
-                        <button onclick="loadContexts()" style="margin-top: 10px; padding: 5px 10px; background: #f44336; color: white; border: none; border-radius: 3px;">
-                            🔄 Réessayer
-                        </button>
-                    </div>
-                `;
-            }
-        }
-
-        // Mise à jour des imports récents
-        function updateRecentImports(imports) {
-            const container = document.getElementById('imports-container');
-
-            if (!imports || imports.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state" style="padding: 40px 20px;">
-                        <div class="empty-icon">📥</div>
-                        <p>Aucun import récent</p>
-                    </div>
-                `;
+            if (debugData.status === 'no_database') {
+                document.getElementById('total-files').textContent = 0;
+                document.getElementById('total-contexts').textContent = 0;
+                document.getElementById('total-ranges').textContent = 0;
+                document.getElementById('total-hands').textContent = 0;
+                resetStatusCounters();
                 return;
             }
 
-            const html = imports.map(imp => {
-                const confidence = imp.confidence || 0;
-                const confidenceClass = confidence >= 0.8 ? 'confidence-high' :
-                                       confidence >= 0.5 ? 'confidence-medium' : 'confidence-low';
-
-                return `
-                    <div class="import-item">
-                        <div class="import-info">
-                            <div class="import-name">
-                                ${imp.context_name || imp.filename}
-                                <span class="confidence-badge ${confidenceClass}">
-                                    ${Math.round(confidence * 100)}%
-                                </span>
-                            </div>
-                            <div class="import-meta">
-                                ${imp.filename} • ${formatDate(imp.imported_at)}
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-
-            container.innerHTML = html;
+            document.getElementById('total-files').textContent = debugData.data.range_files || 0;
+            document.getElementById('total-contexts').textContent = debugData.data.range_contexts || 0;
+            document.getElementById('total-ranges').textContent = debugData.data.ranges || 0;
+            document.getElementById('total-hands').textContent = debugData.data.range_hands || 0;
         }
 
-        // Mise à jour de la liste des contextes
+        async function loadContexts() {
+            const response = await fetch('/api/dashboard/contexts');
+            if (response.ok) {
+                const contexts = await response.json();
+                updateContextsList(contexts);
+                return;
+            }
+
+            const debugResponse = await fetch('/api/debug/db');
+            if (!debugResponse.ok) throw new Error('Erreur accès debug DB');
+
+            const debugData = await debugResponse.json();
+            if (debugData.range_contexts_examples && debugData.range_contexts_examples.length > 0) {
+                const simpleContexts = debugData.range_contexts_examples.map(ctx => ({
+                    id: ctx.id,
+                    name: ctx.name,
+                    confidence: ctx.confidence || 0,
+                    context_status: 'unknown'
+                }));
+                updateContextsList(simpleContexts);
+                return;
+            }
+            updateContextsList([]);
+        }
+
+        async function updateValidationButton() {
+            try {
+                const response = await fetch('/api/validation/stats');
+                if (!response.ok) return;
+
+                const data = await response.json();
+                const count = data.total_pending || 0;
+
+                document.getElementById('nav-validation-count').textContent = count;
+
+                const btn = document.getElementById('validation-btn');
+                btn.style.display = count > 0 ? 'block' : 'none';
+
+            } catch (error) {
+                console.error('Erreur mise à jour bouton validation:', error);
+            }
+        }
+
+        async function showValidationList() {
+            try {
+                const response = await fetch('/api/validation/candidates');
+                if (!response.ok) throw new Error('Erreur récupération candidats');
+
+                const data = await response.json();
+
+                if (data.contexts && data.contexts.length > 0) {
+                    window.location.href = `/validate?id=${data.contexts[0].id}`;
+                } else {
+                    alert('Aucun contexte à valider !');
+                }
+
+            } catch (error) {
+                console.error('Erreur:', error);
+                showStatus('Erreur lors de la récupération des contextes', 'error');
+            }
+        }
+
+        function validateContext(contextId) {
+            window.location.href = `/validate?id=${contextId}`;
+        }
+
+        function resetStatusCounters() {
+            document.getElementById('ready-count').textContent = 0;
+            document.getElementById('validation-count').textContent = 0;
+            document.getElementById('error-count').textContent = 0;
+        }
+
+        function getStatusFlag(context) {
+            const status = context.context_status || context.status;
+            if (status === 'quiz_ready') return '🟢';
+            if (status === 'needs_validation') return '🟡';
+            if (status === 'error') return '🔴';
+            return '⚪';
+        }
+
         function updateContextsList(contexts) {
             const container = document.getElementById('contexts-container');
 
             if (!contexts || contexts.length === 0) {
                 container.innerHTML = `
                     <div class="empty-state">
-                        <div class="empty-icon">📭</div>
+                        <div class="empty-icon">🔭</div>
                         <h3>Aucun contexte trouvé</h3>
-                        <p>Commencez par importer des fichiers de ranges</p>
-                        <a href="/import" class="nav-pill" style="margin-top: 20px; display: inline-block;">📥 Aller à l'import</a>
+                        <p>Commencez par utiliser Import Pipeline</p>
+                        <button onclick="handleImportPipeline()" class="nav-pill" style="margin-top: 20px; display: inline-block;">
+                            📥 Import Pipeline
+                        </button>
                     </div>
                 `;
+                resetStatusCounters();
                 return;
             }
 
+            // Trier : validation d'abord, puis quiz_ready, puis erreurs
+            contexts.sort((a, b) => {
+                const statusA = a.context_status || a.status;
+                const statusB = b.context_status || b.status;
+
+                if (statusA === 'needs_validation' && statusB !== 'needs_validation') return -1;
+                if (statusA !== 'needs_validation' && statusB === 'needs_validation') return 1;
+                if (statusA === 'quiz_ready' && statusB !== 'quiz_ready') return -1;
+                if (statusA !== 'quiz_ready' && statusB === 'quiz_ready') return 1;
+                return 0;
+            });
+
             const html = contexts.map(ctx => {
+                const status = ctx.context_status || ctx.status;
+                const needsValidation = status === 'needs_validation';
+                const containerClass = needsValidation ? 'pending-validation' : '';
+
                 const confidenceClass = ctx.confidence >= 0.8 ? 'confidence-high' :
                                        ctx.confidence >= 0.5 ? 'confidence-medium' : 'confidence-low';
 
+                const validationBadge = needsValidation ?
+                    '<span class="validation-badge">À valider</span>' : '';
+
+                // Bouton pour tous les contextes (validation OU édition)
+const buttonText = needsValidation ? '🔧 Compléter les métadonnées' : '✏️ Éditer';
+const buttonClass = needsValidation ? 'btn-validate' : 'btn-edit';
+
+const actionButton = `
+    <div class="context-actions">
+        <button class="${buttonClass}" onclick="validateContext(${ctx.id})">
+            ${buttonText}
+        </button>
+    </div>
+`;
+
                 return `
-                    <div class="context-item">
-                        <div class="context-info">
-                            <div class="context-name">
-                                ${ctx.name}
-                                <span class="confidence-badge ${confidenceClass}">
-                                    ${Math.round(ctx.confidence * 100)}%
-                                </span>
+                    <div class="context-item ${containerClass}">
+                        <div style="display: flex; justify-content: space-between; align-items: start;">
+                            <div class="context-info">
+                                <div class="context-name">
+                                    <span>${getStatusFlag(ctx)}</span>
+                                    <span>${ctx.name}</span>
+                                    ${validationBadge}
+                                    <span class="confidence-badge ${confidenceClass}">
+                                        ${Math.round(ctx.confidence * 100)}%
+                                    </span>
+                                </div>
+                                <div class="context-meta">
+                                    ${ctx.hero_position || '-'} • ${ctx.primary_action || '-'} • ${ctx.filename || '-'}
+                                </div>
                             </div>
-                            <div class="context-meta">
-                                ${ctx.hero_position || '-'} • ${ctx.primary_action || '-'} • ${ctx.filename || '-'}
+                            <div class="context-stats">
+                                <div>${ctx.ranges_count || 0} ranges</div>
+                                <div>${ctx.hands_count || 0} mains</div>
                             </div>
                         </div>
-                        <div class="context-stats">
-                            <div>${ctx.ranges_count || 0} ranges</div>
-                            <div>${ctx.hands_count || 0} mains</div>
-                        </div>
+                        ${actionButton}
                     </div>
                 `;
             }).join('');
 
             container.innerHTML = html;
-        }
 
-        // Fonctions utilitaires
-        function formatDate(dateStr) {
-            if (!dateStr) return '-';
-            try {
-                const date = new Date(dateStr);
-                return date.toLocaleDateString('fr-FR', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                });
-            } catch (error) {
-                return dateStr;
-            }
+            // Calculer et afficher les statistiques de statut
+            const readyCount = contexts.filter(c => (c.context_status || c.status) === 'quiz_ready').length;
+            const validationCount = contexts.filter(c => (c.context_status || c.status) === 'needs_validation').length;
+            const errorCount = contexts.filter(c => (c.context_status || c.status) === 'error').length;
+
+            document.getElementById('ready-count').textContent = readyCount;
+            document.getElementById('validation-count').textContent = validationCount;
+            document.getElementById('error-count').textContent = errorCount;
         }
 
         function showStatus(message, type) {
@@ -615,15 +754,11 @@
             document.getElementById('status-indicator').style.display = 'none';
         }
 
-        // Gestion des erreurs globales
         window.addEventListener('error', function(event) {
-            console.error('Erreur JavaScript:', event.error);
             showStatus('Erreur JavaScript détectée', 'error');
         });
 
-        // Gestion des promesses rejetées
         window.addEventListener('unhandledrejection', function(event) {
-            console.error('Promise rejetée:', event.reason);
             showStatus('Erreur réseau ou API', 'error');
         });
     </script>

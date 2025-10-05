@@ -1,695 +1,642 @@
-#!/usr/bin/env python3
-"""
-Interface Web pour Poker Training - Version fonctionnelle
-"""
-
-import os
-import json
-import sqlite3
+from flask import Flask, render_template, jsonify, request
 import subprocess
-import threading
+import os
 import sys
-from datetime import datetime
+import sqlite3
+import json
 from pathlib import Path
-from flask import Flask, render_template, jsonify, request, send_from_directory
-from werkzeug.utils import secure_filename
-
-# Configuration des chemins
-parent_dir = Path(__file__).parent.parent
-sys.path.insert(0, str(parent_dir))
+import re
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'poker-training-secret'
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
-# Chemins
-PROJECT_ROOT = parent_dir
-DB_PATH = PROJECT_ROOT / "data" / "poker_trainer.db"
-RANGES_DIR = PROJECT_ROOT / "data" / "ranges"
-UPLOAD_FOLDER = RANGES_DIR
+# Ajouter le chemin vers les modules
+sys.path.insert(0, str(Path(__file__).parent.parent / 'modules'))
 
-# Créer dossiers
-RANGES_DIR.mkdir(parents=True, exist_ok=True)
-app.config['UPLOAD_FOLDER'] = str(UPLOAD_FOLDER)
+# Importer context_validator si disponible
 
-print(f"📂 Projet: {PROJECT_ROOT}")
-print(f"📊 Base: {DB_PATH} (existe: {DB_PATH.exists()})")
-print(f"📁 Ranges: {RANGES_DIR}")
+try:
+    from context_validator import ContextValidator
+    validator = ContextValidator("../data/poker_trainer.db")
+    VALIDATOR_AVAILABLE = True
+    print(f"✓ Context validator chargé - VALIDATOR_AVAILABLE = {VALIDATOR_AVAILABLE}")
+except (ImportError, FileNotFoundError) as e:
+    print(f"✗ ATTENTION: context_validator non disponible: {e}")
+    VALIDATOR_AVAILABLE = False
+except Exception as e:
+    print(f"✗ ERREUR inattendue lors du chargement validator: {e}")
+    import traceback
+    traceback.print_exc()
+    VALIDATOR_AVAILABLE = False
 
-# Stockage des résultats d'import
-import_results = {}
+
+# ============================================
+# UTILITAIRES
+# ============================================
+
+def get_db_connection():
+    """Retourne une connexion à la base de données"""
+    db_path = Path(__file__).parent.parent / "data" / "poker_trainer.db"
+    if not db_path.exists():
+        return None
+    return sqlite3.connect(db_path)
 
 
-# ============================================================================
+# ============================================
 # ROUTES PRINCIPALES
-# ============================================================================
+# ============================================
 
 @app.route('/')
 def dashboard():
+    """Page principale du dashboard"""
     return render_template('dashboard.html')
 
 
-@app.route('/import')
-def import_page():
-    return render_template('import.html')
+# ============================================
+# ROUTES DE VALIDATION
+# ============================================
+
+@app.route('/validate')
+def validate_page():
+    """Page de validation d'un contexte."""
+    print(f"=== Route /validate appelée - VALIDATOR_AVAILABLE = {VALIDATOR_AVAILABLE}")
+    if not VALIDATOR_AVAILABLE:
+        return "<h1>Erreur</h1><p>Module de validation non disponible</p>", 500
+    return render_template('validate_context.html')
 
 
-@app.route('/enrich')
-def enrich_page():
-    return render_template('enrich.html')
+@app.route('/api/validation/context/<int:context_id>')
+def get_context_for_validation(context_id):
+    """Récupère les informations d'un contexte pour validation."""
+    print(f"=== DEBUG: VALIDATOR_AVAILABLE = {VALIDATOR_AVAILABLE}")
+
+    if not VALIDATOR_AVAILABLE:
+        print("=== DEBUG: Validator non disponible")
+        return jsonify({'error': 'Module de validation non disponible'}), 500
+
+    try:
+        print(f"=== DEBUG: Appel validator.get_context_for_validation({context_id})")
+        context = validator.get_context_for_validation(context_id)
+        print(f"=== DEBUG: Contexte récupéré: {context is not None}")
+
+        if not context:
+            return jsonify({'error': 'Contexte non trouvé'}), 404
+        return jsonify(context)
+    except Exception as e:
+        print(f"=== DEBUG: Exception levée: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/validation/candidates')
+def get_validation_candidates():
+    """Récupère tous les contextes nécessitant une validation."""
+    if not VALIDATOR_AVAILABLE:
+        return jsonify({'error': 'Module de validation non disponible'}), 500
+
+    try:
+        candidates = validator.get_validation_candidates()
+        return jsonify({
+            'count': len(candidates),
+            'contexts': candidates
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/validation/validate/<int:context_id>', methods=['POST'])
+def validate_context(context_id):
+    """Valide et met à jour les métadonnées d'un contexte."""
+    if not VALIDATOR_AVAILABLE:
+        return jsonify({'success': False, 'message': 'Module non disponible'}), 500
+
+    try:
+        metadata = request.get_json()
+        if not metadata:
+            return jsonify({'success': False, 'message': 'Données manquantes'}), 400
+
+        # Extraire le flag update_json
+        update_json = metadata.pop('update_json', False)
+
+        # Valider et mettre à jour la base
+        success, message = validator.validate_and_update(context_id, metadata)
+
+        if not success:
+            return jsonify({'success': False, 'message': message})
+
+        # Si demandé, mettre à jour le JSON
+        json_updated = False
+        json_message = ""
+        if update_json:
+            json_success, json_message = validator.update_json_file(context_id, metadata)
+            json_updated = json_success
+
+            if not json_success and "CONFLICT" in json_message:
+                # Retourner un conflit pour demander confirmation
+                return jsonify({
+                    'success': True,
+                    'message': message,
+                    'json_conflict': True,
+                    'json_message': json_message
+                })
+
+        return jsonify({
+            'success': True,
+            'message': message,
+            'json_updated': json_updated,
+            'json_message': json_message if update_json else None
+        })
+
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Erreur : {str(e)}'}), 500
+
+
+@app.route('/api/validation/ignore/<int:context_id>', methods=['POST'])
+def ignore_context(context_id):
+    """Marque un contexte comme non exploitable."""
+    if not VALIDATOR_AVAILABLE:
+        return jsonify({'success': False, 'message': 'Module non disponible'}), 500
+
+    try:
+        success = validator.mark_as_non_exploitable(
+            context_id,
+            reason="Marqué manuellement comme non exploitable"
+        )
+        return jsonify({
+            'success': success,
+            'message': 'Contexte marqué comme non exploitable' if success else 'Erreur'
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/validation/stats')
+def get_validation_stats():
+    """Récupère des statistiques sur les contextes à valider."""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'total_pending': 0, 'by_confidence': {}})
+
+        cursor = conn.cursor()
+
+        # Compter les contextes nécessitant validation
+        cursor.execute("SELECT COUNT(*) FROM range_contexts WHERE needs_validation = 1")
+        total = cursor.fetchone()[0]
+
+        # Grouper par niveau de confiance
+        cursor.execute("""
+            SELECT 
+                CASE 
+                    WHEN confidence_score < 50 THEN 'low'
+                    WHEN confidence_score < 80 THEN 'medium'
+                    ELSE 'high'
+                END as level,
+                COUNT(*) as count
+            FROM range_contexts 
+            WHERE needs_validation = 1
+            GROUP BY level
+        """)
+        by_conf = {row[0]: row[1] for row in cursor.fetchall()}
+
+        conn.close()
+
+        return jsonify({
+            'total_pending': total,
+            'by_confidence': by_conf
+        })
+
+    except Exception as e:
+        print(f"Erreur get_validation_stats: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+# ============================================
+# ROUTES PIPELINE
+# ============================================
+
+@app.route('/api/import_pipeline', methods=['POST'])
+def api_import_pipeline():
+    """Lance le pipeline intégré avec détection des contextes à valider"""
+    try:
+        os.environ['POKER_WEB_MODE'] = '1'
+        project_root = Path(__file__).parent.parent
+
+        print("Lancement du pipeline intégré...")
+
+        result = subprocess.run([
+            sys.executable, 'integrated_pipeline.py'
+        ], cwd=project_root, capture_output=True, text=True)
+
+        if result.returncode == 0:
+            stats = get_pipeline_stats()
+            contexts_to_validate = get_contexts_needing_validation()
+
+            return jsonify({
+                'success': True,
+                'status': 'success',
+                'message': 'Pipeline intégré terminé avec succès',
+                'stats': stats,
+                'contexts_to_validate': contexts_to_validate,
+                'output': result.stdout,
+                'error': result.stderr if result.stderr else None
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'status': 'error',
+                'message': 'Erreur lors du pipeline intégré',
+                'output': result.stdout,
+                'error': result.stderr
+            }), 500
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'status': 'error',
+            'message': f'Erreur système: {str(e)}'
+        }), 500
+
+
+def get_pipeline_stats():
+    """Récupère les statistiques du pipeline depuis la DB"""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return {
+                'total_files': 0, 'total_contexts': 0, 'total_ranges': 0,
+                'total_hands': 0, 'quiz_ready': 0, 'needs_validation': 0, 'errors': 0
+            }
+
+        cursor = conn.cursor()
+
+        # Stats de base
+        cursor.execute("SELECT COUNT(*) FROM range_files")
+        total_files = cursor.fetchone()[0]
+
+        cursor.execute("SELECT COUNT(*) FROM range_contexts")
+        total_contexts = cursor.fetchone()[0]
+
+        cursor.execute("SELECT COUNT(*) FROM ranges")
+        total_ranges = cursor.fetchone()[0]
+
+        cursor.execute("SELECT COUNT(*) FROM range_hands")
+        total_hands = cursor.fetchone()[0]
+
+        # Compter par statut
+        cursor.execute("SELECT COUNT(*) FROM range_contexts WHERE quiz_ready = 1")
+        quiz_ready = cursor.fetchone()[0]
+
+        cursor.execute("SELECT COUNT(*) FROM range_contexts WHERE needs_validation = 1")
+        needs_validation = cursor.fetchone()[0]
+
+        cursor.execute("SELECT COUNT(*) FROM range_contexts WHERE error_message IS NOT NULL")
+        errors = cursor.fetchone()[0]
+
+        conn.close()
+
+        return {
+            'total_files': total_files,
+            'total_contexts': total_contexts,
+            'total_ranges': total_ranges,
+            'total_hands': total_hands,
+            'quiz_ready': quiz_ready,
+            'needs_validation': needs_validation,
+            'errors': errors
+        }
+
+    except Exception as e:
+        print(f"Erreur get_pipeline_stats: {e}")
+        return {
+            'total_files': 0, 'total_contexts': 0, 'total_ranges': 0,
+            'total_hands': 0, 'quiz_ready': 0, 'needs_validation': 0, 'errors': 0
+        }
+
+
+def get_contexts_needing_validation():
+    """Récupère la liste des contextes nécessitant validation"""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return []
+
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT id, display_name, original_name, confidence_score 
+            FROM range_contexts 
+            WHERE needs_validation = 1 
+            LIMIT 5
+        """)
+
+        contexts = []
+        for row in cursor.fetchall():
+            contexts.append({
+                'id': row[0],
+                'name': row[1] or row[2] or 'Sans nom',
+                'confidence': row[3] or 0
+            })
+
+        conn.close()
+        return contexts
+
+    except Exception as e:
+        print(f"Erreur get_contexts_needing_validation: {e}")
+        return []
+
+
+# ============================================
+# ROUTES DEBUG ET STATS
+# ============================================
+
+@app.route('/api/debug/db')
+def api_debug_db():
+    """API debug pour les statistiques de base"""
+    try:
+        conn = get_db_connection()
+
+        if not conn:
+            return jsonify({
+                'status': 'no_database',
+                'message': 'Base de données non créée - utilisez Import Pipeline',
+                'data': {
+                    'range_files': 0, 'range_contexts': 0,
+                    'ranges': 0, 'range_hands': 0
+                },
+                'range_contexts_examples': []
+            })
+
+        cursor = conn.cursor()
+
+        # Compter les enregistrements
+        stats = {}
+        for table in ['range_files', 'range_contexts', 'ranges', 'range_hands']:
+            try:
+                cursor.execute(f"SELECT COUNT(*) FROM {table}")
+                stats[table] = cursor.fetchone()[0]
+            except sqlite3.OperationalError:
+                stats[table] = 0
+
+        # Exemples
+        try:
+            cursor.execute("""
+                SELECT id, display_name, original_name, confidence_score 
+                FROM range_contexts 
+                LIMIT 5
+            """)
+            examples = [
+                {
+                    'id': row[0],
+                    'name': row[1] or row[2] or 'Sans nom',
+                    'confidence': row[3] or 0
+                }
+                for row in cursor.fetchall()
+            ]
+        except sqlite3.OperationalError:
+            examples = []
+
+        conn.close()
+
+        return jsonify({
+            'status': 'success',
+            'data': stats,
+            'range_contexts_examples': examples
+        })
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/dashboard/stats')
+def api_dashboard_stats():
+    """API pour les statistiques du dashboard"""
+    return jsonify({'recent_imports': [], 'status': 'success'})
+
+
+@app.route('/api/dashboard/contexts')
+def api_dashboard_contexts():
+    """API pour les contextes du dashboard avec statuts corrects"""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return jsonify([])
+
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT 
+                rc.id,
+                rc.display_name,
+                rc.original_name,
+                rc.confidence_score,
+                rc.hero_position,
+                rc.primary_action,
+                rc.needs_validation,
+                rc.quiz_ready,
+                rc.error_message,
+                rf.filename,
+                (SELECT COUNT(*) FROM ranges WHERE context_id = rc.id) as ranges_count,
+                (SELECT COUNT(*) FROM range_hands rh 
+                 JOIN ranges r ON r.id = rh.range_id 
+                 WHERE r.context_id = rc.id) as hands_count
+            FROM range_contexts rc
+            JOIN range_files rf ON rc.file_id = rf.id
+            ORDER BY rc.needs_validation DESC, rc.quiz_ready DESC, rc.id DESC
+            LIMIT 50
+        """)
+
+        contexts = []
+        for row in cursor.fetchall():
+            # Déterminer le statut
+            if row[6]:  # needs_validation
+                context_status = 'needs_validation'
+            elif row[7]:  # quiz_ready
+                context_status = 'quiz_ready'
+            elif row[8]:  # error_message
+                context_status = 'error'
+            else:
+                context_status = 'unknown'
+
+            contexts.append({
+                'id': row[0],
+                'name': row[1] or row[2] or 'Sans nom',  # display_name ou original_name
+                'confidence': (row[3] or 0) / 100.0,  # confidence_score en 0-1
+                'filename': row[9],
+                'hero_position': row[4] or 'N/A',
+                'primary_action': row[5] or 'N/A',
+                'context_status': context_status,
+                'ranges_count': row[10] or 0,
+                'hands_count': row[11] or 0
+            })
+
+        conn.close()
+        return jsonify(contexts)
+
+    except Exception as e:
+        print(f"Erreur dans api_dashboard_contexts: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+# ============================================
+# ROUTES QUIZ
+# ============================================
+
+@app.route('/api/quiz/check')
+def api_quiz_check():
+    """Vérifie si des contextes sont prêts pour le quiz"""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({
+                'ready': False,
+                'message': 'Base de données non initialisée',
+                'ready_contexts': 0,
+                'total_contexts': 0
+            })
+
+        cursor = conn.cursor()
+
+        # Compter les contextes prêts pour quiz
+        cursor.execute("SELECT COUNT(*) FROM range_contexts WHERE quiz_ready = 1")
+        ready_count = cursor.fetchone()[0]
+
+        # Compter le total
+        cursor.execute("SELECT COUNT(*) FROM range_contexts")
+        total_count = cursor.fetchone()[0]
+
+        conn.close()
+
+        return jsonify({
+            'ready': ready_count > 0,
+            'message': f'{ready_count} contexte(s) prêt(s) pour le quiz' if ready_count > 0 else 'Aucun contexte prêt',
+            'ready_contexts': ready_count,
+            'total_contexts': total_count
+        })
+
+    except Exception as e:
+        return jsonify({
+            'ready': False,
+            'error': str(e)
+        }), 500
 
 
 @app.route('/quiz')
 def quiz_page():
-    return render_template('quiz.html')
+    """Page d'interface quiz (à implémenter)"""
+    return "<h1>Interface Quiz</h1><p>En développement...</p>"
+
+
+# ============================================
+# ROUTES DEBUG SUPPLÉMENTAIRES
+# ============================================
+
+@app.route('/debug_structure')
+def debug_structure():
+    """Affiche la structure de la base de données"""
+    conn = get_db_connection()
+    if not conn:
+        return "<h1>Base de données non trouvée</h1>"
+
+    cursor = conn.cursor()
+    cursor.execute("PRAGMA table_info(range_contexts)")
+    columns = cursor.fetchall()
+
+    result = "<h1>Structure de range_contexts</h1><table border='1' cellpadding='10'>"
+    result += "<tr><th>ID</th><th>Nom</th><th>Type</th><th>NOT NULL</th><th>Default</th></tr>"
+
+    for col in columns:
+        result += f"<tr><td>{col[0]}</td><td><strong>{col[1]}</strong></td><td>{col[2]}</td><td>{'Oui' if col[3] else 'Non'}</td><td>{col[4]}</td></tr>"
+
+    result += "</table>"
+    conn.close()
+    return result
+
+
+@app.route('/debug_all_contexts')
+def debug_all_contexts():
+    """Debug : affiche tous les contextes"""
+    conn = get_db_connection()
+    if not conn:
+        return "<h1>Base de données non trouvée</h1>"
+
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT 
+            id, display_name, original_name, confidence_score,
+            hero_position, primary_action, table_format,
+            needs_validation, quiz_ready, error_message
+        FROM range_contexts
+    """)
+    rows = cursor.fetchall()
+
+    result = "<h1>Tous les contextes</h1>"
+    for row in rows:
+        status_icon = '🟢' if row[8] else ('🟡' if row[7] else '⚪')
+
+        result += f"""
+        <div style="border: 1px solid #ccc; padding: 10px; margin: 10px 0;">
+            <h3>{status_icon} #{row[0]} - {row[1] or row[2]}</h3>
+            <p><strong>Confidence:</strong> {row[3] or 0}%</p>
+            <p><strong>Position:</strong> {row[4] or 'N/A'}</p>
+            <p><strong>Action:</strong> {row[5] or 'N/A'}</p>
+            <p><strong>Format:</strong> {row[6] or 'N/A'}</p>
+            <p><strong>Needs validation:</strong> {row[7]}</p>
+            <p><strong>Quiz ready:</strong> {row[8]}</p>
+            {f'<p style="color: red;"><strong>Error:</strong> {row[9]}</p>' if row[9] else ''}
+        </div>
+        """
+
+    conn.close()
+    return result
+
+
+@app.route('/debug_metadata')
+def debug_metadata():
+    """Debug : métadonnées détaillées"""
+    conn = get_db_connection()
+    if not conn:
+        return "<h1>Base de données non trouvée</h1>"
+
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT 
+            id, display_name, original_name,
+            table_format, hero_position, vs_position, primary_action,
+            game_type, variant, stack_depth, stakes, sizing,
+            confidence_score, needs_validation, quiz_ready, error_message
+        FROM range_contexts 
+        LIMIT 5
+    """)
+    rows = cursor.fetchall()
+
+    result = "<h1>Métadonnées détaillées (5 premiers)</h1>"
+    for row in rows:
+        result += f"""
+        <div style="border: 2px solid #667eea; padding: 15px; margin: 15px 0; border-radius: 10px;">
+            <h2>#{row[0]} - {row[1] or row[2]}</h2>
+            <table style="width: 100%; border-collapse: collapse;">
+                <tr><td style="padding: 5px;"><strong>Format table:</strong></td><td>{row[3] or 'N/A'}</td></tr>
+                <tr><td style="padding: 5px;"><strong>Position héros:</strong></td><td>{row[4] or 'N/A'}</td></tr>
+                <tr><td style="padding: 5px;"><strong>Position vs:</strong></td><td>{row[5] or 'N/A'}</td></tr>
+                <tr><td style="padding: 5px;"><strong>Action:</strong></td><td>{row[6] or 'N/A'}</td></tr>
+                <tr><td style="padding: 5px;"><strong>Game type:</strong></td><td>{row[7] or 'N/A'}</td></tr>
+                <tr><td style="padding: 5px;"><strong>Variant:</strong></td><td>{row[8] or 'N/A'}</td></tr>
+                <tr><td style="padding: 5px;"><strong>Stack depth:</strong></td><td>{row[9] or 'N/A'}</td></tr>
+                <tr><td style="padding: 5px;"><strong>Stakes:</strong></td><td>{row[10] or 'N/A'}</td></tr>
+                <tr><td style="padding: 5px;"><strong>Sizing:</strong></td><td>{row[11] or 'N/A'}</td></tr>
+                <tr style="background: #f0f0f0;"><td style="padding: 5px;"><strong>Confidence:</strong></td><td>{row[12] or 0}%</td></tr>
+                <tr style="background: #f0f0f0;"><td style="padding: 5px;"><strong>Needs validation:</strong></td><td>{row[13]}</td></tr>
+                <tr style="background: #f0f0f0;"><td style="padding: 5px;"><strong>Quiz ready:</strong></td><td>{row[14]}</td></tr>
+                {f'<tr style="background: #ffe0e0;"><td style="padding: 5px;"><strong>Error:</strong></td><td>{row[15]}</td></tr>' if row[15] else ''}
+            </table>
+        </div>
+        """
+
+    conn.close()
+    return result
 
-
-# ============================================================================
-# API DASHBOARD
-# ============================================================================
-
-@app.route('/api/dashboard/stats')
-def get_dashboard_stats():
-    """Stats dashboard - Version testée et fonctionnelle"""
-    try:
-        stats = {
-            'total_files': 0,
-            'total_contexts': 0,
-            'total_ranges': 0,
-            'total_hands': 0,
-            'recent_imports': [],
-            'contexts_by_confidence': {'high': 0, 'medium': 0, 'low': 0},
-        }
-
-        if not DB_PATH.exists():
-            return jsonify(stats)
-
-        with sqlite3.connect(str(DB_PATH)) as conn:
-            cursor = conn.cursor()
-
-            # Stats simples
-            cursor.execute("SELECT COUNT(*) FROM range_files WHERE status = 'imported'")
-            stats['total_files'] = cursor.fetchone()[0]
-
-            cursor.execute("SELECT COUNT(*) FROM range_contexts")
-            stats['total_contexts'] = cursor.fetchone()[0]
-
-            cursor.execute("SELECT COUNT(*) FROM ranges")
-            stats['total_ranges'] = cursor.fetchone()[0]
-
-            cursor.execute("SELECT COUNT(*) FROM range_hands")
-            stats['total_hands'] = cursor.fetchone()[0]
-
-            # Imports récents
-            cursor.execute("""
-                SELECT rf.filename, rf.imported_at, rc.name, rc.confidence
-                FROM range_files rf
-                LEFT JOIN range_contexts rc ON rf.id = rc.file_id
-                WHERE rf.status = 'imported'
-                ORDER BY rf.imported_at DESC
-                LIMIT 5
-            """)
-
-            recent_imports = []
-            for row in cursor.fetchall():
-                recent_imports.append({
-                    'filename': row[0],
-                    'imported_at': row[1],
-                    'context_name': row[2] or 'N/A',
-                    'confidence': float(row[3]) if row[3] else 0.0
-                })
-
-            stats['recent_imports'] = recent_imports
-
-            # Distribution confiance
-            cursor.execute("SELECT confidence FROM range_contexts WHERE confidence IS NOT NULL")
-            confidences = cursor.fetchall()
-
-            high = medium = low = 0
-            for (conf,) in confidences:
-                if conf >= 0.8:
-                    high += 1
-                elif conf >= 0.5:
-                    medium += 1
-                else:
-                    low += 1
-
-            stats['contexts_by_confidence'] = {'high': high, 'medium': medium, 'low': low}
-
-        return jsonify(stats)
-
-    except Exception as e:
-        app.logger.error(f"Erreur stats: {e}")
-        return jsonify({'error': str(e)}), 500
-
-
-@app.route('/api/dashboard/contexts')
-def get_contexts_list():
-    """Contexts dashboard - Version avec comptage optimisé"""
-    try:
-        if not DB_PATH.exists():
-            return jsonify([])
-
-        with sqlite3.connect(str(DB_PATH)) as conn:
-            cursor = conn.cursor()
-
-            # Requête optimisée avec comptage en une fois
-            cursor.execute("""
-                SELECT 
-                    rc.id, rc.name, rc.confidence, rc.parsed_metadata,
-                    rf.filename, rf.imported_at,
-                    COUNT(DISTINCT r.id) as ranges_count,
-                    COUNT(rh.id) as hands_count
-                FROM range_contexts rc
-                LEFT JOIN range_files rf ON rc.file_id = rf.id
-                LEFT JOIN ranges r ON rc.id = r.context_id
-                LEFT JOIN range_hands rh ON r.id = rh.range_id
-                GROUP BY rc.id, rc.name, rc.confidence, rc.parsed_metadata, rf.filename, rf.imported_at
-                ORDER BY rf.imported_at DESC
-                LIMIT 15
-            """)
-
-            contexts = []
-            for row in cursor.fetchall():
-                try:
-                    metadata = json.loads(row[3]) if row[3] else {}
-                except:
-                    metadata = {}
-
-                contexts.append({
-                    'id': row[0],
-                    'name': row[1],
-                    'confidence': float(row[2]) if row[2] else 0.0,
-                    'filename': row[4],
-                    'imported_at': row[5],
-                    'ranges_count': row[6] or 0,
-                    'hands_count': row[7] or 0,
-                    'hero_position': metadata.get('hero_position'),
-                    'primary_action': metadata.get('primary_action'),
-                    'vs_position': metadata.get('vs_position')
-                })
-
-            app.logger.info(f"📋 Loaded {len(contexts)} contexts avec comptages")
-            return jsonify(contexts)
-
-    except Exception as e:
-        app.logger.error(f"Erreur contexts optimisé: {e}")
-
-        # Fallback : version simple sans comptage si la requête complexe échoue
-        try:
-            with sqlite3.connect(str(DB_PATH)) as conn:
-                cursor = conn.cursor()
-                cursor.execute("""
-                    SELECT 
-                        rc.id, rc.name, rc.confidence, rc.parsed_metadata,
-                        rf.filename, rf.imported_at
-                    FROM range_contexts rc
-                    LEFT JOIN range_files rf ON rc.file_id = rf.id
-                    ORDER BY rf.imported_at DESC
-                    LIMIT 10
-                """)
-
-                contexts = []
-                for row in cursor.fetchall():
-                    try:
-                        metadata = json.loads(row[3]) if row[3] else {}
-                    except:
-                        metadata = {}
-
-                    contexts.append({
-                        'id': row[0],
-                        'name': row[1],
-                        'confidence': float(row[2]) if row[2] else 0.0,
-                        'filename': row[4],
-                        'imported_at': row[5],
-                        'ranges_count': '?',
-                        'hands_count': '?',
-                        'hero_position': metadata.get('hero_position'),
-                        'primary_action': metadata.get('primary_action'),
-                        'vs_position': metadata.get('vs_position')
-                    })
-
-                app.logger.info(f"📋 Fallback: loaded {len(contexts)} contexts sans comptages")
-                return jsonify(contexts)
-
-        except Exception as fallback_error:
-            app.logger.error(f"Erreur fallback contexts: {fallback_error}")
-            return jsonify({'error': str(fallback_error)}), 500
-
-
-# ============================================================================
-# API IMPORT
-# ============================================================================
-
-@app.route('/api/import/files')
-def get_import_files():
-    """Liste les fichiers pour import"""
-    try:
-        files_info = []
-
-        for file_path in RANGES_DIR.glob("*.json"):
-            file_info = {
-                'name': file_path.name,
-                'size': file_path.stat().st_size,
-                'modified': datetime.fromtimestamp(file_path.stat().st_mtime).isoformat(),
-                'status': 'pending'
-            }
-
-            # Vérifier si déjà importé
-            if DB_PATH.exists():
-                with sqlite3.connect(str(DB_PATH)) as conn:
-                    cursor = conn.cursor()
-                    cursor.execute(
-                        "SELECT status, imported_at FROM range_files WHERE filename = ?",
-                        (file_path.name,)
-                    )
-                    result = cursor.fetchone()
-                    if result:
-                        file_info['status'] = result[0]
-                        file_info['imported_at'] = result[1]
-
-            files_info.append(file_info)
-
-        return jsonify(files_info)
-
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-
-@app.route('/api/import/upload', methods=['POST'])
-def upload_file():
-    """Upload d'un fichier"""
-    try:
-        if 'file' not in request.files:
-            return jsonify({'error': 'Aucun fichier sélectionné'}), 400
-
-        file = request.files['file']
-        if file.filename == '':
-            return jsonify({'error': 'Aucun fichier sélectionné'}), 400
-
-        if file and file.filename.endswith('.json'):
-            filename = secure_filename(file.filename)
-            filepath = RANGES_DIR / filename
-            file.save(str(filepath))
-
-            return jsonify({
-                'success': True,
-                'filename': filename,
-                'message': f'Fichier {filename} uploadé avec succès'
-            })
-        else:
-            return jsonify({'error': 'Seuls les fichiers JSON sont acceptés'}), 400
-
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-
-@app.route('/api/import/run', methods=['POST'])
-def run_import():
-    """Lance l'import"""
-    try:
-        data = request.get_json() or {}
-        filename = data.get('filename')
-
-        # Trouver le script
-        script_path = PROJECT_ROOT / "poker-training.py"
-        if not script_path.exists():
-            script_path = PROJECT_ROOT / "poker_training.py"
-
-        if not script_path.exists():
-            return jsonify({'error': 'Script poker-training.py non trouvé'}), 404
-
-        cmd = ['python3', script_path.name]
-        job_id = filename or 'all'
-
-        app.logger.info(f"🚀 Commande import: {cmd}")
-        app.logger.info(f"📂 Working directory: {PROJECT_ROOT}")
-        app.logger.info(f"📄 Script existe: {script_path.exists()}")
-
-        def run_import_process():
-            try:
-                app.logger.info(f"📥 Début subprocess import")
-                result = subprocess.run(
-                    cmd,
-                    cwd=str(PROJECT_ROOT),
-                    capture_output=True,
-                    text=True,
-                    timeout=300
-                )
-
-                app.logger.info(f"✅ Import terminé - Code: {result.returncode}")
-                app.logger.info(f"📝 Stdout: {result.stdout[:500]}...")
-                if result.stderr:
-                    app.logger.warning(f"⚠️ Stderr: {result.stderr[:500]}...")
-
-                import_results[job_id] = {
-                    'returncode': result.returncode,
-                    'stdout': result.stdout,
-                    'stderr': result.stderr,
-                    'completed_at': datetime.now().isoformat()
-                }
-
-            except subprocess.TimeoutExpired:
-                app.logger.error("⏰ Import timeout")
-                import_results[job_id] = {
-                    'returncode': -1,
-                    'stdout': '',
-                    'stderr': 'Import timeout (> 5 minutes)',
-                    'completed_at': datetime.now().isoformat()
-                }
-            except Exception as e:
-                app.logger.error(f"❌ Erreur subprocess: {e}")
-                import_results[job_id] = {
-                    'returncode': -1,
-                    'stdout': '',
-                    'stderr': str(e),
-                    'completed_at': datetime.now().isoformat()
-                }
-
-        # Marquer comme en cours
-        import_results[job_id] = {
-            'returncode': None,
-            'stdout': '',
-            'stderr': '',
-            'started_at': datetime.now().isoformat()
-        }
-
-        # Lancer en arrière-plan
-        thread = threading.Thread(target=run_import_process)
-        thread.daemon = True
-        thread.start()
-
-        return jsonify({
-            'success': True,
-            'message': 'Import lancé - script simple sans confirmations',
-            'job_id': job_id
-        })
-
-    except Exception as e:
-        app.logger.error(f"❌ Erreur lancement import: {e}")
-        return jsonify({'error': str(e)}), 500
-
-
-@app.route('/api/import/status/<job_id>')
-def get_import_status(job_id):
-    """Statut d'un import"""
-    try:
-        if job_id not in import_results:
-            return jsonify({'error': 'Job non trouvé'}), 404
-
-        result = import_results[job_id]
-
-        if result['returncode'] is None:
-            return jsonify({
-                'status': 'running',
-                'started_at': result['started_at']
-            })
-        else:
-            return jsonify({
-                'status': 'completed',
-                'success': result['returncode'] == 0,
-                'stdout': result['stdout'],
-                'stderr': result['stderr'],
-                'completed_at': result['completed_at']
-            })
-
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-
-# ============================================================================
-# API ENRICHISSEMENT
-# ============================================================================
-
-@app.route('/api/enrich/contexts')
-def get_enrich_contexts():
-    """Liste les contextes pour l'enrichissement"""
-    try:
-        if not DB_PATH.exists():
-            return jsonify([])
-
-        with sqlite3.connect(str(DB_PATH)) as conn:
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
-
-            cursor.execute("""
-                SELECT 
-                    rc.id, rc.name, rc.confidence, rc.parsed_metadata,
-                    rf.filename, rf.imported_at,
-                    COUNT(DISTINCT r.id) as ranges_count,
-                    COUNT(rh.id) as hands_count
-                FROM range_contexts rc
-                LEFT JOIN range_files rf ON rc.file_id = rf.id
-                LEFT JOIN ranges r ON rc.id = r.context_id
-                LEFT JOIN range_hands rh ON r.id = rh.range_id
-                GROUP BY rc.id, rc.name, rc.confidence, rc.parsed_metadata, rf.filename, rf.imported_at
-                ORDER BY rc.confidence ASC, rf.imported_at DESC
-            """)
-
-            contexts = []
-            for row in cursor.fetchall():
-                try:
-                    parsed_metadata = json.loads(row['parsed_metadata']) if row['parsed_metadata'] else {}
-                except:
-                    parsed_metadata = {}
-
-                contexts.append({
-                    'id': row['id'],
-                    'name': row['name'],
-                    'confidence': float(row['confidence']) if row['confidence'] else 0.0,
-                    'filename': row['filename'],
-                    'imported_at': row['imported_at'],
-                    'ranges_count': row['ranges_count'] or 0,
-                    'hands_count': row['hands_count'] or 0,
-                    'parsed_metadata': parsed_metadata
-                })
-
-            return jsonify(contexts)
-
-    except Exception as e:
-        app.logger.error(f"Erreur enrich contexts: {e}")
-        return jsonify({'error': str(e)}), 500
-
-
-@app.route('/api/enrich/run', methods=['POST'])
-def run_enrichment():
-    """Lance l'enrichissement - Version simple"""
-    try:
-        data = request.get_json() or {}
-        context_ids = data.get('context_ids', [])
-
-        # Trouver le script d'enrichissement
-        script_path = PROJECT_ROOT / "enrich_ranges.py"
-        if not script_path.exists():
-            return jsonify({'error': 'Script enrich_ranges.py non trouvé'}), 404
-
-        # Pour l'instant, lancer le script tel quel sans paramètres
-        cmd = ['python3', script_path.name]
-        job_id = f"enrich_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-
-        # Environnement avec mode web
-        env = os.environ.copy()
-        env['POKER_WEB_MODE'] = '1'
-
-        def run_enrichment_process():
-            try:
-                result = subprocess.run(
-                    cmd,
-                    cwd=str(PROJECT_ROOT),
-                    capture_output=True,
-                    text=True,
-                    timeout=600,  # 10 minutes timeout
-                    env=env
-                )
-
-                import_results[job_id] = {
-                    'returncode': result.returncode,
-                    'stdout': result.stdout,
-                    'stderr': result.stderr,
-                    'completed_at': datetime.now().isoformat()
-                }
-
-            except subprocess.TimeoutExpired:
-                import_results[job_id] = {
-                    'returncode': -1,
-                    'stdout': '',
-                    'stderr': 'Enrichissement timeout (> 10 minutes)',
-                    'completed_at': datetime.now().isoformat()
-                }
-            except Exception as e:
-                import_results[job_id] = {
-                    'returncode': -1,
-                    'stdout': '',
-                    'stderr': str(e),
-                    'completed_at': datetime.now().isoformat()
-                }
-
-        # Marquer comme en cours
-        import_results[job_id] = {
-            'returncode': None,
-            'stdout': '',
-            'stderr': '',
-            'started_at': datetime.now().isoformat(),
-            'context_ids': context_ids,
-            'total_contexts': len(context_ids) if context_ids else 0
-        }
-
-        # Lancer en arrière-plan
-        thread = threading.Thread(target=run_enrichment_process)
-        thread.daemon = True
-        thread.start()
-
-        return jsonify({
-            'success': True,
-            'message': f'Enrichissement lancé (script standard)',
-            'job_id': job_id,
-            'note': 'Le script enrich_ranges.py sera exécuté normalement'
-        })
-
-    except Exception as e:
-        app.logger.error(f"Erreur lancement enrichissement: {e}")
-        return jsonify({'error': str(e)}), 500
-
-
-@app.route('/api/enrich/status/<job_id>')
-def get_enrichment_status(job_id):
-    """Récupère le statut d'un enrichissement en cours"""
-    try:
-        if job_id not in import_results:
-            return jsonify({'error': 'Job non trouvé'}), 404
-
-        result = import_results[job_id]
-
-        if result['returncode'] is None:
-            # En cours - calculer un progrès approximatif
-            started_at = datetime.fromisoformat(result['started_at'])
-            elapsed = (datetime.now() - started_at).total_seconds()
-            total_contexts = result.get('total_contexts', 1)
-
-            # Estimation : 30 secondes par contexte en moyenne
-            estimated_duration = total_contexts * 30
-            progress = min(95, (elapsed / estimated_duration) * 100) if estimated_duration > 0 else 0
-
-            return jsonify({
-                'status': 'running',
-                'progress': progress,
-                'message': f'Enrichissement en cours...',
-                'started_at': result['started_at'],
-                'elapsed_seconds': int(elapsed)
-            })
-        else:
-            # Terminé
-            return jsonify({
-                'status': 'completed',
-                'success': result['returncode'] == 0,
-                'stdout': result['stdout'],
-                'stderr': result['stderr'],
-                'completed_at': result['completed_at'],
-                'progress': 100
-            })
-
-    except Exception as e:
-        app.logger.error(f"Erreur status enrichissement: {e}")
-        return jsonify({'error': str(e)}), 500
-
-
-# ============================================================================
-# ROUTES DE DEBUG
-# ============================================================================
-
-@app.route('/api/debug/db')
-def debug_db():
-    """Debug base de données"""
-    try:
-        result = {
-            'db_path': str(DB_PATH),
-            'db_exists': DB_PATH.exists(),
-            'tables': [],
-            'data': {}
-        }
-
-        if not DB_PATH.exists():
-            return jsonify(result)
-
-        with sqlite3.connect(str(DB_PATH)) as conn:
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
-
-            cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
-            tables = [row['name'] for row in cursor.fetchall()]
-            result['tables'] = tables
-
-            for table in tables:
-                cursor.execute(f"SELECT COUNT(*) as count FROM {table}")
-                result['data'][table] = cursor.fetchone()['count']
-
-        return jsonify(result)
-
-    except Exception as e:
-        return jsonify({'error': str(e)})
-
-
-@app.route('/api/test/scripts')
-def test_scripts():
-    """Test des scripts"""
-    results = {}
-
-    try:
-        import poker_training
-        results['poker_training'] = {'status': 'success', 'message': 'Import réussi'}
-    except ImportError as e:
-        results['poker_training'] = {'status': 'error', 'message': f'Erreur: {e}'}
-
-    for script_name in ['enrich_ranges', 'questions']:
-        try:
-            __import__(script_name)
-            results[script_name] = {'status': 'success', 'message': 'Import réussi'}
-        except ImportError as e:
-            results[script_name] = {'status': 'error', 'message': f'Erreur: {e}'}
-
-    try:
-        if DB_PATH.exists():
-            with sqlite3.connect(str(DB_PATH)) as conn:
-                cursor = conn.cursor()
-                cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
-                tables = cursor.fetchall()
-                results['database'] = {
-                    'status': 'success',
-                    'message': f'Base trouvée, {len(tables)} tables',
-                    'tables': [t[0] for t in tables]
-                }
-        else:
-            results['database'] = {'status': 'warning', 'message': 'Base non trouvée'}
-    except Exception as e:
-        results['database'] = {'status': 'error', 'message': f'Erreur: {e}'}
-
-    return jsonify(results)
-
-
-# ============================================================================
-# FICHIERS STATIQUES
-# ============================================================================
-
-@app.route('/static/<path:filename>')
-def static_files(filename):
-    return send_from_directory('static', filename)
-
-
-# ============================================================================
-# MAIN
-# ============================================================================
 
 if __name__ == '__main__':
-    import logging
-
-    logging.basicConfig(level=logging.INFO)
-
-    print("🃏 POKER TRAINING WEB - Version Fonctionnelle")
-    print("=" * 60)
-    print(f"🌐 Dashboard: http://localhost:5000")
-    print(f"📥 Import: http://localhost:5000/import")
-    print(f"✨ Enrichir: http://localhost:5000/enrich")
-    print(f"🧪 Test: http://localhost:5000/api/test/scripts")
-    print("=" * 60)
-
-    app.run(debug=True, host='127.0.0.1', port=5000)
+    app.run(debug=True)
