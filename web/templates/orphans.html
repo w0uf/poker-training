@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestion des fichiers manquants</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container { max-width: 1200px; margin: 0 auto; }
+
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 16px;
+            line-height: 1.6;
+        }
+
+        .alert {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .alert-title {
+            color: #856404;
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .alert-text {
+            color: #856404;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .no-orphans {
+            background: white;
+            padding: 60px 30px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+
+        .no-orphans h2 {
+            color: #10b981;
+            font-size: 24px;
+            margin-bottom: 15px;
+        }
+
+        .no-orphans p {
+            color: #666;
+            font-size: 16px;
+            margin-bottom: 30px;
+        }
+
+        .orphan-card {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }
+
+        .orphan-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+        }
+
+        .orphan-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+
+        .orphan-title {
+            flex: 1;
+        }
+
+        .orphan-title h3 {
+            color: #333;
+            font-size: 20px;
+            margin-bottom: 5px;
+        }
+
+        .orphan-filename {
+            color: #666;
+            font-size: 14px;
+            font-family: monospace;
+            background: #f5f5f5;
+            padding: 4px 8px;
+            border-radius: 4px;
+            display: inline-block;
+        }
+
+        .orphan-stats {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 6px;
+        }
+
+        .stat {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .stat-value {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .orphan-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            flex: 1;
+            min-width: 140px;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-ignore {
+            background: #95a5a6;
+            color: white;
+        }
+
+        .btn-ignore:hover:not(:disabled) {
+            background: #7f8c8d;
+        }
+
+        .btn-delete {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .btn-delete:hover:not(:disabled) {
+            background: #c0392b;
+        }
+
+        .btn-rebuild {
+            background: #3498db;
+            color: white;
+        }
+
+        .btn-rebuild:hover:not(:disabled) {
+            background: #2980b9;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+            padding: 12px 30px;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 60px;
+            color: white;
+            font-size: 18px;
+        }
+
+        .message {
+            padding: 15px 20px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            font-weight: 500;
+            animation: slideIn 0.3s ease;
+        }
+
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .bottom-actions {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 Gestion des fichiers manquants</h1>
+            <p>
+                Les contextes ci-dessous ont été importés dans la base de données,
+                mais leurs fichiers JSON sources sont introuvables.
+                Vous pouvez les ignorer, les supprimer ou reconstruire les fichiers depuis la base.
+            </p>
+        </div>
+
+        <div id="message-container"></div>
+
+        <div id="content">
+            <div class="loading">
+                ⏳ Vérification des fichiers en cours...
+            </div>
+        </div>
+
+        <div class="bottom-actions">
+            <button class="btn btn-primary" onclick="window.location.href='/'">
+                ← Retour au dashboard
+            </button>
+        </div>
+    </div>
+
+    <script>
+        let orphans = [];
+
+        async function loadOrphans() {
+            try {
+                const response = await fetch('/api/orphans/check');
+                const data = await response.json();
+
+                orphans = data.orphans || [];
+                renderOrphans();
+
+            } catch (error) {
+                console.error('Erreur chargement:', error);
+                showMessage('Erreur lors du chargement des fichiers manquants', 'error');
+            }
+        }
+
+        function renderOrphans() {
+            const content = document.getElementById('content');
+
+            if (orphans.length === 0) {
+                content.innerHTML = `
+                    <div class="no-orphans">
+                        <h2>✅ Aucun fichier manquant</h2>
+                        <p>Tous vos contextes ont leurs fichiers JSON sources présents.</p>
+                        <button class="btn btn-primary" onclick="window.location.href='/'">
+                            Retour au dashboard
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+
+            content.innerHTML = `
+                <div class="alert">
+                    <div class="alert-title">⚠️ ${orphans.length} fichier(s) manquant(s) détecté(s)</div>
+                    <div class="alert-text">
+                        Pour chaque contexte, vous pouvez :
+                        <ul style="margin-top: 10px; margin-left: 20px;">
+                            <li><strong>Ignorer</strong> : Ne rien faire (vous pourrez toujours agir plus tard)</li>
+                            <li><strong>Supprimer</strong> : Retirer définitivement de la base de données</li>
+                            <li><strong>Reconstruire</strong> : Créer un nouveau fichier JSON depuis les données en base</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div id="orphans-list">
+                    ${orphans.map(renderOrphanCard).join('')}
+                </div>
+            `;
+        }
+
+        function renderOrphanCard(orphan) {
+            return `
+                <div class="orphan-card" id="orphan-${orphan.context_id}">
+                    <div class="orphan-header">
+                        <div class="orphan-title">
+                            <h3>${orphan.name}</h3>
+                            <span class="orphan-filename">${orphan.filename}</span>
+                        </div>
+                    </div>
+
+                    <div class="orphan-stats">
+                        <div class="stat">
+                            📊 <span class="stat-value">${orphan.ranges_count}</span> ranges
+                        </div>
+                        <div class="stat">
+                            🃏 <span class="stat-value">${orphan.hands_count}</span> mains
+                        </div>
+                    </div>
+
+                    <div class="orphan-actions">
+                        <button class="btn btn-ignore" onclick="handleIgnore(${orphan.context_id})">
+                            👁️ Ignorer
+                        </button>
+                        <button class="btn btn-delete" onclick="handleDelete(${orphan.context_id})">
+                            🗑️ Supprimer
+                        </button>
+                        <button class="btn btn-rebuild" onclick="handleRebuild(${orphan.context_id})">
+                            🔄 Reconstruire JSON
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function handleIgnore(contextId) {
+            try {
+                const response = await fetch(`/api/orphans/ignore/${contextId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showMessage('Contexte ignoré', 'success');
+                    removeOrphanCard(contextId);
+                }
+            } catch (error) {
+                showMessage('Erreur lors de l\'opération', 'error');
+            }
+        }
+
+        async function handleDelete(contextId) {
+            if (!confirm('⚠️ ATTENTION : Cette action supprimera définitivement ce contexte de la base.\n\nToutes les ranges et mains associées seront perdues.\n\nÊtes-vous sûr ?')) {
+                return;
+            }
+
+            const btn = event.target;
+            btn.disabled = true;
+            btn.textContent = 'Suppression...';
+
+            try {
+                const response = await fetch(`/api/orphans/delete/${contextId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showMessage('✅ Contexte supprimé de la base', 'success');
+                    removeOrphanCard(contextId);
+                } else {
+                    showMessage(`❌ ${result.message}`, 'error');
+                    btn.disabled = false;
+                    btn.textContent = '🗑️ Supprimer';
+                }
+            } catch (error) {
+                showMessage('Erreur lors de la suppression', 'error');
+                btn.disabled = false;
+                btn.textContent = '🗑️ Supprimer';
+            }
+        }
+
+        async function handleRebuild(contextId) {
+            if (!confirm('Reconstruire le fichier JSON depuis la base de données ?\n\nUn nouveau fichier sera créé avec les données actuelles.')) {
+                return;
+            }
+
+            const btn = event.target;
+            btn.disabled = true;
+            btn.textContent = 'Reconstruction...';
+
+            try {
+                const response = await fetch(`/api/orphans/rebuild/${contextId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showMessage(`✅ ${result.message}`, 'success');
+                    removeOrphanCard(contextId);
+                } else {
+                    showMessage(`❌ ${result.message}`, 'error');
+                    btn.disabled = false;
+                    btn.textContent = '🔄 Reconstruire JSON';
+                }
+            } catch (error) {
+                showMessage('Erreur lors de la reconstruction', 'error');
+                btn.disabled = false;
+                btn.textContent = '🔄 Reconstruire JSON';
+            }
+        }
+
+        function removeOrphanCard(contextId) {
+            const card = document.getElementById(`orphan-${contextId}`);
+            if (card) {
+                card.style.opacity = '0';
+                card.style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    card.remove();
+
+                    // Retirer de la liste
+                    orphans = orphans.filter(o => o.context_id !== contextId);
+
+                    // Si plus d'orphelins, afficher le message de succès
+                    if (orphans.length === 0) {
+                        renderOrphans();
+                    }
+                }, 300);
+            }
+        }
+
+        function showMessage(text, type) {
+            const container = document.getElementById('message-container');
+            const msg = document.createElement('div');
+            msg.className = `message ${type}`;
+            msg.textContent = text;
+            container.appendChild(msg);
+
+            setTimeout(() => {
+                msg.style.opacity = '0';
+                setTimeout(() => msg.remove(), 300);
+            }, 3000);
+        }
+
+        // Charger au démarrage
+        loadOrphans();
+    </script>
+</body>
+</html>
