@@ -14,7 +14,7 @@
             padding: 20px;
         }
 
-        .container { max-width: 900px; margin: 0 auto; }
+        .container { max-width: 1100px; margin: 0 auto; }
 
         .header {
             background: white;
@@ -35,6 +35,30 @@
         .context-info p { color: #666; margin: 5px 0; font-size: 14px; }
         .context-info strong { color: #333; }
 
+        .warning-box {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 5px;
+            padding: 12px 15px;
+            margin: 15px 0;
+        }
+
+        .warning-box h3 {
+            color: #856404;
+            font-size: 14px;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .warning-box ul {
+            margin: 0;
+            padding-left: 20px;
+            color: #856404;
+            font-size: 13px;
+        }
+
+        .warning-box li { margin: 4px 0; }
+
         .form-container {
             background: white;
             padding: 30px;
@@ -48,6 +72,7 @@
             padding-bottom: 10px; border-bottom: 2px solid #667eea;
         }
         .form-section.optional h2 { border-bottom-color: #95a5a6; }
+        .form-section.subranges h2 { border-bottom-color: #e74c3c; }
 
         .form-group { margin-bottom: 20px; }
         .form-group label {
@@ -96,31 +121,132 @@
         .message.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
         .message.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
 
-        .ranges-list {
-            background: #f8f9fa; padding: 15px; border-radius: 5px; margin-top: 10px;
+        /* --- Table d'édition des sous-ranges --- */
+        .subranges-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            background: white;
+            border-radius: 5px;
+            overflow: hidden;
         }
-        .range-item {
-            display: flex; align-items: center; padding: 8px; margin: 5px 0;
-            background: white; border-radius: 3px; font-size: 13px;
-        }
-        .range-color { width: 20px; height: 20px; border-radius: 3px; margin-right: 10px; }
-        .range-name { font-weight: 600; color: #333; flex: 1; }
-        .range-count { color: #666; font-size: 12px; }
 
-        /* --- Ajouts pour titre/slug & chips résumé --- */
+        .subranges-table thead {
+            background: #f8f9fa;
+        }
+
+        .subranges-table th {
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #333;
+            font-size: 13px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .subranges-table td {
+            padding: 12px;
+            border-bottom: 1px solid #e0e0e0;
+            font-size: 13px;
+        }
+
+        .subranges-table tbody tr:hover {
+            background: #f8f9fa;
+        }
+
+        .range-color-cell {
+            width: 40px;
+        }
+
+        .range-color-indicator {
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            border: 2px solid #e0e0e0;
+        }
+
+        .range-name-cell {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .range-hands-cell {
+            color: #666;
+            text-align: center;
+            width: 100px;
+        }
+
+        .range-label-cell {
+            width: 200px;
+        }
+
+        .range-label-select {
+            width: 100%;
+            padding: 8px;
+            border: 2px solid #e0e0e0;
+            border-radius: 4px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: border-color 0.3s;
+        }
+
+        .range-label-select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .range-label-select.modified {
+            border-color: #e74c3c;
+            background: #fff5f5;
+        }
+
         .badges, .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
         .badge, .chip {
             font-size: 12px; font-weight: 600; padding: 6px 10px; border-radius: 999px;
             background: #eef2ff; color: #334155; border: 1px solid #e2e8f0;
         }
-        .badge--key { background: #e6fffa; color: #134e4a; border-color: #99f6e4; }
         .slug-row { display: flex; align-items: center; gap: 8px; }
         .copy-btn {
             padding: 6px 10px; font-size: 12px; border: 1px solid #e2e8f0; border-radius: 6px;
             background: white; cursor: pointer;
         }
-        .copy-btn:hover { background: #f8fafc; }
+        .copy-btn {
+    padding: 8px 14px;
+    font-size: 13px;
+    border: 1px solid #667eea;
+    border-radius: 6px;
+    background: white;
+    color: #667eea;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+.copy-btn:hover {
+    background: #667eea;
+    color: white;
+}
+.copy-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
         .small-dim { font-size: 12px; color: #666; }
+
+        .help-text {
+            font-size: 12px;
+            color: #666;
+            margin-top: 8px;
+            font-style: italic;
+        }
+
+        .modified-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #e74c3c;
+            margin-left: 8px;
+        }
     </style>
 </head>
 <body>
@@ -133,21 +259,22 @@
                 <p><strong>Nom original :</strong> <span id="original-name">-</span></p>
                 <p><strong>Ranges :</strong> <span id="range-count">0</span></p>
 
-                <!-- Ajouts : titre humain, slug + copier, résumé sous-ranges -->
                 <p><strong>Titre :</strong> <span id="human-title">—</span></p>
                 <p class="slug-row">
-                  <strong>Slug :</strong> <code id="slug">—</code>
-                  <button type="button" class="copy-btn" onclick="copySlug()">Copier</button>
-                </p>
+  <strong>Slug :</strong> <code id="slug">—</code>
+  <button type="button" class="copy-btn" id="rename-btn" onclick="renameFile()">
+    Renommer le fichier
+  </button>
+</p>
                 <div>
                   <strong>Résumé sous-ranges :</strong>
                   <div class="chips" id="subranges-summary">
                     <span class="small-dim">Aucun sous-range détecté</span>
                   </div>
                 </div>
-
-                <div class="ranges-list" id="ranges-list"></div>
             </div>
+
+            <div id="warnings-container"></div>
         </div>
 
         <div class="form-container">
@@ -244,6 +371,29 @@
                     </div>
                 </div>
 
+                <!-- NOUVEAU : Section validation sous-ranges -->
+                <div class="form-section subranges">
+                    <h2>🎯 Classification des sous-ranges <span id="modified-count"></span></h2>
+                    <p class="help-text">
+                        Vérifiez et corrigez si nécessaire les labels de chaque sous-range.
+                        Les modifications sont indiquées en rouge.
+                    </p>
+
+                    <table class="subranges-table" id="subranges-table">
+                        <thead>
+                            <tr>
+                                <th></th>
+                                <th>Nom du range</th>
+                                <th>Mains</th>
+                                <th>Classification</th>
+                            </tr>
+                        </thead>
+                        <tbody id="subranges-tbody">
+                            <!-- Rempli dynamiquement -->
+                        </tbody>
+                    </table>
+                </div>
+
                 <!-- Checkbox pour mise à jour JSON -->
                 <div class="form-group" style="margin-top: 20px; padding-top: 20px; border-top: 2px solid #e0e0e0;">
                     <label style="display: flex; align-items: center; cursor: pointer;">
@@ -279,22 +429,10 @@
             'HU': ['BTN', 'BB']
         };
 
-        // Labels canons lisibles
-        const LABELS = {
-          OPEN: "Open",
-          CALL: "Call / Complete",
-          R3_VALUE: "3bet Value",
-          R3_BLUFF: "3bet Bluff",
-          R4_VALUE: "4bet Value",
-          R4_BLUFF: "4bet Bluff",
-          ISO_VALUE: "Iso Value",
-          ISO_BLUFF: "Iso Bluff",
-          CHECK: "Check",
-          UNKNOWN: "Autre"
-        };
-
         let contextId = null;
         let contextData = null;
+        let modifiedLabels = {}; // Track des modifications {range_id: new_label}
+        let originalLabels = {}; // Labels d'origine pour comparaison
 
         // Charger les données du contexte
         async function loadContext() {
@@ -316,12 +454,88 @@
                 }
 
                 contextData = data;
+
+                // Stocker les labels originaux
+                (data.ranges || []).forEach(r => {
+                    originalLabels[r.id] = r.label_canon;
+                });
+
                 displayContextInfo(data);
+                displayWarnings(data.warnings || []);
                 prefillForm(data);
+                renderSubrangesTable(data.ranges || [], data.available_labels || {});
+                checkFileExists(data.file_path);
             } catch (error) {
                 showMessage('Erreur lors du chargement du contexte', 'error');
                 console.error(error);
             }
+        }
+    async function checkFileExists(filePath) {
+    try {
+        const response = await fetch('/api/orphans/check');
+        const data = await response.json();
+
+        const isOrphan = data.orphans.some(o => o.context_id === contextId);
+
+        if (isOrphan) {
+            const warningHtml = `
+                <div class="message error" style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>⚠️ <strong>Fichier JSON manquant</strong> - Le fichier source n'existe plus. Certaines fonctionnalités sont limitées.</span>
+                    <div style="display: flex; gap: 10px;">
+                        <button onclick="rebuildJSON()" class="btn btn-warning" style="padding: 8px 16px; font-size: 13px;">
+                            🔄 Reconstruire
+                        </button>
+                        <button onclick="window.location.href='/orphans'" class="btn btn-secondary" style="padding: 8px 16px; font-size: 13px;">
+                            Gérer les orphelins
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.getElementById('message-container').innerHTML = warningHtml;
+        }
+    } catch (error) {
+        console.error('Erreur check fichier:', error);
+    }
+}
+
+async function rebuildJSON() {
+    if (!confirm('Reconstruire le fichier JSON depuis la base de données ?')) return;
+
+    try {
+        const response = await fetch(`/api/orphans/rebuild/${contextId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            showMessage('✅ JSON reconstruit avec succès', 'success');
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showMessage(`❌ ${result.message}`, 'error');
+        }
+    } catch (error) {
+        showMessage('Erreur lors de la reconstruction', 'error');
+    }
+}
+        // Afficher les avertissements
+        function displayWarnings(warnings) {
+            const container = document.getElementById('warnings-container');
+            if (!warnings || warnings.length === 0) {
+                container.innerHTML = '';
+                return;
+            }
+
+            const html = `
+                <div class="warning-box">
+                    <h3>⚠️ Incohérences détectées</h3>
+                    <ul>
+                        ${warnings.map(w => `<li>${w}</li>`).join('')}
+                    </ul>
+                </div>
+            `;
+            container.innerHTML = html;
         }
 
         // Afficher les informations du contexte
@@ -330,77 +544,206 @@
             document.getElementById('original-name').textContent = data.original_name || '-';
             document.getElementById('range-count').textContent = (data.ranges && data.ranges.length) || 0;
 
-            // Nouveaux champs (safe si absents)
             const ht = document.getElementById('human-title');
             const sl = document.getElementById('slug');
             if (ht) ht.textContent = data.human_title || '—';
             if (sl) sl.textContent = data.slug || '—';
 
-            // Résumé des sous-ranges normalisés
             renderSummaryChips(data.subranges_summary || {});
+        }
 
-            // Liste détaillée des ranges (avec label canon)
-            const rangesList = document.getElementById('ranges-list');
-            rangesList.innerHTML = '';
+        // Rendu de la table des sous-ranges
+        function renderSubrangesTable(ranges, availableLabels) {
+            const tbody = document.getElementById('subranges-tbody');
+            tbody.innerHTML = '';
 
-            (data.ranges || []).forEach(range => {
-                const canon = range.label_canon || 'UNKNOWN';
-                const label = LABELS[canon] || canon;
-                const color = range.color || '#e2e8f0';
+            if (!ranges || ranges.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:20px; color:#999;">Aucun sous-range à classifier</td></tr>';
+                return;
+            }
 
-                const item = document.createElement('div');
-                item.className = 'range-item';
-                item.innerHTML = `
-                    <div class="range-color" style="background-color: ${color}"></div>
-                    <span class="range-name">${range.name || range.action || '(sans nom)'}
-                      <span class="small-dim">· ${label}</span>
-                    </span>
-                    <span class="range-count">${range.hand_count || 0} mains</span>
-                `;
-                rangesList.appendChild(item);
+            ranges.forEach(range => {
+                const tr = document.createElement('tr');
+                tr.dataset.rangeId = range.id;
+
+                // Couleur
+                const colorCell = document.createElement('td');
+                colorCell.className = 'range-color-cell';
+                colorCell.innerHTML = `<div class="range-color-indicator" style="background-color: ${range.color || '#e2e8f0'}"></div>`;
+
+                // Nom
+                const nameCell = document.createElement('td');
+                nameCell.className = 'range-name-cell';
+                nameCell.textContent = range.name || range.action || '(sans nom)';
+
+                // Nombre de mains
+                const handsCell = document.createElement('td');
+                handsCell.className = 'range-hands-cell';
+                handsCell.textContent = range.hand_count || 0;
+
+                // Select de classification
+                const labelCell = document.createElement('td');
+                labelCell.className = 'range-label-cell';
+
+                const select = document.createElement('select');
+                select.className = 'range-label-select';
+                select.dataset.rangeId = range.id;
+                select.dataset.originalLabel = range.label_canon;
+
+                // Ajouter les options
+                Object.entries(availableLabels).forEach(([value, label]) => {
+                    const option = document.createElement('option');
+                    option.value = value;
+                    option.textContent = label;
+                    if (value === range.label_canon) {
+                        option.selected = true;
+                    }
+                    select.appendChild(option);
+                });
+
+                // Event listener pour détecter les changements
+                select.addEventListener('change', (e) => {
+                    const rangeId = parseInt(e.target.dataset.rangeId);
+                    const originalLabel = e.target.dataset.originalLabel;
+                    const newLabel = e.target.value;
+
+                    if (newLabel !== originalLabel) {
+                        modifiedLabels[rangeId] = newLabel;
+                        e.target.classList.add('modified');
+                    } else {
+                        delete modifiedLabels[rangeId];
+                        e.target.classList.remove('modified');
+                    }
+
+                    updateModifiedCount();
+                });
+
+                labelCell.appendChild(select);
+
+                tr.appendChild(colorCell);
+                tr.appendChild(nameCell);
+                tr.appendChild(handsCell);
+                tr.appendChild(labelCell);
+
+                tbody.appendChild(tr);
             });
+        }
+
+        // Mettre à jour le compteur de modifications
+        function updateModifiedCount() {
+            const count = Object.keys(modifiedLabels).length;
+            const indicator = document.getElementById('modified-count');
+
+            if (count > 0) {
+                indicator.innerHTML = `<span class="modified-indicator"></span> ${count} modifié${count > 1 ? 's' : ''}`;
+            } else {
+                indicator.innerHTML = '';
+            }
         }
 
         // Rendu des chips du résumé
         function renderSummaryChips(summary) {
-          const box = document.getElementById('subranges-summary');
-          if (!box) return;
-          box.innerHTML = '';
-          const keys = Object.keys(summary || {});
-          if (keys.length === 0) {
-            box.innerHTML = '<span class="small-dim">Aucun sous-range détecté</span>';
-            return;
-          }
-          keys.forEach(key => {
-            const chip = document.createElement('span');
-            chip.className = 'chip';
-            const label = LABELS[key] || key;
-            chip.textContent = `${label} · ${summary[key]}`;
-            box.appendChild(chip);
-          });
+            const box = document.getElementById('subranges-summary');
+            if (!box) return;
+            box.innerHTML = '';
+            const keys = Object.keys(summary || {});
+            if (keys.length === 0) {
+                box.innerHTML = '<span class="small-dim">Aucun sous-range détecté</span>';
+                return;
+            }
+
+            const labels = contextData?.available_labels || {};
+            keys.forEach(key => {
+                const chip = document.createElement('span');
+                chip.className = 'chip';
+                const label = labels[key] || key;
+                chip.textContent = `${label} · ${summary[key]}`;
+                box.appendChild(chip);
+            });
         }
 
         // Copier le slug
-        function copySlug() {
-          const slugEl = document.getElementById('slug');
-          if (!slugEl || !slugEl.textContent) return;
-          navigator.clipboard.writeText(slugEl.textContent.trim()).then(() => {
-            showMessage('Slug copié dans le presse-papiers ✅', 'success');
-          });
+        // Renommer le fichier selon le slug
+async function renameFile() {
+    const slugEl = document.getElementById('slug');
+    const slug = slugEl.textContent.trim();
+
+    if (!slug || slug === '—') {
+        showMessage('Slug non disponible', 'error');
+        return;
+    }
+
+    const btn = document.getElementById('rename-btn');
+    const originalText = btn.textContent;
+
+    // Confirmation
+    const newFilename = `${slug}.json`;
+    if (!confirm(`Renommer le fichier en "${newFilename}" ?\n\nCette action est irréversible.`)) {
+        return;
+    }
+
+    // Désactiver le bouton pendant l'opération
+    btn.disabled = true;
+    btn.textContent = 'Renommage...';
+
+    try {
+        const response = await fetch(`/api/validation/rename-file/${contextId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ slug })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            showMessage(`✅ ${result.message}`, 'success');
+
+            // Mettre à jour l'affichage du nom de fichier
+            if (result.new_name) {
+                document.getElementById('filename').textContent = result.new_name;
+            }
+
+            // Changer le bouton en "Déjà renommé"
+            btn.textContent = '✓ Fichier renommé';
+            btn.style.background = '#10b981';
+            btn.style.color = 'white';
+
+        } else {
+            showMessage(`❌ ${result.message}`, 'error');
+            btn.disabled = false;
+            btn.textContent = originalText;
         }
+
+    } catch (error) {
+        console.error('Erreur renommage:', error);
+        showMessage('Erreur lors du renommage', 'error');
+        btn.disabled = false;
+        btn.textContent = originalText;
+    }
+}
 
         // Pré-remplir le formulaire avec les données existantes
         function prefillForm(data) {
-            if (data.table_format) selectOption('table-format', data.table_format);
-            if (data.hero_position) selectOption('hero-position', data.hero_position);
-            if (data.primary_action) selectOption('primary-action', data.primary_action);
-            if (data.vs_position) selectOption('vs-position', data.vs_position);
-            if (data.stack_depth) document.getElementById('stack-depth').value = data.stack_depth;
-            if (data.game_type) document.getElementById('game-type').value = data.game_type;
-            if (data.variant) document.getElementById('variant').value = data.variant;
-            if (data.sizing) document.getElementById('sizing').value = data.sizing;
-            if (data.stakes) document.getElementById('stakes').value = data.stakes;
-        }
+    if (data.table_format) selectOption('table-format', data.table_format);
+    if (data.hero_position) selectOption('hero-position', data.hero_position);
+
+    // Action principale - gestion spéciale
+    if (data.primary_action) {
+        document.querySelectorAll('.action-btn').forEach(btn => {
+            if (btn.dataset.value === data.primary_action) {
+                btn.classList.add('selected');
+                document.getElementById('primary-action').value = data.primary_action;
+            }
+        });
+    }
+
+    if (data.vs_position) selectOption('vs-position', data.vs_position);
+    if (data.stack_depth) document.getElementById('stack-depth').value = data.stack_depth;
+    if (data.game_type) document.getElementById('game-type').value = data.game_type;
+    if (data.variant) document.getElementById('variant').value = data.variant;
+    if (data.sizing) document.getElementById('sizing').value = data.sizing;
+    if (data.stakes) document.getElementById('stakes').value = data.stakes;
+}
 
         // Sélectionner une option dans les boutons
         function selectOption(fieldId, value) {
@@ -488,21 +831,30 @@
         });
 
         // Soumettre le formulaire
-        document.getElementById('validation-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
+document.getElementById('validation-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
 
-            const formData = {
-                table_format: document.getElementById('table-format').value,
-                hero_position: document.getElementById('hero-position').value,
-                primary_action: document.getElementById('primary-action').value,
-                vs_position: document.getElementById('vs-position').value,
-                stack_depth: document.getElementById('stack-depth').value,
-                game_type: document.getElementById('game-type').value,
-                variant: document.getElementById('variant').value,
-                sizing: document.getElementById('sizing').value,
-                stakes: document.getElementById('stakes').value,
-                update_json: document.getElementById('update-json').checked
-            };
+    // Collecter TOUS les labels des sous-ranges (pas seulement les modifiés)
+    const allRangeLabels = {};
+    document.querySelectorAll('.range-label-select').forEach(select => {
+        const rangeId = parseInt(select.dataset.rangeId);
+        const label = select.value;
+        allRangeLabels[rangeId] = label;
+    });
+
+    const formData = {
+        table_format: document.getElementById('table-format').value,
+        hero_position: document.getElementById('hero-position').value,
+        primary_action: document.getElementById('primary-action').value,
+        vs_position: document.getElementById('vs-position').value,
+        stack_depth: document.getElementById('stack-depth').value,
+        game_type: document.getElementById('game-type').value,
+        variant: document.getElementById('variant').value,
+        sizing: document.getElementById('sizing').value,
+        stakes: document.getElementById('stakes').value,
+        update_json: document.getElementById('update-json').checked,
+        range_labels: Object.keys(allRangeLabels).length > 0 ? allRangeLabels : null  // Changé ici
+    };
 
             if (!formData.table_format || !formData.hero_position || !formData.primary_action) {
                 showMessage('Veuillez remplir tous les champs obligatoires', 'error');

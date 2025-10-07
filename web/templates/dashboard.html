@@ -366,6 +366,28 @@
     </style>
 </head>
 <body>
+
+<div id="orphan-banner" style="display: none; background: #fff3cd; border-bottom: 3px solid #ffc107; padding: 15px; text-align: center;">
+    <span style="color: #856404; font-weight: 600;">
+        ⚠️ <span id="orphan-count">0</span> fichier(s) JSON manquant(s)
+    </span>
+    <button onclick="window.location.href='/orphans'" style="margin-left: 15px; padding: 8px 20px; background: #ffc107; border: none; border-radius: 5px; cursor: pointer; font-weight: 600;">
+        Gérer maintenant
+    </button>
+</div>
+
+<script>
+// Vérifier les orphelins au chargement
+fetch('/api/orphans/check')
+    .then(r => r.json())
+    .then(data => {
+        if (data.count > 0) {
+            document.getElementById('orphan-count').textContent = data.count;
+            document.getElementById('orphan-banner').style.display = 'block';
+        }
+    });
+</script>
+
     <div class="container">
         <div id="status-indicator" class="status-indicator"></div>
 

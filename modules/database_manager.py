@@ -80,16 +80,17 @@ class DatabaseManager:
                     );
 
                     CREATE TABLE IF NOT EXISTS ranges (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    context_id INTEGER NOT NULL,
-    range_key TEXT NOT NULL,
-    name TEXT NOT NULL,
-    action TEXT,
-    color TEXT,
-    quiz_action TEXT,  
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (context_id) REFERENCES range_contexts (id) ON DELETE CASCADE
-);
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        context_id INTEGER NOT NULL,
+                        range_key TEXT NOT NULL,
+                        name TEXT NOT NULL,
+                        action TEXT,
+                        label_canon TEXT,
+                        color TEXT,
+                        quiz_action TEXT,  
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (context_id) REFERENCES range_contexts (id) ON DELETE CASCADE
+                    );
 
                     CREATE TABLE IF NOT EXISTS range_hands (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -106,6 +107,8 @@ class DatabaseManager:
                     CREATE INDEX IF NOT EXISTS idx_ranges_context_id ON ranges(context_id);
                     CREATE INDEX IF NOT EXISTS idx_contexts_needs_validation ON range_contexts(needs_validation);
                     CREATE INDEX IF NOT EXISTS idx_contexts_quiz_ready ON range_contexts(quiz_ready);
+                    CREATE INDEX IF NOT EXISTS idx_ranges_label_canon ON ranges(label_canon);
+                    CREATE INDEX IF NOT EXISTS idx_ranges_context_label ON ranges(context_id, label_canon);
                 """)
 
                 print(f"[DB] Base de données initialisée: {self.db_path}")
@@ -113,7 +116,6 @@ class DatabaseManager:
         except Exception as e:
             print(f"[DB] Erreur initialisation base: {e}")
             raise
-
     def check_file_exists(self, filename: str, file_hash: str) -> bool:
         """Vérifie si un fichier a déjà été importé avec le même hash"""
         with sqlite3.connect(self.db_path) as conn:
