@@ -1,10 +1,10 @@
 # Poker Training - Système d'entraînement de ranges
 
-Interface web locale pour l'entraînement de ranges de poker avec pipeline intégré, validation intelligente et génération de quiz.
+Interface web locale pour l'entraînement de ranges de poker avec pipeline intégré, validation intelligente et **système de quiz interactif**.
 
 ## 🎯 Vue d'ensemble
 
-**poker-training** est un système complet permettant d'importer, valider et utiliser des ranges de poker pour l'entraînement. Les ranges sont créées via l'[éditeur de ranges](https://site2wouf.fr/poker-range-editor.php) puis automatiquement analysées, validées et préparées pour le quiz.
+**poker-training** est un système complet permettant d'importer, valider et utiliser des ranges de poker pour l'entraînement. Les ranges sont créées via l'[éditeur de ranges](https://site2wouf.fr/poker-range-editor.php) puis automatiquement analysées, validées et utilisées dans un quiz interactif.
 
 ## ✨ Fonctionnalités principales
 
@@ -22,6 +22,15 @@ Interface web locale pour l'entraînement de ranges de poker avec pipeline inté
 - **Mise à jour JSON source** : synchronisation automatique des validations
 - **Renommage automatique** : normalisation des noms de fichiers selon le slug
 
+### Système de Quiz Interactif ✨ NOUVEAU
+- **Configuration flexible** : sélection des contextes et nombre de questions
+- **Questions simples** : action principale (ex: "Avec AJs en UTG, que faites-vous ?")
+- **Questions conditionnelles** : réponses aux réactions adverses (ex: "Vous open JJ, CO 3bet...")
+- **Interface immersive** : table de poker virtuelle avec affichage des cartes
+- **Boutons dynamiques** : FOLD, CALL, RAISE, 4-BET, etc. selon le contexte
+- **Feedback immédiat** : indication correcte/incorrecte avec explications
+- **Statistiques détaillées** : score, progression, résultats finaux
+
 ### Architecture hiérarchique des ranges
 - **Range principale** : Action initiale (open, defense, 3bet, etc.)
 - **Sous-ranges** : Réponses aux réactions adverses (call, 4bet, fold, etc.)
@@ -30,6 +39,7 @@ Interface web locale pour l'entraînement de ranges de poker avec pipeline inté
 ### Interface web moderne
 - Dashboard temps réel avec statistiques
 - Interface de validation interactive
+- Système de quiz avec progression
 - Gestion des erreurs avec feedback visuel
 - API REST complète
 
@@ -75,6 +85,9 @@ python app.py
 
 # 5. Valider les contextes nécessitant validation
 # http://localhost:5000/validate?id=<context_id>
+
+# 6. Lancer le quiz !
+# Cliquer sur "🎯 Lancer le Quiz" dans le dashboard
 ```
 
 ## 🏗️ Architecture
@@ -90,7 +103,9 @@ poker-training/
 │   ├── app.py                    # Serveur Flask + API REST
 │   └── templates/
 │       ├── dashboard.html        # Dashboard principal
-│       └── validate_context.html # Interface de validation
+│       ├── validate_context.html # Interface de validation
+│       ├── quiz_setup.html       # Configuration du quiz
+│       └── quiz.html             # Interface du quiz
 ├── modules/
 │   ├── json_parser.py            # Parsing des fichiers JSON
 │   ├── name_standardizer.py      # Standardisation des noms
@@ -193,7 +208,8 @@ Fichier JSON : "5max_utg_open.json"
    - Variante : NLHE
    - Stack depth : 100bb
 4. **Calcul de confiance** : Score basé sur la qualité de la détection
-5. **Sauvegarde** : Persistance en base de données
+5. **Vérification quiz_ready** : Le contexte est prêt si toutes les ranges ont des `label_canon` valides
+6. **Sauvegarde** : Persistance en base de données
 
 ### Exemple de détection
 
@@ -204,8 +220,9 @@ Détection automatique :
 - table_format: "5max"
 - hero_position: "UTG"  
 - primary_action: "open"
-- confidence_score: 85%
-- needs_validation: 1 (si < 80%)
+- confidence_score: 100%
+- quiz_ready: 1 (si tous les label_canon sont définis)
+- needs_validation: 0
 ```
 
 ## ✅ Système de validation
@@ -240,17 +257,21 @@ Accessible via `http://localhost:5000/validate?id=<context_id>`
    - 📁 **Renommer le fichier** : Normalise selon le slug
    - 🗑️ **Marquer non exploitable** : Exclut du quiz
 
-### Score de confiance
+### Score de confiance et quiz_ready
 
 ```python
 # Calcul automatique
-if tous_les_sous_ranges_classés:
+if range_principale_sans_label OR sous_ranges_sans_labels:
+    quiz_ready = 0
+    needs_validation = 1
+elif tous_les_labels_définis:
+    quiz_ready = 1
+    needs_validation = 0
     confidence_score = 100%
-    quiz_ready = True
 else:
-    completed = sous_ranges_classés / total_sous_ranges
+    completed = sous_ranges_ok / total_sous_ranges
     confidence_score = completed * 100
-    needs_validation = True
+    needs_validation = 1
 ```
 
 ### Slug et renommage
@@ -265,6 +286,99 @@ Exemple : nlhe-5max-utg-open-100bb
 Renommage automatique :
 ```
 "5max open utg.json" → "nlhe-5max-utg-open-100bb.json"
+```
+
+## 🎮 Système de Quiz Interactif
+
+### Configuration du Quiz
+
+**Page de setup** : `http://localhost:5000/quiz-setup`
+
+1. **Sélection des contextes** : Checkbox pour chaque contexte `quiz_ready`
+2. **Nombre de questions** : Slider de 5 à 50 questions
+3. **Lancement** : Génération instantanée des questions
+
+### Types de Questions
+
+#### Question Simple (60%)
+```
+Contexte : Table 5max, vous êtes UTG avec 100bb
+Main affichée : AJs
+Question : Vous avez AJs.
+
+Boutons disponibles : [OPEN] [FOLD] [CALL]
+Réponse correcte : OPEN (range principale)
+```
+
+#### Question Conditionnelle (40%)
+```
+Contexte : Table 5max, vous êtes UTG avec 100bb
+Main affichée : JJ
+Question : Vous ouvrez avec JJ, un adversaire relance.
+
+Boutons disponibles : [CALL] [4-BET] [FOLD]
+Réponse correcte : CALL (sous-range 2)
+```
+
+### Interface du Quiz
+
+- **Table de poker virtuelle** : Fond vert réaliste avec effet feutre
+- **Affichage des cartes** : Animation de distribution des cartes
+- **Contexte visible** : Table format, position, stack depth
+- **Boutons d'action** : 
+  - Dynamiques selon les options disponibles
+  - Couleurs distinctes (FOLD rouge, CALL bleu, RAISE orange, etc.)
+  - Désactivés après réponse
+- **Feedback immédiat** :
+  - ✅ Correct : fond vert avec encouragement
+  - ❌ Incorrect : fond rouge avec bonne réponse
+- **Progression** :
+  - Barre de progression visuelle
+  - Score en temps réel (bonnes/total)
+  - Numéro de question actuelle
+
+### Écran de Résultats
+
+- **Score final** : Pourcentage de réussite (grande taille)
+- **Statistiques détaillées** :
+  - Total de questions répondues
+  - Nombre de réponses correctes
+  - Nombre de réponses incorrectes
+- **Actions** :
+  - 🔄 Recommencer (nouveau quiz)
+  - 🏠 Retour au dashboard
+
+### Génération des Questions
+
+Le système génère intelligemment les questions :
+
+```python
+# Algorithme de génération
+for i in range(question_count):
+    context = random.choice(selected_contexts)
+    
+    # 60% questions simples, 40% conditionnelles
+    if random() < 0.6 OR pas_de_sous_ranges:
+        question = generate_simple_question()
+        # Utilise la range principale (range_key='1')
+    else:
+        question = generate_conditional_question()
+        # Utilise une sous-range aléatoire (range_key>'1')
+    
+    # Filtrage automatique des questions invalides
+    if question.has_valid_label_canon:
+        add_to_quiz(question)
+```
+
+### Normalisation des Actions
+
+Les actions sont normalisées pour éviter les doublons :
+
+```python
+R3_VALUE, R3_BLUFF → 3BET
+R4_VALUE, R4_BLUFF → 4BET
+R5_ALLIN → ALLIN
+ISO_VALUE, ISO_BLUFF → ISO
 ```
 
 ## 📊 API REST
@@ -288,8 +402,10 @@ Renommage automatique :
 - `POST /api/validation/rename-file/<id>` : Renomme selon le slug
 - `GET /api/validation/stats` : Stats de validation
 
-#### Quiz (en développement)
+#### Quiz
 - `GET /api/quiz/check` : Vérifie les contextes prêts
+- `GET /api/quiz/available-contexts` : Liste des contextes `quiz_ready`
+- `GET /api/quiz/generate` : Génère les questions du quiz
 
 ### Exemple d'utilisation
 
@@ -309,44 +425,10 @@ POST /api/validation/validate/1
     },
     "update_json": true
 }
-```
 
-## 🎮 Génération de quiz (à venir)
-
-### Vue SQL optimisée
-
-```sql
--- Vue prête pour le quiz
-CREATE VIEW v_quiz_ranges_detailed AS
-SELECT 
-    r.id, r.name, r.label_canon,
-    rc.display_name, rc.table_format, rc.hero_position,
-    rh.hand
-FROM ranges r
-JOIN range_contexts rc ON r.context_id = rc.id
-JOIN range_hands rh ON r.id = rh.range_id
-WHERE rc.quiz_ready = 1;
-```
-
-### Exemples de questions
-
-#### Question simple
-```
-Contexte : 5max UTG Open 100bb
-Main : AJs
-Question : Quelle action ?
-Réponses : A) Open  B) Fold
-Réponse correcte : A (label_canon = OPEN)
-```
-
-#### Question conditionnelle
-```
-Contexte : 5max UTG Open 100bb
-Main : JJ
-Situation : Vous open JJ, CO 3bet.
-Question : Quelle action ?
-Réponses : A) Call  B) 4bet Value  C) 4bet Bluff  D) Fold
-Réponse correcte : A (label_canon = CALL)
+# Générer un quiz
+GET /api/quiz/generate?contexts=1,2,3&count=10
+→ Retourne 10 questions aléatoires depuis les contextes 1, 2 et 3
 ```
 
 ## 🔧 Format JSON supporté
@@ -356,7 +438,7 @@ Réponse correcte : A (label_canon = CALL)
 ```json
 {
   "version": "1.0",
-  "timestamp": "2025-10-06T14:41:30.166Z",
+  "timestamp": "2025-10-09T14:41:30.166Z",
   "source": {
     "url": "https://site2wouf.fr/poker-range-editor.php",
     "tool": "Poker Range Grid"
@@ -372,16 +454,20 @@ Réponse correcte : A (label_canon = CALL)
         "name": "call",
         "color": "#002aff",
         "label_canon": "CALL"
+      },
+      "3": {
+        "name": "4bet_value",
+        "color": "#ff0000",
+        "label_canon": "R4_VALUE"
       }
     },
     "values": {
-      "AA": [1, 2],
-      "KK": [1, 2],
+      "AA": [1, 2, 3],
+      "KK": [1, 2, 3],
       "AKs": [1, 2],
-      "AQs": [1, 2],
-      "JJ": [2]
+      "JJ": [1, 2]
     },
-    "maxIndex": 2
+    "maxIndex": 3
   },
   "metadata": {
     "table_format": "5max",
@@ -397,9 +483,11 @@ Réponse correcte : A (label_canon = CALL)
 ### Sections du JSON
 
 - **source** : Métadonnées de l'outil source
-- **data.ranges** : Définition des ranges avec labels
+- **data.ranges** : Définition des ranges avec **label_canon obligatoire**
 - **data.values** : Affectation des mains aux ranges
 - **metadata** : Métadonnées du contexte (ajoutées lors de la validation)
+
+⚠️ **Important** : Pour qu'un contexte soit `quiz_ready=1`, **tous les label_canon** doivent être définis dans le JSON ou via l'interface de validation.
 
 ## 🧪 Tests et debugging
 
@@ -439,7 +527,16 @@ print(cursor.fetchall())
 cursor.execute("""
     SELECT label_canon, COUNT(*) 
     FROM ranges 
+    WHERE label_canon IS NOT NULL
     GROUP BY label_canon
+""")
+print(cursor.fetchall())
+
+# Vérifier les contextes prêts pour le quiz
+cursor.execute("""
+    SELECT id, display_name, quiz_ready
+    FROM range_contexts
+    WHERE quiz_ready = 1
 """)
 print(cursor.fetchall())
 ```
@@ -450,10 +547,11 @@ print(cursor.fetchall())
 1. Créer ranges dans l'éditeur web
    ↓
 2. Exporter JSON → data/ranges/
+   (Inclure les label_canon dans le JSON pour éviter la validation manuelle)
    ↓
 3. Lancer Import Pipeline
    ↓
-4. Valider les contextes (needs_validation=1)
+4. Si needs_validation=1, valider les contextes:
    - Corriger métadonnées si nécessaire
    - Classifier tous les sous-ranges
    - Renommer fichier selon slug
@@ -461,39 +559,59 @@ print(cursor.fetchall())
    ↓
 5. Contextes prêts (quiz_ready=1)
    ↓
-6. Générer et utiliser le quiz (à venir)
+6. Lancer le quiz !
+   - Sélectionner contextes
+   - Choisir nombre de questions
+   - S'entraîner
+   - Consulter les résultats
 ```
 
 ## 🎯 État du développement
 
 ### ✅ Fonctionnalités opérationnelles
 
-- Pipeline d'import automatique
-- Standardisation intelligente
-- Base de données complète avec index
-- Interface web responsive
-- Système de validation complet
-- Classification des sous-ranges
-- Détection d'incohérences
-- Score de confiance automatique
-- Mise à jour JSON synchronisée
-- Renommage automatique des fichiers
+- ✅ Pipeline d'import automatique
+- ✅ Standardisation intelligente
+- ✅ Base de données complète avec index
+- ✅ Interface web responsive
+- ✅ Système de validation complet
+- ✅ Classification des sous-ranges
+- ✅ Détection d'incohérences
+- ✅ Score de confiance automatique
+- ✅ Mise à jour JSON synchronisée
+- ✅ Renommage automatique des fichiers
+- ✅ **Système de quiz interactif complet**
+- ✅ **Questions simples et conditionnelles**
+- ✅ **Interface immersive type table de poker**
+- ✅ **Statistiques et résultats détaillés**
 
-### 🚧 En développement
+### 🚧 Améliorations prévues
 
-- Générateur de quiz interactif
-- Statistiques de progression
-- Système de révision espacée
-- Export des résultats
-- Support formats additionnels (PIO, GTO+)
+#### Quiz
+- 🔄 **Éviter les doublons** : Ne pas poser deux fois la même main
+- 🎯 **Questions à tiroirs** : Décomposer les questions conditionnelles en 2 étapes :
+  - Étape 1 : Action principale (0.5 point)
+  - Étape 2 : Réponse à la réaction (0.5 point)
+  - Exemple : "Vous avez JJ en UTG" → "Vous open" → "CO 3bet, que faites-vous ?"
+- ⚠️ **Validation de compatibilité** : Empêcher la sélection de contextes incompatibles (ex: défense BB vs open UTG + open UTG)
+
+#### Fonctionnalités générales
+- 📊 Statistiques de progression par contexte
+- 🔁 Système de révision espacée
+- 📤 Export des résultats en CSV/JSON
+- 📱 Interface mobile optimisée
+- 🎨 Thèmes personnalisables
 
 ### 🔮 Roadmap
 
-- Interface mobile responsive
-- Mode hors-ligne
+- Support formats additionnels (PIO, GTO+)
+- Mode hors-ligne complet
 - Synchronisation cloud (optionnel)
 - Partage de ranges entre utilisateurs
-- Analytics avancées
+- Analytics avancées avec graphiques
+- Mode entraînement vs mode examen
+- Timer par question (optionnel)
+- Classement et achievements
 
 ## 🤝 Contribution
 
@@ -514,10 +632,11 @@ Projet sous licence libre - voir [LICENSE](LICENSE) pour plus de détails.
 - [Éditeur de ranges web](https://site2wouf.fr/poker-range-editor.php)
 - [Documentation Python](https://docs.python.org/3/)
 - [Flask Documentation](https://flask.palletsprojects.com/)
+- [Repository GitHub](https://github.com/w0uf/poker-training)
 
 ---
 
-**Dernière mise à jour** : 07/10/2025
-**Version** : 2.0 - Système de validation complet opérationnel
+**Dernière mise à jour** : 09/10/2025  
+**Version** : 3.0 - Système de quiz interactif opérationnel
 
 Créé avec ❤️ pour la communauté poker
