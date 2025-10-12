@@ -363,6 +363,23 @@
             color: #C62828;
             border-left: 4px solid #f44336;
         }
+        .btn-quiz {
+    background: linear-gradient(135deg, #9c27b0 0%, #7b1fa2 100%);
+    color: white;
+    border: none;
+    padding: 15px 30px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 15px rgba(156, 39, 176, 0.3);
+}
+
+.btn-quiz:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 25px rgba(156, 39, 176, 0.5);
+}
     </style>
 </head>
 <body>
@@ -399,7 +416,9 @@ fetch('/api/orphans/check')
                 <button id="validation-btn" class="nav-pill validation-pill" style="display: none;">
                     🔧 Valider les contextes (<span id="nav-validation-count">0</span>)
                 </button>
-                <button id="quiz-btn" class="nav-pill">🎯 Quiz</button>
+                <button id="quiz-btn" class="nav-pill btn-quiz" disabled title="Aucun contexte validé">
+    🎯 Lancer le Quiz
+</button>
             </div>
         </div>
 
@@ -471,7 +490,7 @@ fetch('/api/orphans/check')
         function setupActionButtons() {
             document.getElementById('import-btn').addEventListener('click', handleImportPipeline);
             document.getElementById('validation-btn').addEventListener('click', showValidationList);
-            document.getElementById('quiz-btn').addEventListener('click', handleQuiz);
+
         }
 
         function checkValidationSuccess() {
@@ -539,39 +558,48 @@ fetch('/api/orphans/check')
             }
         }
 
-        async function handleQuiz() {
-            showStatus('Vérification de l\'état des données...', 'loading');
-            try {
-                const response = await fetch('/api/quiz/check');
-                if (!response.ok) throw new Error('Erreur vérification quiz');
+async function updateQuizButton() {
+    try {
+        const response = await fetch('/api/quiz/check');
+        const data = await response.json();
 
-                const result = await response.json();
-                if (result.ready) {
-                    showStatus('Redirection vers le quiz...', 'success');
-                    window.location.href = '/quiz';
-                } else {
-                    showStatus('Aucun contexte prêt pour le quiz.', 'error');
-                }
-            } catch (error) {
-                showStatus('Quiz non disponible actuellement', 'error');
-            }
-            setTimeout(hideStatus, 3000);
+        const quizBtn = document.getElementById('quiz-btn');
+        if (!quizBtn) return;
+
+        if (data.ready && data.ready_contexts > 0) {
+            quizBtn.disabled = false;
+            quizBtn.title = `${data.ready_contexts} contexte(s) prêt(s)`;
+            quizBtn.onclick = () => window.location.href = '/quiz-setup';
+        } else {
+            quizBtn.disabled = true;
+            quizBtn.title = 'Aucun contexte validé pour le quiz';
+            quizBtn.onclick = null;
         }
-
-        async function loadDashboard() {
-            if (isLoading) return;
-            isLoading = true;
-
-            try {
-                await loadStats();
-                await loadContexts();
-                await updateValidationButton();
-            } catch (error) {
-                showStatus('Erreur de chargement: ' + error.message, 'error');
-            } finally {
-                isLoading = false;
-            }
+    } catch (error) {
+        console.error('Erreur vérification quiz:', error);
+        const quizBtn = document.getElementById('quiz-btn');
+        if (quizBtn) {
+            quizBtn.disabled = true;
+            quizBtn.title = 'Quiz non disponible';
         }
+    }
+}
+
+     async function loadDashboard() {
+    if (isLoading) return;
+    isLoading = true;
+
+    try {
+        await loadStats();
+        await loadContexts();
+        await updateValidationButton();
+        await updateQuizButton(); // ← AJOUTER CETTE LIGNE
+    } catch (error) {
+        showStatus('Erreur de chargement: ' + error.message, 'error');
+    } finally {
+        isLoading = false;
+    }
+}
 
         async function loadStats() {
             const response = await fetch('/api/debug/db');

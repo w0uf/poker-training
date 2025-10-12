@@ -398,10 +398,10 @@ class ContextValidator:
             conn.close()
 
     def validate_and_update(
-        self,
-        context_id: int,
-        metadata: Dict[str, Optional[str]],
-        range_labels: Optional[Dict[int, str]] = None
+            self,
+            context_id: int,
+            metadata: Dict[str, Optional[str]],
+            range_labels: Optional[Dict[int, str]] = None
     ) -> Tuple[bool, str]:
         """
         Valide et met à jour les métadonnées d'un contexte ET ses sous-ranges.
@@ -447,6 +447,36 @@ class ContextValidator:
                 if not success:
                     conn.rollback()
                     return False, f"Erreur sous-ranges: {msg}"
+
+            # 🆕 Mettre à jour le label_canon de la range principale si primary_action a changé
+            new_primary_action = metadata['primary_action']
+
+            # Récupérer la range principale actuelle
+            cursor.execute("""
+                SELECT name, label_canon 
+                FROM ranges 
+                WHERE context_id = ? AND range_key = '1'
+            """, (context_id,))
+
+            main_range_result = cursor.fetchone()
+            if main_range_result:
+                range_name, current_label = main_range_result
+
+                # Calculer le nouveau label_canon basé sur le primary_action
+                # Import de la fonction depuis database_manager
+                from database_manager import map_name_to_label_canon
+
+                new_label = map_name_to_label_canon(range_name, '1', new_primary_action)
+
+                if new_label and new_label != current_label:
+                    cursor.execute("""
+                        UPDATE ranges 
+                        SET label_canon = ? 
+                        WHERE context_id = ? AND range_key = '1'
+                    """, (new_label, context_id))
+
+                    print(
+                        f"[VALIDATOR] Range principale mise à jour: '{current_label}' → '{new_label}' (primary_action: {new_primary_action})")
 
             # Générer le display_name
             display_name = self._generate_display_name(metadata)
@@ -533,11 +563,12 @@ class ContextValidator:
 
         except Exception as e:
             conn.rollback()
+            import traceback
+            traceback.print_exc()
             return False, f"Erreur lors de la mise à jour : {str(e)}"
 
         finally:
             conn.close()
-
     def _generate_display_name(self, metadata: Dict[str, Optional[str]]) -> str:
         """
         Génère un nom d'affichage depuis les métadonnées validées.

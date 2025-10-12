@@ -12,6 +12,93 @@ from typing import Optional, Dict, List, Any
 from dataclasses import asdict
 from quiz_action_mapper import QuizActionMapper
 
+
+def map_name_to_label_canon(name: str, range_key: str, primary_action: str = None) -> str:
+    """
+    Mappe un nom de range vers un label_canon standardisé.
+
+    Args:
+        name: Nom de la range (ex: 'open_utg', 'call', '4bet_value')
+        range_key: Clé de la range ('1' pour principale, autre pour sous-ranges)
+        primary_action: Action principale du contexte (ex: 'defense', 'open')
+
+    Returns:
+        Label canonique (OPEN, CALL, R4_VALUE, DEFENSE, etc.)
+    """
+    if not name:
+        return None
+
+    name_lower = name.lower()
+
+    # Pour la range principale (range_key='1')
+    if range_key == '1':
+        # 🆕 PRIORITÉ : Si le contexte est "defense", forcer DEFENSE
+        if primary_action and 'defense' in primary_action.lower():
+            return 'DEFENSE'
+
+        # Sinon, mapping classique basé sur le nom
+        if 'open' in name_lower:
+            return 'OPEN'
+        elif 'defense' in name_lower or 'defend' in name_lower:
+            return 'DEFENSE'
+        elif '3bet' in name_lower:
+            return '3BET'
+        elif '4bet' in name_lower:
+            return '4BET'
+        elif 'squeeze' in name_lower:
+            return '3BET'
+        elif 'iso' in name_lower:
+            return 'ISO'
+        elif 'call' in name_lower:
+            return 'CALL'
+        elif 'raise' in name_lower:
+            return 'RAISE'
+        elif 'check' in name_lower:
+            return 'CHECK'
+        else:
+            # Fallback : utiliser QuizActionMapper
+            from quiz_action_mapper import QuizActionMapper
+            quiz_action = QuizActionMapper.detect(name)
+            if quiz_action and quiz_action != 'UNKNOWN':
+                return quiz_action
+            return None
+
+    # Pour les sous-ranges, mapping standard
+    if 'call' in name_lower:
+        return 'CALL'
+    elif '4bet' in name_lower or '4-bet' in name_lower:
+        if 'value' in name_lower:
+            return 'R4_VALUE'
+        elif 'bluff' in name_lower:
+            return 'R4_BLUFF'
+        else:
+            return '4BET'
+    elif '3bet' in name_lower or '3-bet' in name_lower:
+        if 'value' in name_lower:
+            return 'R3_VALUE'
+        elif 'bluff' in name_lower:
+            return 'R3_BLUFF'
+        else:
+            return '3BET'
+    elif '5bet' in name_lower or 'allin' in name_lower or 'all-in' in name_lower:
+        return 'R5_ALLIN'
+    elif 'iso' in name_lower:
+        if 'value' in name_lower:
+            return 'ISO_VALUE'
+        elif 'bluff' in name_lower:
+            return 'ISO_BLUFF'
+        else:
+            return 'ISO'
+    elif 'fold' in name_lower:
+        return 'FOLD'
+    elif 'check' in name_lower:
+        return 'CHECK'
+    elif 'raise' in name_lower:
+        return 'RAISE'
+    else:
+        return None
+
+
 class DatabaseManager:
     """Gestionnaire de base de données pour les ranges de poker"""
 
@@ -116,6 +203,7 @@ class DatabaseManager:
         except Exception as e:
             print(f"[DB] Erreur initialisation base: {e}")
             raise
+
     def check_file_exists(self, filename: str, file_hash: str) -> bool:
         """Vérifie si un fichier a déjà été importé avec le même hash"""
         with sqlite3.connect(self.db_path) as conn:
@@ -166,9 +254,9 @@ class DatabaseManager:
                     enriched_metadata.stack_depth.value if enriched_metadata.stack_depth else '100bb',
                     None,  # stakes (non utilisé pour l'instant)
                     enriched_metadata.sizing,
-                    int(enriched_metadata.confidence*100),
-                    1 if not enriched_metadata.question_friendly and enriched_metadata.confidence < 80 else 0,
-                    1 if enriched_metadata.question_friendly else 0,
+                    int(enriched_metadata.confidence * 100),
+                    1,  # needs_validation = 1 par défaut (sera recalculé après)
+                    0,  # quiz_ready = 0 par défaut (sera recalculé après)
                     None,  # error_message
                     enriched_metadata.description,
                     1 if enriched_metadata.enriched_by_user else 0,
@@ -177,21 +265,41 @@ class DatabaseManager:
                 ))
                 context_id = cursor.lastrowid
 
+                # 🆕 Récupérer le primary_action pour le passer au mapping
+                primary_action = enriched_metadata.primary_action.value if enriched_metadata.primary_action else None
+
                 # 3. Sauvegarder les ranges
                 for i, range_data in enumerate(parsed_context.ranges, 1):
-                    # Détecter l'action quiz
+                    range_key = str(i)
+
+                    # Déterminer le label_canon
+                    # Priorité 1 : Utiliser label_canon du JSON si présent
+                    label_canon = None
+                    if hasattr(range_data, 'label_canon') and range_data.label_canon:
+                        label_canon = range_data.label_canon
+
+                    # Priorité 2 : Mapper depuis le name 🆕 en passant primary_action
+                    if not label_canon or label_canon == 'None' or label_canon == '':
+                        label_canon = map_name_to_label_canon(range_data.name, range_key, primary_action)
+
+                    # Détecter l'action quiz (pour compatibilité)
                     quiz_action = QuizActionMapper.detect(range_data.name)
+
+                    print(
+                        f"[DB] Range {range_key}: name='{range_data.name}', primary_action='{primary_action}' → label_canon='{label_canon}'")
+
                     cursor.execute("""
                         INSERT INTO ranges
-                        (context_id, range_key, name, action, color,quiz_action)
-                        VALUES (?, ?, ?, ?, ?,?)
+                        (context_id, range_key, name, action, color, quiz_action, label_canon)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
                     """, (
                         context_id,
-                        str(i),
+                        range_key,
                         range_data.name,
-                        range_data.name,  # action = name pour l'instant
+                        range_data.name,
                         range_data.color,
-                        quiz_action
+                        quiz_action,
+                        label_canon
                     ))
                     range_id = cursor.lastrowid
 
@@ -207,7 +315,122 @@ class DatabaseManager:
                                 VALUES (?, ?, ?)
                             """, (range_id, hand, frequency))
 
-                print(f"[DB] Contexte '{enriched_metadata.display_name}' sauvegardé avec succès (ID: {context_id})")
+                # 5. ✅ VÉRIFICATION FINALE : Le contexte est-il vraiment prêt pour le quiz ?
+
+                # 🆕 ÉTAPE 1 : Vérifier les MÉTADONNÉES du contexte
+                metadata_valid = True
+                metadata_issues = []
+
+                if not enriched_metadata.table_format or enriched_metadata.table_format.value == 'N/A':
+                    metadata_valid = False
+                    metadata_issues.append("table_format manquant")
+
+                if not enriched_metadata.hero_position or enriched_metadata.hero_position.value == 'N/A':
+                    metadata_valid = False
+                    metadata_issues.append("hero_position manquant")
+
+                if not enriched_metadata.primary_action or enriched_metadata.primary_action.value == 'N/A':
+                    metadata_valid = False
+                    metadata_issues.append("primary_action manquant")
+
+                # Si métadonnées invalides → validation requise
+                if not metadata_valid:
+                    print(
+                        f"[DB] ⚠️ Métadonnées incomplètes pour '{enriched_metadata.display_name}': {', '.join(metadata_issues)}")
+                    cursor.execute("""
+                        UPDATE range_contexts
+                        SET quiz_ready = 0,
+                            needs_validation = 1,
+                            confidence_score = 0
+                        WHERE id = ?
+                    """, (context_id,))
+                    print(
+                        f"[DB] Contexte '{enriched_metadata.display_name}' sauvegardé (ID: {context_id}) - ⚠️ Nécessite validation (métadonnées incomplètes)")
+                    return True
+
+                # ÉTAPE 2 : Vérifier la range PRINCIPALE (range_key='1')
+                cursor.execute("""
+                    SELECT label_canon 
+                    FROM ranges 
+                    WHERE context_id = ? 
+                      AND range_key = '1'
+                """, (context_id,))
+
+                main_range_result = cursor.fetchone()
+                main_range_label = main_range_result[0] if main_range_result else None
+
+                # Si la range principale n'a pas de label_canon valide → validation requise
+                if not main_range_label or main_range_label == 'None' or main_range_label == '':
+                    print(f"[DB] ⚠️ Range principale sans label_canon pour contexte '{enriched_metadata.display_name}'")
+                    cursor.execute("""
+                        UPDATE range_contexts
+                        SET quiz_ready = 0,
+                            needs_validation = 1,
+                            confidence_score = 0
+                        WHERE id = ?
+                    """, (context_id,))
+                    print(
+                        f"[DB] Contexte '{enriched_metadata.display_name}' sauvegardé (ID: {context_id}) - ⚠️ Nécessite validation (range principale sans label)")
+                    return True
+
+                # ÉTAPE 3 : Vérifier les sous-ranges (range_key != '1')
+                cursor.execute("""
+                    SELECT COUNT(*) 
+                    FROM ranges 
+                    WHERE context_id = ? 
+                      AND range_key != '1'
+                      AND (label_canon IS NULL OR label_canon = '' OR label_canon = 'UNKNOWN' OR label_canon = 'None')
+                """, (context_id,))
+
+                incomplete_subranges = cursor.fetchone()[0]
+
+                cursor.execute("""
+                    SELECT COUNT(*) 
+                    FROM ranges 
+                    WHERE context_id = ? 
+                      AND range_key != '1'
+                """, (context_id,))
+
+                total_subranges = cursor.fetchone()[0]
+
+                # Calculer quiz_ready et needs_validation
+                if total_subranges == 0:
+                    # Pas de sous-ranges : contexte simple
+                    # Métadonnées OK (vérifié ci-dessus) + Range principale OK (vérifié ci-dessus) → prêt !
+                    quiz_ready = 1
+                    needs_validation = 0
+                    confidence_score = 100
+                elif incomplete_subranges == 0:
+                    # Tous les sous-ranges ont des labels : prêt pour le quiz !
+                    quiz_ready = 1
+                    needs_validation = 0
+                    confidence_score = 100
+                else:
+                    # Des sous-ranges manquent de labels : nécessite validation
+                    quiz_ready = 0
+                    needs_validation = 1
+                    completed = total_subranges - incomplete_subranges
+                    confidence_score = int((completed / total_subranges) * 100)
+
+                # 6. Mettre à jour le contexte avec les valeurs finales
+                cursor.execute("""
+                    UPDATE range_contexts
+                    SET quiz_ready = ?,
+                        needs_validation = ?,
+                        confidence_score = ?
+                    WHERE id = ?
+                """, (quiz_ready, needs_validation, confidence_score, context_id))
+
+                # Log du résultat
+                if quiz_ready:
+                    status_msg = "✅ Prêt pour le quiz"
+                elif total_subranges > 0:
+                    status_msg = f"⚠️ Nécessite validation ({incomplete_subranges}/{total_subranges} sous-ranges à classifier)"
+                else:
+                    status_msg = "⚠️ Nécessite validation (métadonnées à compléter)"
+
+                print(f"[DB] Contexte '{enriched_metadata.display_name}' sauvegardé (ID: {context_id}) - {status_msg}")
+
                 return True
 
         except Exception as e:
@@ -241,7 +464,6 @@ class DatabaseManager:
 
                 stats = {}
 
-                # Compter les fichiers
                 cursor.execute("SELECT COUNT(*) FROM range_files")
                 stats['total_files'] = cursor.fetchone()[0]
 
@@ -251,19 +473,15 @@ class DatabaseManager:
                 cursor.execute("SELECT COUNT(*) FROM range_files WHERE status = 'error'")
                 stats['error_files'] = cursor.fetchone()[0]
 
-                # Compter les contextes
                 cursor.execute("SELECT COUNT(*) FROM range_contexts")
                 stats['total_contexts'] = cursor.fetchone()[0]
 
-                # Compter les contextes prêts pour quiz
                 cursor.execute("SELECT COUNT(*) FROM range_contexts WHERE quiz_ready = 1")
                 stats['question_ready_contexts'] = cursor.fetchone()[0]
 
-                # Compter les contextes nécessitant validation
                 cursor.execute("SELECT COUNT(*) FROM range_contexts WHERE needs_validation = 1")
                 stats['needs_validation'] = cursor.fetchone()[0]
 
-                # Compter les ranges et mains
                 cursor.execute("SELECT COUNT(*) FROM ranges")
                 stats['total_ranges'] = cursor.fetchone()[0]
 
@@ -284,11 +502,9 @@ class DatabaseManager:
 
         for json_file in ranges_dir.glob("*.json"):
             try:
-                # Calculer le hash du fichier
                 content = json_file.read_text(encoding='utf-8')
                 file_hash = hashlib.md5(content.encode()).hexdigest()
 
-                # Vérifier s'il existe déjà en DB
                 if not self.check_file_exists(json_file.name, file_hash):
                     files_to_process.append(json_file)
                 else:
@@ -304,7 +520,6 @@ class DatabaseManager:
         """Nettoie les anciens imports du même fichier"""
         try:
             with sqlite3.connect(self.db_path) as conn:
-                # Supprimer les anciens contextes et leurs données associées
                 cursor = conn.execute("""
                     SELECT id FROM range_contexts 
                     WHERE file_id IN (SELECT id FROM range_files WHERE filename = ?)
@@ -313,10 +528,8 @@ class DatabaseManager:
                 context_ids = [row[0] for row in cursor.fetchall()]
 
                 for context_id in context_ids:
-                    # Les CASCADE dans les FK s'occupent de supprimer ranges et range_hands
                     conn.execute("DELETE FROM range_contexts WHERE id = ?", (context_id,))
 
-                # Supprimer le fichier
                 conn.execute("DELETE FROM range_files WHERE filename = ?", (filename,))
 
                 return True
@@ -327,7 +540,6 @@ class DatabaseManager:
 
 
 if __name__ == "__main__":
-    # Test du database manager
     db = DatabaseManager()
     stats = db.get_import_stats()
     print("Stats actuelles:", stats)

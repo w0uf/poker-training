@@ -104,13 +104,13 @@
   "metadata": {
     "table_format": "5max",
     "hero_position": "UTG",
-    "vs_position": "N/A",
-    "primary_action": "open",
+    "vs_position": "UTG",
+    "primary_action": "defense",
     "game_type": "Cash Game",
     "variant": "NLHE",
     "stack_depth": "100bb",
-    "stakes": null,
-    "sizing": null,
+    "stakes": "NL2",
+    "sizing": "",
     "validated": true,
     "validated_by_user": true,
     "reconstructed_from_db": true

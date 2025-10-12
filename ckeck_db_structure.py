@@ -1,39 +1,20 @@
-"""
-Script pour vérifier la structure de la base de données
-"""
 import sqlite3
-from pathlib import Path
 
-db_path = Path("data/poker_trainer.db")
+conn = sqlite3.connect('data/poker_trainer.db')
+cursor = conn.cursor()
+for context_id in [1, 2]:
+    print(f"\n=== CONTEXTE {context_id} ===")
+    cursor.execute(f"SELECT id, display_name, quiz_ready, needs_validation FROM range_contexts WHERE id = {context_id}")
+    print(cursor.fetchone())
 
-if not db_path.exists():
-    print("Base de données non trouvée !")
-    exit(1)
 
-with sqlite3.connect(db_path) as conn:
-    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT range_key, name, label_canon 
+        FROM ranges 
+        WHERE context_id = 1 
+        ORDER BY CAST(range_key AS INTEGER)
+    """)
+    for row in cursor.fetchall():
+        print(f"Range {row[0]}: {row[1]} → label_canon='{row[2]}'")
 
-    # Récupérer la structure de range_contexts
-    cursor.execute("PRAGMA table_info(range_contexts)")
-    columns = cursor.fetchall()
-
-    print("=" * 60)
-    print("STRUCTURE DE LA TABLE range_contexts")
-    print("=" * 60)
-
-    for col in columns:
-        print(f"{col[1]:20} {col[2]:15} {'NOT NULL' if col[3] else ''}")
-
-    print("\n" + "=" * 60)
-    print("EXEMPLE DE DONNÉES")
-    print("=" * 60)
-
-    # Afficher un exemple
-    cursor.execute("SELECT * FROM range_contexts LIMIT 1")
-    row = cursor.fetchone()
-
-    if row:
-        for i, col in enumerate(columns):
-            print(f"{col[1]:20} = {row[i]}")
-    else:
-        print("Aucune donnée dans la table")
+conn.close()
