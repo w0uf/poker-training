@@ -2,7 +2,7 @@
 """
 Module de gestion de la base de données SQLite
 Gère la persistance des contextes, ranges et mains avec transactions sécurisées
-Version mise à jour avec colonnes individuelles pour métadonnées
+Version mise à jour avec colonnes individuelles pour métadonnées + action_sequence JSON
 """
 
 import sqlite3
@@ -20,10 +20,10 @@ def map_name_to_label_canon(name: str, range_key: str, primary_action: str = Non
     Args:
         name: Nom de la range (ex: 'open_utg', 'call', '4bet_value')
         range_key: Clé de la range ('1' pour principale, autre pour sous-ranges)
-        primary_action: Action principale du contexte (ex: 'defense', 'open')
+        primary_action: Action principale du contexte (ex: 'defense', 'open', 'squeeze')
 
     Returns:
-        Label canonique (OPEN, CALL, R4_VALUE, DEFENSE, etc.)
+        Label canonique (OPEN, CALL, R4_VALUE, DEFENSE, SQUEEZE, etc.)
     """
     if not name:
         return None
@@ -32,22 +32,36 @@ def map_name_to_label_canon(name: str, range_key: str, primary_action: str = Non
 
     # Pour la range principale (range_key='1')
     if range_key == '1':
-        # 🆕 PRIORITÉ : Si le contexte est "defense", forcer DEFENSE
-        if primary_action and 'defense' in primary_action.lower():
-            return 'DEFENSE'
+        # 🎯 PRIORITÉ 1 : Utiliser primary_action du contexte
+        if primary_action:
+            primary_lower = primary_action.lower()
 
-        # Sinon, mapping classique basé sur le nom
-        if 'open' in name_lower:
+            if primary_lower == 'defense':
+                return 'DEFENSE'
+            elif primary_lower == 'open':
+                return 'OPEN'
+            elif primary_lower == 'squeeze':
+                return 'SQUEEZE'  # 🎯 CORRECTION : squeeze → SQUEEZE
+            elif primary_lower == 'vs_limpers':
+                if 'iso' in name_lower:
+                    return 'ISO'
+                return 'RAISE'
+            elif primary_lower == 'check':
+                return 'CHECK'
+
+        # 🎯 PRIORITÉ 2 : Analyser le nom si primary_action absent/ambigu
+        # Ordre important : squeeze AVANT 3bet !
+        if 'squeeze' in name_lower or 'squezze' in name_lower:  # 🎯 Gérer la faute d'orthographe
+            return 'SQUEEZE'
+        elif 'open' in name_lower:
             return 'OPEN'
         elif 'defense' in name_lower or 'defend' in name_lower:
             return 'DEFENSE'
-        elif '3bet' in name_lower:
+        elif '3bet' in name_lower or '3-bet' in name_lower:
             return '3BET'
         elif '4bet' in name_lower:
             return '4BET'
-        elif 'squeeze' in name_lower:
-            return '3BET'
-        elif 'iso' in name_lower:
+        elif 'iso' in name_lower or 'limper' in name_lower:
             return 'ISO'
         elif 'call' in name_lower:
             return 'CALL'
@@ -63,8 +77,8 @@ def map_name_to_label_canon(name: str, range_key: str, primary_action: str = Non
                 return quiz_action
             return None
 
-    # Pour les sous-ranges, mapping standard
-    if 'call' in name_lower:
+    # Pour les sous-ranges, mapping standard (inchangé)
+    if 'call' in name_lower or 'overcall' in name_lower:
         return 'CALL'
     elif '4bet' in name_lower or '4-bet' in name_lower:
         if 'value' in name_lower:
@@ -73,7 +87,7 @@ def map_name_to_label_canon(name: str, range_key: str, primary_action: str = Non
             return 'R4_BLUFF'
         else:
             return '4BET'
-    elif '3bet' in name_lower or '3-bet' in name_lower:
+    elif '3bet' in name_lower or '3-bet' in name_lower or 'squeeze' in name_lower:
         if 'value' in name_lower:
             return 'R3_VALUE'
         elif 'bluff' in name_lower:
@@ -89,15 +103,12 @@ def map_name_to_label_canon(name: str, range_key: str, primary_action: str = Non
             return 'ISO_BLUFF'
         else:
             return 'ISO'
-    elif 'fold' in name_lower:
-        return 'FOLD'
     elif 'check' in name_lower:
         return 'CHECK'
     elif 'raise' in name_lower:
         return 'RAISE'
     else:
         return None
-
 
 class DatabaseManager:
     """Gestionnaire de base de données pour les ranges de poker"""
@@ -141,6 +152,7 @@ class DatabaseManager:
                         hero_position TEXT,
                         vs_position TEXT,
                         primary_action TEXT,
+                        action_sequence TEXT,  -- 🆕 JSON pour séquences multiway
                         game_type TEXT DEFAULT 'Cash Game',
                         variant TEXT DEFAULT 'NLHE',
                         stack_depth TEXT DEFAULT '100bb',
@@ -198,11 +210,213 @@ class DatabaseManager:
                     CREATE INDEX IF NOT EXISTS idx_ranges_context_label ON ranges(context_id, label_canon);
                 """)
 
+                # Vérifier et appliquer migrations si nécessaire
+                self._apply_migrations(conn)
+
                 print(f"[DB] Base de données initialisée: {self.db_path}")
 
         except Exception as e:
             print(f"[DB] Erreur initialisation base: {e}")
             raise
+
+    def _apply_migrations(self, conn):
+        """Applique les migrations nécessaires"""
+        cursor = conn.cursor()
+
+        # Récupérer les colonnes existantes
+        cursor.execute("PRAGMA table_info(range_contexts)")
+        columns = {row[1] for row in cursor.fetchall()}
+
+        migrations_applied = []
+
+        # Migration : Ajouter action_sequence si absente
+        if 'action_sequence' not in columns:
+            cursor.execute("""
+                ALTER TABLE range_contexts 
+                ADD COLUMN action_sequence TEXT
+            """)
+            migrations_applied.append("action_sequence ajouté à range_contexts")
+
+        if migrations_applied:
+            conn.commit()
+            for migration in migrations_applied:
+                print(f"[DB] 🔄 Migration appliquée : {migration}")
+
+    # ============================================================================
+    # 🆕 MÉTHODES POUR GÉRER action_sequence (JSON)
+    # ============================================================================
+
+    def parse_action_sequence(self, action_sequence_json: Optional[str]) -> Optional[Dict]:
+        """
+        Parse le JSON action_sequence depuis la base de données
+
+        Args:
+            action_sequence_json: Chaîne JSON depuis la DB
+
+        Returns:
+            Dictionnaire Python ou None
+        """
+        if not action_sequence_json:
+            return None
+
+        try:
+            return json.loads(action_sequence_json)
+        except json.JSONDecodeError:
+            return None
+
+    def serialize_action_sequence(self, action_sequence: Optional[Dict]) -> Optional[str]:
+        """
+        Sérialise un dictionnaire action_sequence en JSON
+
+        Args:
+            action_sequence: Dictionnaire Python
+
+        Returns:
+            Chaîne JSON pour la DB ou None
+        """
+        if not action_sequence:
+            return None
+
+        return json.dumps(action_sequence, ensure_ascii=False)
+
+    def build_action_sequence(
+            self,
+            primary_action: str,
+            opener: Optional[str] = None,
+            callers: Optional[List[str]] = None,
+            limpers: Optional[List[str]] = None
+    ) -> Optional[Dict]:
+        """
+        Construit un dictionnaire action_sequence selon le contexte
+
+        Args:
+            primary_action: 'open', 'defense', 'squeeze', 'vs_limpers'
+            opener: Position de l'ouvreur (pour defense, squeeze)
+            callers: Liste des positions ayant callé (pour squeeze)
+            limpers: Liste des positions ayant limpé (pour vs_limpers)
+
+        Returns:
+            Dictionnaire structuré ou None
+        """
+        if not primary_action:
+            return None
+
+        primary_action_lower = primary_action.lower()
+
+        if primary_action_lower == 'open':
+            return None  # Pas besoin d'action_sequence pour open simple
+
+        elif primary_action_lower == 'defense':
+            if not opener:
+                return None
+            return {"opener": opener}
+
+        elif primary_action_lower == 'squeeze':
+            if not opener or not callers:
+                return None
+            return {
+                "opener": opener,
+                "callers": callers if isinstance(callers, list) else [callers]
+            }
+
+        elif primary_action_lower == 'vs_limpers':
+            if not limpers:
+                return None
+            return {
+                "limpers": limpers if isinstance(limpers, list) else [limpers]
+            }
+
+        return None
+
+    def format_action_sequence_display(self, action_sequence: Optional[Dict]) -> str:
+        """
+        Formate action_sequence pour l'affichage humain
+
+        Args:
+            action_sequence: Dictionnaire action_sequence
+
+        Returns:
+            Chaîne lisible (ex: "vs UTG open + SB call")
+        """
+        if not action_sequence:
+            return ""
+
+        parts = []
+
+        if "opener" in action_sequence:
+            parts.append(f"vs {action_sequence['opener']} open")
+
+            if "callers" in action_sequence:
+                callers = action_sequence['callers']
+                if callers:
+                    caller_str = " + ".join(callers)
+                    parts.append(f"+ {caller_str} call")
+
+        elif "limpers" in action_sequence:
+            limpers = action_sequence['limpers']
+            if limpers:
+                limper_str = " + ".join(limpers)
+                parts.append(f"vs {limper_str} limp")
+
+        return " ".join(parts)
+
+    def detect_action_sequence_from_name(
+            self,
+            context_name: str,
+            primary_action: Optional[str] = None
+    ) -> Optional[Dict]:
+        """
+        🆕 Détecte automatiquement action_sequence depuis le nom du contexte
+
+        Args:
+            context_name: Nom du contexte (ex: "squeeze BB vs UTG+SB")
+            primary_action: Action principale détectée
+
+        Returns:
+            Dictionnaire action_sequence ou None
+        """
+        if not context_name or not primary_action:
+            return None
+
+        import re
+        context_lower = context_name.lower()
+        primary_lower = primary_action.lower()
+
+        # Pattern pour squeeze : "vs POSITION + POSITION"
+        if primary_lower == 'squeeze':
+            # Chercher "vs UTG+SB" ou "vs CO + BTN"
+            match = re.search(r'vs\s+(\w+)\s*[+\s]+\s*(\w+)', context_name, re.IGNORECASE)
+            if match:
+                opener = match.group(1).upper()
+                caller = match.group(2).upper()
+                return {
+                    "opener": opener,
+                    "callers": [caller]
+                }
+
+        # Pattern pour vs_limpers : "limp" + positions
+        elif primary_lower == 'vs_limpers' or 'limp' in context_lower:
+            # Extraire toutes les positions mentionnées
+            positions = re.findall(r'\b(UTG|MP|CO|BTN|SB|BB|LJ|HJ)\b', context_name, re.IGNORECASE)
+            if positions:
+                return {
+                    "limpers": [p.upper() for p in positions]
+                }
+
+        # Pattern pour defense : "vs POSITION open"
+        elif primary_lower == 'defense':
+            match = re.search(r'vs\s+(\w+)', context_name, re.IGNORECASE)
+            if match:
+                opener = match.group(1).upper()
+                return {
+                    "opener": opener
+                }
+
+        return None
+
+    # ============================================================================
+    # MÉTHODES CRUD EXISTANTES (modifiées pour action_sequence)
+    # ============================================================================
 
     def check_file_exists(self, filename: str, file_hash: str) -> bool:
         """Vérifie si un fichier a déjà été importé avec le même hash"""
@@ -231,15 +445,31 @@ class DatabaseManager:
                 ))
                 file_id = cursor.lastrowid
 
+                # 🆕 Détecter ou construire action_sequence
+                primary_action_value = enriched_metadata.primary_action.value if enriched_metadata.primary_action else None
+
+                # Essayer de détecter depuis le nom
+                action_sequence_dict = self.detect_action_sequence_from_name(
+                    enriched_metadata.original_name,
+                    primary_action_value
+                )
+
+                # Sérialiser en JSON si détecté
+                action_sequence_json = self.serialize_action_sequence(action_sequence_dict)
+
+                if action_sequence_json:
+                    display = self.format_action_sequence_display(action_sequence_dict)
+                    print(f"[DB] 🎯 Action sequence détectée : {display}")
+
                 # 2. Sauvegarder le contexte avec métadonnées en colonnes individuelles
                 cursor.execute("""
                     INSERT INTO range_contexts
                     (file_id, original_name, display_name, cleaned_name,
-                     table_format, hero_position, vs_position, primary_action,
+                     table_format, hero_position, vs_position, primary_action, action_sequence,
                      game_type, variant, stack_depth, stakes, sizing,
                      confidence_score, needs_validation, quiz_ready, error_message,
                      description, enriched_by_user, enrichment_date, version)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     file_id,
                     enriched_metadata.original_name,
@@ -248,7 +478,8 @@ class DatabaseManager:
                     enriched_metadata.table_format.value if enriched_metadata.table_format else None,
                     enriched_metadata.hero_position.value if enriched_metadata.hero_position else None,
                     enriched_metadata.vs_position.value if enriched_metadata.vs_position else None,
-                    enriched_metadata.primary_action.value if enriched_metadata.primary_action else None,
+                    primary_action_value,
+                    action_sequence_json,  # 🆕 Sauvegarder le JSON
                     enriched_metadata.game_format.value if enriched_metadata.game_format else 'Cash Game',
                     enriched_metadata.variant.value if enriched_metadata.variant else 'NLHE',
                     enriched_metadata.stack_depth.value if enriched_metadata.stack_depth else '100bb',
@@ -265,9 +496,6 @@ class DatabaseManager:
                 ))
                 context_id = cursor.lastrowid
 
-                # 🆕 Récupérer le primary_action pour le passer au mapping
-                primary_action = enriched_metadata.primary_action.value if enriched_metadata.primary_action else None
-
                 # 3. Sauvegarder les ranges
                 for i, range_data in enumerate(parsed_context.ranges, 1):
                     range_key = str(i)
@@ -280,13 +508,13 @@ class DatabaseManager:
 
                     # Priorité 2 : Mapper depuis le name 🆕 en passant primary_action
                     if not label_canon or label_canon == 'None' or label_canon == '':
-                        label_canon = map_name_to_label_canon(range_data.name, range_key, primary_action)
+                        label_canon = map_name_to_label_canon(range_data.name, range_key, primary_action_value)
 
                     # Détecter l'action quiz (pour compatibilité)
                     quiz_action = QuizActionMapper.detect(range_data.name)
 
                     print(
-                        f"[DB] Range {range_key}: name='{range_data.name}', primary_action='{primary_action}' → label_canon='{label_canon}'")
+                        f"[DB] Range {range_key}: name='{range_data.name}', primary_action='{primary_action_value}' → label_canon='{label_canon}'")
 
                     cursor.execute("""
                         INSERT INTO ranges

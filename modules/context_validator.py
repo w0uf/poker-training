@@ -1,61 +1,71 @@
 """
 Module de validation et correction des métadonnées de contextes ET sous-ranges.
 Gère la correction manuelle des contextes ambigus ou incomplets.
+Version avec support action_sequence pour squeeze et vs_limpers
 """
 
 import sqlite3
 from typing import Dict, List, Optional, Tuple
 from pathlib import Path
 import re
+import json
 
 # --- Helpers module-level : sûrs et indépendants de la classe ---
 
 SR_CANON = {
     "open": "OPEN",
-    "call": "CALL", "flat": "CALL", "complete": "CALL",
-    "3bet value": "R3_VALUE", "value 3bet": "R3_VALUE", "3-bet value": "R3_VALUE",
-    "3bet bluff": "R3_BLUFF", "3-bet bluff": "R3_BLUFF",
-    "4bet value": "R4_VALUE", "4-bet value": "R4_VALUE",
-    "4bet bluff": "R4_BLUFF", "4-bet bluff": "R4_BLUFF",
-    "5bet": "R5_ALLIN", "5-bet": "R5_ALLIN", "all in": "R5_ALLIN", "allin": "R5_ALLIN",
-    "iso raise value": "ISO_VALUE", "iso value": "ISO_VALUE",
-    "iso raise bluff": "ISO_BLUFF", "iso bluff": "ISO_BLUFF",
+    "call": "CALL",
+    "flat": "CALL",
+    "complete": "CALL",
+    "overcall": "CALL",
+    "3bet value": "R3_VALUE",
+    "value 3bet": "R3_VALUE",
+    "3-bet value": "R3_VALUE",
+    "squeeze value": "R3_VALUE",
+    "3bet bluff": "R3_BLUFF",
+    "3-bet bluff": "R3_BLUFF",
+    "squeeze bluff": "R3_BLUFF",
+    "4bet value": "R4_VALUE",
+    "4-bet value": "R4_VALUE",
+    "4bet bluff": "R4_BLUFF",
+    "4-bet bluff": "R4_BLUFF",
+    "5bet": "R5_ALLIN",
+    "5-bet": "R5_ALLIN",
+    "all in": "R5_ALLIN",
+    "allin": "R5_ALLIN",
+    "iso raise value": "ISO_VALUE",
+    "iso value": "ISO_VALUE",
+    "iso raise bluff": "ISO_BLUFF",
+    "iso bluff": "ISO_BLUFF",
+    "iso": "ISO_RAISE",
     "check": "CHECK",
-    "fold": "FOLD",
     "raise": "RAISE",
 }
 
 # Labels disponibles pour l'UI
 SR_LABELS = {
     "OPEN": "Open",
-    "CALL": "Call / Complete",
+    "CALL": "Call / Overcall",
     "R3_VALUE": "3bet Value",
     "R3_BLUFF": "3bet Bluff",
     "R4_VALUE": "4bet Value",
     "R4_BLUFF": "4bet Bluff",
     "R5_ALLIN": "5bet / All-in",
+    "ISO_RAISE": "Iso Raise",
     "ISO_VALUE": "Iso Value",
     "ISO_BLUFF": "Iso Bluff",
     "CHECK": "Check",
-    "FOLD": "Fold",
     "RAISE": "Raise",
     "UNKNOWN": "Autre / À classifier"
 }
 
-# Cohérence : sous-ranges = réponses du héros aux réactions adverses
-# Action principale = action initiale du héros
-# Sous-ranges = comment le héros répond aux réactions adverses
+# Cohérence : sous-ranges attendues par contexte principal
+# ❌ FOLD retiré partout (implicite = 100% - somme des autres)
 EXPECTED_SUBRANGES = {
-    "open": ["CALL", "R4_VALUE", "R4_BLUFF", "FOLD"],  # Face à 3bet après notre open
-    "defense": ["CALL", "R3_VALUE", "R3_BLUFF", "FOLD"],  # Notre réponse à un open adverse
-    "3bet": ["CALL", "R5_ALLIN", "FOLD"],  # Face à 4bet après notre 3bet
-    "squeeze": ["CALL", "R5_ALLIN", "FOLD"],  # Face à 4bet après notre squeeze
-    "4bet": ["CALL", "FOLD"],  # Face à 5bet (très rare)
-    "call": [],  # Pas de sous-actions préflop après call
-    "complete": ["CHECK", "RAISE", "FOLD"],  # BB face à raise SB après complete
-    "check": [],  # Postflop
-    "raise": ["CALL", "FOLD"],  # Face à reraise
-    "fold": []  # Pas d'action après fold
+    "open": ["CALL", "R4_VALUE", "R4_BLUFF"],           # vs 3bet après notre open
+    "defense": ["CALL", "R3_VALUE", "R3_BLUFF"],        # vs open (heads-up)
+    "squeeze": ["CALL", "R3_VALUE", "R3_BLUFF"],        # face à open+call (multiway)
+    "vs_limpers": ["CALL", "ISO_RAISE", "ISO_VALUE", "ISO_BLUFF"],  # face à limp(s)
 }
 
 
@@ -88,15 +98,28 @@ def build_human_title_and_slug(row: Dict) -> Tuple[str, str]:
     depth = row.get("stack_depth")
     depth = depth.strip() if depth else "100bb"
 
+    # 🆕 Récupérer action_sequence si présent
+    action_seq_display = row.get("action_sequence_display", "")
+
     # Construction du contexte
     if action == "open":
         ctx = "Open"
-    elif action in ("defense", "call") and vs_pos:
+    elif action == "defense" and vs_pos:
         ctx = f"Défense vs open {vs_pos}"
-    elif action == "3bet" and vs_pos:
-        ctx = f"3bet vs {vs_pos}"
-    elif action == "4bet" and vs_pos:
-        ctx = f"4bet vs {vs_pos}"
+    elif action == "squeeze":
+        # Utiliser action_sequence_display si disponible
+        if action_seq_display:
+            ctx = f"Squeeze {action_seq_display}"
+        elif vs_pos:
+            ctx = f"Squeeze vs {vs_pos}"
+        else:
+            ctx = "Squeeze"
+    elif action == "vs_limpers":
+        # Utiliser action_sequence_display
+        if action_seq_display:
+            ctx = action_seq_display
+        else:
+            ctx = "Vs limpers"
     elif action == "check":
         ctx = "Option (pot non relancé)"
     else:
@@ -107,12 +130,12 @@ def build_human_title_and_slug(row: Dict) -> Tuple[str, str]:
     # Construction du slug
     if action == "open":
         ctx_key = "open"
-    elif action in ("defense", "call") and vs_pos:
+    elif action == "defense" and vs_pos:
         ctx_key = f"def-vs-open-{vs_pos.lower()}"
-    elif action == "3bet" and vs_pos:
-        ctx_key = f"r3-vs-{vs_pos.lower()}"
-    elif action == "4bet" and vs_pos:
-        ctx_key = f"r4-vs-{vs_pos.lower()}"
+    elif action == "squeeze":
+        ctx_key = "squeeze"
+    elif action == "vs_limpers":
+        ctx_key = "vs-limpers"
     else:
         ctx_key = "custom"
 
@@ -182,10 +205,12 @@ class ContextValidator:
         'HU': ['BTN', 'BB']
     }
 
-    # Actions principales disponibles
+    # 🆕 Actions principales simplifiées (contextes exploitables)
     PRIMARY_ACTIONS = [
-        'open', 'call', '3bet', '4bet', 'fold',
-        'check', 'defense', 'complete', 'raise', 'squeeze'
+        'open',         # Premier à parler
+        'defense',      # Face à UNE ouverture (heads-up)
+        'squeeze',      # Face à open + call(s) (multiway)
+        'vs_limpers'    # Face à limp(s)
     ]
 
     def __init__(self, db_path: str = "../data/poker_trainer.db"):
@@ -194,6 +219,12 @@ class ContextValidator:
         # Elle sera créée par le pipeline au premier import
         if not self.db_path.exists():
             print(f"[VALIDATOR] Base non trouvée (sera créée au premier import) : {db_path}")
+
+    def get_connection(self):
+        """Crée une connexion à la base de données"""
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
+        return conn
 
     def get_context_for_validation(self, context_id: int) -> Optional[Dict]:
         """
@@ -205,8 +236,7 @@ class ContextValidator:
         Returns:
             Dictionnaire avec les infos du contexte et ses ranges, ou None
         """
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
+        conn = self.get_connection()
         cursor = conn.cursor()
 
         try:
@@ -220,6 +250,7 @@ class ContextValidator:
                     rc.hero_position,
                     rc.vs_position,
                     rc.primary_action,
+                    rc.action_sequence,
                     rc.game_type,
                     rc.variant,
                     rc.stack_depth,
@@ -240,6 +271,24 @@ class ContextValidator:
                 return None
 
             context = dict(context_row)
+
+            # 🆕 Parser action_sequence JSON
+            action_seq_json = context.get('action_sequence')
+            if action_seq_json:
+                try:
+                    context['action_sequence'] = json.loads(action_seq_json)
+                    # Formater pour affichage
+                    from database_manager import DatabaseManager
+                    db = DatabaseManager(str(self.db_path))
+                    context['action_sequence_display'] = db.format_action_sequence_display(
+                        context['action_sequence']
+                    )
+                except json.JSONDecodeError:
+                    context['action_sequence'] = None
+                    context['action_sequence_display'] = ""
+            else:
+                context['action_sequence'] = None
+                context['action_sequence_display'] = ""
 
             # Récupérer les ranges associées SAUF la première (range principale)
             cursor.execute("""
@@ -297,8 +346,7 @@ class ContextValidator:
         Returns:
             Liste de dictionnaires avec les contextes à valider
         """
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
+        conn = self.get_connection()
         cursor = conn.cursor()
 
         try:
@@ -310,6 +358,7 @@ class ContextValidator:
                     rc.table_format,
                     rc.hero_position,
                     rc.primary_action,
+                    rc.action_sequence,
                     rc.confidence_score,
                     rf.filename,
                     COUNT(DISTINCT r.id) as range_count
@@ -322,7 +371,30 @@ class ContextValidator:
                 ORDER BY rc.confidence_score ASC, rc.id
             """)
 
-            return [dict(row) for row in cursor.fetchall()]
+            candidates = []
+            for row in cursor.fetchall():
+                context = dict(row)
+
+                # Parser action_sequence
+                action_seq_json = context.get('action_sequence')
+                if action_seq_json:
+                    try:
+                        context['action_sequence'] = json.loads(action_seq_json)
+                        from database_manager import DatabaseManager
+                        db = DatabaseManager(str(self.db_path))
+                        context['action_sequence_display'] = db.format_action_sequence_display(
+                            context['action_sequence']
+                        )
+                    except:
+                        context['action_sequence'] = None
+                        context['action_sequence_display'] = ""
+                else:
+                    context['action_sequence'] = None
+                    context['action_sequence_display'] = ""
+
+                candidates.append(context)
+
+            return candidates
 
         finally:
             conn.close()
@@ -349,15 +421,15 @@ class ContextValidator:
             "R4_VALUE": "4bet_value",
             "R4_BLUFF": "4bet_bluff",
             "R5_ALLIN": "5bet_allin",
+            "ISO_RAISE": "iso_raise",
             "ISO_VALUE": "iso_value",
             "ISO_BLUFF": "iso_bluff",
             "CHECK": "check",
-            "FOLD": "fold",
             "RAISE": "raise",
             "UNKNOWN": "unknown"
         }
 
-        conn = sqlite3.connect(self.db_path)
+        conn = self.get_connection()
         cursor = conn.cursor()
 
         try:
@@ -437,7 +509,47 @@ class ContextValidator:
             if vs_position not in self.POSITIONS_BY_FORMAT[table_format]:
                 return False, f"Position adversaire {vs_position} invalide pour format {table_format}"
 
-        conn = sqlite3.connect(self.db_path)
+        # 🆕 Construire action_sequence selon le primary_action
+        from database_manager import DatabaseManager
+        db = DatabaseManager(str(self.db_path))
+
+        primary_action = metadata['primary_action']
+        action_sequence = None
+
+        if primary_action == 'defense':
+            # Defense : opener obligatoire
+            opener = metadata.get('opener') or vs_position
+            if opener:
+                action_sequence = db.build_action_sequence(
+                    primary_action='defense',
+                    opener=opener
+                )
+
+        elif primary_action == 'squeeze':
+            # Squeeze : opener + callers obligatoires
+            opener = metadata.get('opener')
+            callers_str = metadata.get('callers', '')
+            callers = [c.strip() for c in callers_str.split(',') if c.strip()] if callers_str else []
+
+            if opener and callers:
+                action_sequence = db.build_action_sequence(
+                    primary_action='squeeze',
+                    opener=opener,
+                    callers=callers
+                )
+
+        elif primary_action == 'vs_limpers':
+            # Vs limpers : limpers obligatoires
+            limpers_str = metadata.get('limpers', '')
+            limpers = [l.strip() for l in limpers_str.split(',') if l.strip()] if limpers_str else []
+
+            if limpers:
+                action_sequence = db.build_action_sequence(
+                    primary_action='vs_limpers',
+                    limpers=limpers
+                )
+
+        conn = self.get_connection()
         cursor = conn.cursor()
 
         try:
@@ -463,7 +575,6 @@ class ContextValidator:
                 range_name, current_label = main_range_result
 
                 # Calculer le nouveau label_canon basé sur le primary_action
-                # Import de la fonction depuis database_manager
                 from database_manager import map_name_to_label_canon
 
                 new_label = map_name_to_label_canon(range_name, '1', new_primary_action)
@@ -479,7 +590,7 @@ class ContextValidator:
                         f"[VALIDATOR] Range principale mise à jour: '{current_label}' → '{new_label}' (primary_action: {new_primary_action})")
 
             # Générer le display_name
-            display_name = self._generate_display_name(metadata)
+            display_name = self._generate_display_name(metadata, action_sequence)
 
             # Vérifier si tous les sous-ranges ont des labels valides
             cursor.execute("""
@@ -517,6 +628,9 @@ class ContextValidator:
                 else:
                     confidence_score = 100
 
+            # Sérialiser action_sequence pour la DB
+            action_sequence_json = db.serialize_action_sequence(action_sequence)
+
             # Mettre à jour le contexte
             cursor.execute("""
                 UPDATE range_contexts
@@ -525,6 +639,7 @@ class ContextValidator:
                     hero_position = ?,
                     vs_position = ?,
                     primary_action = ?,
+                    action_sequence = ?,
                     game_type = ?,
                     variant = ?,
                     stack_depth = ?,
@@ -540,6 +655,7 @@ class ContextValidator:
                 metadata['hero_position'],
                 metadata.get('vs_position') or None,
                 metadata['primary_action'],
+                action_sequence_json,  # 🆕 Sauvegarder action_sequence
                 metadata.get('game_type', 'Cash Game'),
                 metadata.get('variant', 'NLHE'),
                 metadata.get('stack_depth', '100bb'),
@@ -569,12 +685,18 @@ class ContextValidator:
 
         finally:
             conn.close()
-    def _generate_display_name(self, metadata: Dict[str, Optional[str]]) -> str:
+
+    def _generate_display_name(
+        self,
+        metadata: Dict[str, Optional[str]],
+        action_sequence: Optional[Dict] = None
+    ) -> str:
         """
         Génère un nom d'affichage depuis les métadonnées validées.
 
         Args:
             metadata: Métadonnées du contexte
+            action_sequence: Dictionnaire action_sequence (optionnel)
 
         Returns:
             Nom d'affichage formaté
@@ -591,15 +713,23 @@ class ContextValidator:
         action = metadata['primary_action'].title()
         parts.append(action)
 
-        # Vs position si présente
-        vs_pos = metadata.get('vs_position')
-        if vs_pos and vs_pos != 'N/A':
-            parts.append(f"vs {vs_pos}")
+        # 🆕 Si action_sequence présent, l'utiliser pour le contexte
+        if action_sequence:
+            from database_manager import DatabaseManager
+            db = DatabaseManager(str(self.db_path))
+            action_display = db.format_action_sequence_display(action_sequence)
+            if action_display:
+                parts.append(f"({action_display})")
+        else:
+            # Fallback : vs_position si présent
+            vs_pos = metadata.get('vs_position')
+            if vs_pos and vs_pos != 'N/A':
+                parts.append(f"vs {vs_pos}")
 
         # Sizing si présent
         sizing = metadata.get('sizing')
         if sizing:
-            parts.append(f"({sizing})")
+            parts.append(f"[{sizing}]")
 
         return " ".join(parts)
 
@@ -614,7 +744,7 @@ class ContextValidator:
         Returns:
             Succès de l'opération
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = self.get_connection()
         cursor = conn.cursor()
 
         try:

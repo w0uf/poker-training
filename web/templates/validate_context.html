@@ -73,6 +73,7 @@
         }
         .form-section.optional h2 { border-bottom-color: #95a5a6; }
         .form-section.subranges h2 { border-bottom-color: #e74c3c; }
+        .form-section.context-details h2 { border-bottom-color: #3498db; }
 
         .form-group { margin-bottom: 20px; }
         .form-group label {
@@ -102,6 +103,79 @@
         .btn-option:hover { border-color: #667eea; background: #f8f9ff; }
         .btn-option.selected { background: #667eea; color: white; border-color: #667eea; }
         .btn-option:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* 🆕 Styles pour les champs dynamiques multiway */
+        .dynamic-section {
+            display: none;
+            background: #f0f7ff;
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 4px solid #3498db;
+            margin-top: 15px;
+        }
+
+        .dynamic-section.visible {
+            display: block;
+        }
+
+        .dynamic-section h3 {
+            color: #2c3e50;
+            font-size: 14px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .position-tag-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+            min-height: 40px;
+            padding: 8px;
+            background: white;
+            border-radius: 5px;
+            border: 2px dashed #ddd;
+        }
+
+        .position-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: #667eea;
+            color: white;
+            border-radius: 999px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .position-tag button {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+            padding: 0;
+            margin-left: 4px;
+        }
+
+        .add-position-btn {
+            padding: 8px 16px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+
+        .add-position-btn:hover {
+            background: #2980b9;
+        }
 
         .actions {
             display: flex; gap: 15px; margin-top: 30px;
@@ -207,28 +281,24 @@
         }
         .slug-row { display: flex; align-items: center; gap: 8px; }
         .copy-btn {
-            padding: 6px 10px; font-size: 12px; border: 1px solid #e2e8f0; border-radius: 6px;
-            background: white; cursor: pointer;
+            padding: 8px 14px;
+            font-size: 13px;
+            border: 1px solid #667eea;
+            border-radius: 6px;
+            background: white;
+            color: #667eea;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
         }
-        .copy-btn {
-    padding: 8px 14px;
-    font-size: 13px;
-    border: 1px solid #667eea;
-    border-radius: 6px;
-    background: white;
-    color: #667eea;
-    cursor: pointer;
-    font-weight: 600;
-    transition: all 0.2s;
-}
-.copy-btn:hover {
-    background: #667eea;
-    color: white;
-}
-.copy-btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-}
+        .copy-btn:hover {
+            background: #667eea;
+            color: white;
+        }
+        .copy-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
 
         .small-dim { font-size: 12px; color: #666; }
 
@@ -261,16 +331,16 @@
 
                 <p><strong>Titre :</strong> <span id="human-title">—</span></p>
                 <p class="slug-row">
-  <strong>Slug :</strong> <code id="slug">—</code>
-  <button type="button" class="copy-btn" id="rename-btn" onclick="renameFile()">
-    Renommer le fichier
-  </button>
-</p>
+                    <strong>Slug :</strong> <code id="slug">—</code>
+                    <button type="button" class="copy-btn" id="rename-btn" onclick="renameFile()">
+                        Renommer le fichier
+                    </button>
+                </p>
                 <div>
-                  <strong>Résumé sous-ranges :</strong>
-                  <div class="chips" id="subranges-summary">
-                    <span class="small-dim">Aucun sous-range détecté</span>
-                  </div>
+                    <strong>Résumé sous-ranges :</strong>
+                    <div class="chips" id="subranges-summary">
+                        <span class="small-dim">Aucun sous-range détecté</span>
+                    </div>
                 </div>
             </div>
 
@@ -306,32 +376,84 @@
 
                     <div class="form-group">
                         <label>Action principale <span class="required">*</span></label>
+                        <p class="help-text">
+                            Sélectionnez le type de situation de jeu principale
+                        </p>
                         <div class="button-grid">
-                            <button type="button" class="btn-option action-btn" data-value="open">Open</button>
-                            <button type="button" class="btn-option action-btn" data-value="call">Call</button>
-                            <button type="button" class="btn-option action-btn" data-value="3bet">3bet</button>
-                            <button type="button" class="btn-option action-btn" data-value="4bet">4bet</button>
-                            <button type="button" class="btn-option action-btn" data-value="fold">Fold</button>
-                            <button type="button" class="btn-option action-btn" data-value="defense">Defense</button>
-                            <button type="button" class="btn-option action-btn" data-value="check">Check</button>
-                            <button type="button" class="btn-option action-btn" data-value="raise">Raise</button>
+                            <button type="button" class="btn-option action-btn" data-value="open">🎯 Open</button>
+                            <button type="button" class="btn-option action-btn" data-value="defense">🛡️ Defense</button>
+                            <button type="button" class="btn-option action-btn" data-value="squeeze">🤏 Squeeze</button>
+                            <button type="button" class="btn-option action-btn" data-value="vs_limpers">🐌 Vs Limpers</button>
                         </div>
                         <input type="hidden" id="primary-action" name="primary_action" required>
+                    </div>
+                </div>
+
+                <!-- 🆕 Section contexte détaillé (dynamique selon primary_action) -->
+                <div class="form-section context-details">
+                    <h2>🎲 Détails du contexte</h2>
+
+                    <!-- Defense : opener -->
+                    <div id="defense-details" class="dynamic-section">
+                        <h3>🛡️ Defense (heads-up)</h3>
+                        <p class="help-text">Vous défendez face à une ouverture unique</p>
+                        <div class="form-group">
+                            <label>Position de l'ouvreur <span class="required">*</span></label>
+                            <div class="button-grid" id="opener-buttons">
+                                <!-- Rempli dynamiquement -->
+                            </div>
+                            <input type="hidden" id="opener" name="opener">
+                        </div>
+                    </div>
+
+                    <!-- Squeeze : opener + callers -->
+                    <div id="squeeze-details" class="dynamic-section">
+                        <h3>🤏 Squeeze (multiway)</h3>
+                        <p class="help-text">Vous squeezez face à une ouverture + call(s)</p>
+
+                        <div class="form-group">
+                            <label>Position de l'ouvreur <span class="required">*</span></label>
+                            <div class="button-grid" id="squeeze-opener-buttons">
+                                <!-- Rempli dynamiquement -->
+                            </div>
+                            <input type="hidden" id="squeeze-opener" name="squeeze_opener">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Caller(s) <span class="required">*</span></label>
+                            <p class="help-text">Sélectionnez les positions qui ont callé l'ouverture</p>
+                            <div class="position-tag-container" id="callers-container">
+                                <span class="small-dim">Aucun caller sélectionné</span>
+                            </div>
+                            <div class="button-grid" id="callers-buttons" style="margin-top: 10px;">
+                                <!-- Rempli dynamiquement -->
+                            </div>
+                            <input type="hidden" id="callers" name="callers">
+                        </div>
+                    </div>
+
+                    <!-- Vs Limpers : limpers -->
+                    <div id="limpers-details" class="dynamic-section">
+                        <h3>🐌 Vs Limpers (multiway)</h3>
+                        <p class="help-text">Vous agissez face à un ou plusieurs limps</p>
+
+                        <div class="form-group">
+                            <label>Limpeur(s) <span class="required">*</span></label>
+                            <p class="help-text">Sélectionnez les positions qui ont limpé</p>
+                            <div class="position-tag-container" id="limpers-container">
+                                <span class="small-dim">Aucun limpeur sélectionné</span>
+                            </div>
+                            <div class="button-grid" id="limpers-buttons" style="margin-top: 10px;">
+                                <!-- Rempli dynamiquement -->
+                            </div>
+                            <input type="hidden" id="limpers" name="limpers">
+                        </div>
                     </div>
                 </div>
 
                 <!-- Métadonnées optionnelles -->
                 <div class="form-section optional">
                     <h2>⚙️ Métadonnées optionnelles</h2>
-
-                    <div class="form-group">
-                        <label>Position adversaire</label>
-                        <div class="button-grid" id="vs-position-buttons">
-                            <button type="button" class="btn-option vs-btn" data-value="N/A">N/A</button>
-                            <!-- Dynamiquement rempli selon le format -->
-                        </div>
-                        <input type="hidden" id="vs-position" name="vs_position">
-                    </div>
 
                     <div class="form-group">
                         <label>Profondeur de stack</label>
@@ -371,7 +493,7 @@
                     </div>
                 </div>
 
-                <!-- NOUVEAU : Section validation sous-ranges -->
+                <!-- Section validation sous-ranges -->
                 <div class="form-section subranges">
                     <h2>🎯 Classification des sous-ranges <span id="modified-count"></span></h2>
                     <p class="help-text">
@@ -431,8 +553,11 @@
 
         let contextId = null;
         let contextData = null;
-        let modifiedLabels = {}; // Track des modifications {range_id: new_label}
-        let originalLabels = {}; // Labels d'origine pour comparaison
+        let modifiedLabels = {};
+        let originalLabels = {};
+        let selectedCallers = [];
+        let selectedLimpers = [];
+        let currentTableFormat = '6max';
 
         // Charger les données du contexte
         async function loadContext() {
@@ -455,7 +580,6 @@
 
                 contextData = data;
 
-                // Stocker les labels originaux
                 (data.ranges || []).forEach(r => {
                     originalLabels[r.id] = r.label_canon;
                 });
@@ -470,56 +594,57 @@
                 console.error(error);
             }
         }
-    async function checkFileExists(filePath) {
-    try {
-        const response = await fetch('/api/orphans/check');
-        const data = await response.json();
 
-        const isOrphan = data.orphans.some(o => o.context_id === contextId);
+        async function checkFileExists(filePath) {
+            try {
+                const response = await fetch('/api/orphans/check');
+                const data = await response.json();
 
-        if (isOrphan) {
-            const warningHtml = `
-                <div class="message error" style="display: flex; justify-content: space-between; align-items: center;">
-                    <span>⚠️ <strong>Fichier JSON manquant</strong> - Le fichier source n'existe plus. Certaines fonctionnalités sont limitées.</span>
-                    <div style="display: flex; gap: 10px;">
-                        <button onclick="rebuildJSON()" class="btn btn-warning" style="padding: 8px 16px; font-size: 13px;">
-                            🔄 Reconstruire
-                        </button>
-                        <button onclick="window.location.href='/orphans'" class="btn btn-secondary" style="padding: 8px 16px; font-size: 13px;">
-                            Gérer les orphelins
-                        </button>
-                    </div>
-                </div>
-            `;
-            document.getElementById('message-container').innerHTML = warningHtml;
+                const isOrphan = data.orphans.some(o => o.context_id === contextId);
+
+                if (isOrphan) {
+                    const warningHtml = `
+                        <div class="message error" style="display: flex; justify-content: space-between; align-items: center;">
+                            <span>⚠️ <strong>Fichier JSON manquant</strong> - Le fichier source n'existe plus. Certaines fonctionnalités sont limitées.</span>
+                            <div style="display: flex; gap: 10px;">
+                                <button onclick="rebuildJSON()" class="btn btn-warning" style="padding: 8px 16px; font-size: 13px;">
+                                    🔄 Reconstruire
+                                </button>
+                                <button onclick="window.location.href='/orphans'" class="btn btn-secondary" style="padding: 8px 16px; font-size: 13px;">
+                                    Gérer les orphelins
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    document.getElementById('message-container').innerHTML = warningHtml;
+                }
+            } catch (error) {
+                console.error('Erreur check fichier:', error);
+            }
         }
-    } catch (error) {
-        console.error('Erreur check fichier:', error);
-    }
-}
 
-async function rebuildJSON() {
-    if (!confirm('Reconstruire le fichier JSON depuis la base de données ?')) return;
+        async function rebuildJSON() {
+            if (!confirm('Reconstruire le fichier JSON depuis la base de données ?')) return;
 
-    try {
-        const response = await fetch(`/api/orphans/rebuild/${contextId}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
-        });
+            try {
+                const response = await fetch(`/api/orphans/rebuild/${contextId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
 
-        const result = await response.json();
+                const result = await response.json();
 
-        if (result.success) {
-            showMessage('✅ JSON reconstruit avec succès', 'success');
-            setTimeout(() => location.reload(), 1500);
-        } else {
-            showMessage(`❌ ${result.message}`, 'error');
+                if (result.success) {
+                    showMessage('✅ JSON reconstruit avec succès', 'success');
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    showMessage(`❌ ${result.message}`, 'error');
+                }
+            } catch (error) {
+                showMessage('Erreur lors de la reconstruction', 'error');
+            }
         }
-    } catch (error) {
-        showMessage('Erreur lors de la reconstruction', 'error');
-    }
-}
-        // Afficher les avertissements
+
         function displayWarnings(warnings) {
             const container = document.getElementById('warnings-container');
             if (!warnings || warnings.length === 0) {
@@ -538,7 +663,6 @@ async function rebuildJSON() {
             container.innerHTML = html;
         }
 
-        // Afficher les informations du contexte
         function displayContextInfo(data) {
             document.getElementById('filename').textContent = data.filename || '-';
             document.getElementById('original-name').textContent = data.original_name || '-';
@@ -552,7 +676,6 @@ async function rebuildJSON() {
             renderSummaryChips(data.subranges_summary || {});
         }
 
-        // Rendu de la table des sous-ranges
         function renderSubrangesTable(ranges, availableLabels) {
             const tbody = document.getElementById('subranges-tbody');
             tbody.innerHTML = '';
@@ -566,22 +689,18 @@ async function rebuildJSON() {
                 const tr = document.createElement('tr');
                 tr.dataset.rangeId = range.id;
 
-                // Couleur
                 const colorCell = document.createElement('td');
                 colorCell.className = 'range-color-cell';
                 colorCell.innerHTML = `<div class="range-color-indicator" style="background-color: ${range.color || '#e2e8f0'}"></div>`;
 
-                // Nom
                 const nameCell = document.createElement('td');
                 nameCell.className = 'range-name-cell';
                 nameCell.textContent = range.name || range.action || '(sans nom)';
 
-                // Nombre de mains
                 const handsCell = document.createElement('td');
                 handsCell.className = 'range-hands-cell';
                 handsCell.textContent = range.hand_count || 0;
 
-                // Select de classification
                 const labelCell = document.createElement('td');
                 labelCell.className = 'range-label-cell';
 
@@ -590,7 +709,6 @@ async function rebuildJSON() {
                 select.dataset.rangeId = range.id;
                 select.dataset.originalLabel = range.label_canon;
 
-                // Ajouter les options
                 Object.entries(availableLabels).forEach(([value, label]) => {
                     const option = document.createElement('option');
                     option.value = value;
@@ -601,7 +719,6 @@ async function rebuildJSON() {
                     select.appendChild(option);
                 });
 
-                // Event listener pour détecter les changements
                 select.addEventListener('change', (e) => {
                     const rangeId = parseInt(e.target.dataset.rangeId);
                     const originalLabel = e.target.dataset.originalLabel;
@@ -629,7 +746,6 @@ async function rebuildJSON() {
             });
         }
 
-        // Mettre à jour le compteur de modifications
         function updateModifiedCount() {
             const count = Object.keys(modifiedLabels).length;
             const indicator = document.getElementById('modified-count');
@@ -641,7 +757,6 @@ async function rebuildJSON() {
             }
         }
 
-        // Rendu des chips du résumé
         function renderSummaryChips(summary) {
             const box = document.getElementById('subranges-summary');
             if (!box) return;
@@ -662,90 +777,108 @@ async function rebuildJSON() {
             });
         }
 
-        // Copier le slug
-        // Renommer le fichier selon le slug
-async function renameFile() {
-    const slugEl = document.getElementById('slug');
-    const slug = slugEl.textContent.trim();
+        async function renameFile() {
+            const slugEl = document.getElementById('slug');
+            const slug = slugEl.textContent.trim();
 
-    if (!slug || slug === '—') {
-        showMessage('Slug non disponible', 'error');
-        return;
-    }
-
-    const btn = document.getElementById('rename-btn');
-    const originalText = btn.textContent;
-
-    // Confirmation
-    const newFilename = `${slug}.json`;
-    if (!confirm(`Renommer le fichier en "${newFilename}" ?\n\nCette action est irréversible.`)) {
-        return;
-    }
-
-    // Désactiver le bouton pendant l'opération
-    btn.disabled = true;
-    btn.textContent = 'Renommage...';
-
-    try {
-        const response = await fetch(`/api/validation/rename-file/${contextId}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ slug })
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-            showMessage(`✅ ${result.message}`, 'success');
-
-            // Mettre à jour l'affichage du nom de fichier
-            if (result.new_name) {
-                document.getElementById('filename').textContent = result.new_name;
+            if (!slug || slug === '—') {
+                showMessage('Slug non disponible', 'error');
+                return;
             }
 
-            // Changer le bouton en "Déjà renommé"
-            btn.textContent = '✓ Fichier renommé';
-            btn.style.background = '#10b981';
-            btn.style.color = 'white';
+            const btn = document.getElementById('rename-btn');
+            const originalText = btn.textContent;
 
-        } else {
-            showMessage(`❌ ${result.message}`, 'error');
-            btn.disabled = false;
-            btn.textContent = originalText;
+            const newFilename = `${slug}.json`;
+            if (!confirm(`Renommer le fichier en "${newFilename}" ?\n\nCette action est irréversible.`)) {
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Renommage...';
+
+            try {
+                const response = await fetch(`/api/validation/rename-file/${contextId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ slug })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showMessage(`✅ ${result.message}`, 'success');
+
+                    if (result.new_name) {
+                        document.getElementById('filename').textContent = result.new_name;
+                    }
+
+                    btn.textContent = '✓ Fichier renommé';
+                    btn.style.background = '#10b981';
+                    btn.style.color = 'white';
+
+                } else {
+                    showMessage(`❌ ${result.message}`, 'error');
+                    btn.disabled = false;
+                    btn.textContent = originalText;
+                }
+
+            } catch (error) {
+                console.error('Erreur renommage:', error);
+                showMessage('Erreur lors du renommage', 'error');
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
         }
 
-    } catch (error) {
-        console.error('Erreur renommage:', error);
-        showMessage('Erreur lors du renommage', 'error');
-        btn.disabled = false;
-        btn.textContent = originalText;
-    }
-}
-
-        // Pré-remplir le formulaire avec les données existantes
         function prefillForm(data) {
-    if (data.table_format) selectOption('table-format', data.table_format);
-    if (data.hero_position) selectOption('hero-position', data.hero_position);
-
-    // Action principale - gestion spéciale
-    if (data.primary_action) {
-        document.querySelectorAll('.action-btn').forEach(btn => {
-            if (btn.dataset.value === data.primary_action) {
-                btn.classList.add('selected');
-                document.getElementById('primary-action').value = data.primary_action;
+            if (data.table_format) {
+                selectOption('table-format', data.table_format);
+                currentTableFormat = data.table_format;
             }
-        });
-    }
+            if (data.hero_position) selectOption('hero-position', data.hero_position);
 
-    if (data.vs_position) selectOption('vs-position', data.vs_position);
-    if (data.stack_depth) document.getElementById('stack-depth').value = data.stack_depth;
-    if (data.game_type) document.getElementById('game-type').value = data.game_type;
-    if (data.variant) document.getElementById('variant').value = data.variant;
-    if (data.sizing) document.getElementById('sizing').value = data.sizing;
-    if (data.stakes) document.getElementById('stakes').value = data.stakes;
-}
+            if (data.primary_action) {
+                document.querySelectorAll('.action-btn').forEach(btn => {
+                    if (btn.dataset.value === data.primary_action) {
+                        btn.classList.add('selected');
+                        document.getElementById('primary-action').value = data.primary_action;
+                        showDynamicSection(data.primary_action);
+                    }
+                });
 
-        // Sélectionner une option dans les boutons
+                // 🆕 Pré-remplir action_sequence si présent
+                if (data.action_sequence) {
+                    const seq = data.action_sequence;
+
+                    if (data.primary_action === 'defense' && seq.opener) {
+                        setTimeout(() => selectOption('opener', seq.opener), 100);
+                    }
+
+                    if (data.primary_action === 'squeeze') {
+                        if (seq.opener) {
+                            setTimeout(() => selectOption('squeeze-opener', seq.opener), 100);
+                        }
+                        if (seq.callers) {
+                            selectedCallers = seq.callers;
+                            setTimeout(() => renderSelectedCallers(), 100);
+                        }
+                    }
+
+                    if (data.primary_action === 'vs_limpers' && seq.limpers) {
+                        selectedLimpers = seq.limpers;
+                        setTimeout(() => renderSelectedLimpers(), 100);
+                    }
+                }
+            }
+
+            if (data.stack_depth) document.getElementById('stack-depth').value = data.stack_depth;
+            if (data.game_type) document.getElementById('game-type').value = data.game_type;
+            if (data.variant) document.getElementById('variant').value = data.variant;
+            if (data.sizing) document.getElementById('sizing').value = data.sizing;
+            if (data.stakes) document.getElementById('stakes').value = data.stakes;
+        }
+
         function selectOption(fieldId, value) {
             const buttons = document.querySelectorAll(`#${fieldId}-buttons .btn-option`);
             buttons.forEach(btn => {
@@ -753,6 +886,122 @@ async function renameFile() {
                     btn.click();
                 }
             });
+        }
+
+        // 🆕 Afficher/masquer sections dynamiques selon primary_action
+        function showDynamicSection(action) {
+            // Masquer toutes les sections dynamiques
+            document.querySelectorAll('.dynamic-section').forEach(section => {
+                section.classList.remove('visible');
+            });
+
+            // Afficher la bonne section
+            if (action === 'defense') {
+                document.getElementById('defense-details').classList.add('visible');
+                updateDynamicPositionButtons('opener');
+            } else if (action === 'squeeze') {
+                document.getElementById('squeeze-details').classList.add('visible');
+                updateDynamicPositionButtons('squeeze-opener');
+                updateDynamicPositionButtons('callers');
+            } else if (action === 'vs_limpers') {
+                document.getElementById('limpers-details').classList.add('visible');
+                updateDynamicPositionButtons('limpers');
+            }
+        }
+
+        // 🆕 Mettre à jour les boutons de positions dynamiques
+        function updateDynamicPositionButtons(target) {
+            const positions = POSITIONS_BY_FORMAT[currentTableFormat];
+            const container = document.getElementById(`${target}-buttons`);
+
+            if (!container) return;
+
+            container.innerHTML = '';
+
+            positions.forEach(pos => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'btn-option';
+                btn.dataset.value = pos;
+                btn.textContent = pos;
+
+                if (target === 'callers') {
+                    btn.addEventListener('click', () => addCaller(pos));
+                } else if (target === 'limpers') {
+                    btn.addEventListener('click', () => addLimper(pos));
+                } else {
+                    // opener ou squeeze-opener
+                    btn.addEventListener('click', (e) => {
+                        container.querySelectorAll('.btn-option').forEach(b => b.classList.remove('selected'));
+                        e.target.classList.add('selected');
+                        document.getElementById(target.replace('-buttons', '')).value = pos;
+                    });
+                }
+
+                container.appendChild(btn);
+            });
+        }
+
+        // 🆕 Gérer les callers (squeeze)
+        function addCaller(position) {
+            if (!selectedCallers.includes(position)) {
+                selectedCallers.push(position);
+                renderSelectedCallers();
+            }
+        }
+
+        function removeCaller(position) {
+            selectedCallers = selectedCallers.filter(p => p !== position);
+            renderSelectedCallers();
+        }
+
+        function renderSelectedCallers() {
+            const container = document.getElementById('callers-container');
+            container.innerHTML = '';
+
+            if (selectedCallers.length === 0) {
+                container.innerHTML = '<span class="small-dim">Aucun caller sélectionné</span>';
+            } else {
+                selectedCallers.forEach(pos => {
+                    const tag = document.createElement('div');
+                    tag.className = 'position-tag';
+                    tag.innerHTML = `${pos} <button onclick="removeCaller('${pos}')">×</button>`;
+                    container.appendChild(tag);
+                });
+            }
+
+            document.getElementById('callers').value = selectedCallers.join(',');
+        }
+
+        // 🆕 Gérer les limpers (vs_limpers)
+        function addLimper(position) {
+            if (!selectedLimpers.includes(position)) {
+                selectedLimpers.push(position);
+                renderSelectedLimpers();
+            }
+        }
+
+        function removeLimper(position) {
+            selectedLimpers = selectedLimpers.filter(p => p !== position);
+            renderSelectedLimpers();
+        }
+
+        function renderSelectedLimpers() {
+            const container = document.getElementById('limpers-container');
+            container.innerHTML = '';
+
+            if (selectedLimpers.length === 0) {
+                container.innerHTML = '<span class="small-dim">Aucun limpeur sélectionné</span>';
+            } else {
+                selectedLimpers.forEach(pos => {
+                    const tag = document.createElement('div');
+                    tag.className = 'position-tag';
+                    tag.innerHTML = `${pos} <button onclick="removeLimper('${pos}')">×</button>`;
+                    container.appendChild(tag);
+                });
+            }
+
+            document.getElementById('limpers').value = selectedLimpers.join(',');
         }
 
         // Gérer la sélection du format de table
@@ -764,15 +1013,20 @@ async function renameFile() {
                 e.target.classList.add('selected');
                 const format = e.target.dataset.value;
                 document.getElementById('table-format').value = format;
+                currentTableFormat = format;
                 updatePositionButtons(format);
+
+                // Réinitialiser aussi les positions dynamiques
+                const primaryAction = document.getElementById('primary-action').value;
+                if (primaryAction) {
+                    showDynamicSection(primaryAction);
+                }
             }
         });
 
-        // Mettre à jour les boutons de position selon le format
         function updatePositionButtons(format) {
             const positions = POSITIONS_BY_FORMAT[format];
 
-            // Héros
             const heroContainer = document.getElementById('hero-position-buttons');
             heroContainer.innerHTML = '';
             positions.forEach(pos => {
@@ -784,21 +1038,6 @@ async function renameFile() {
                 heroContainer.appendChild(btn);
             });
 
-            // Adversaire
-            const vsContainer = document.getElementById('vs-position-buttons');
-            vsContainer.innerHTML = '<button type="button" class="btn-option vs-btn selected" data-value="N/A">N/A</button>';
-            document.getElementById('vs-position').value = 'N/A';
-
-            positions.forEach(pos => {
-                const btn = document.createElement('button');
-                btn.type = 'button';
-                btn.className = 'btn-option vs-btn';
-                btn.dataset.value = pos;
-                btn.textContent = pos;
-                vsContainer.appendChild(btn);
-            });
-
-            // Réinitialiser les sélections
             document.getElementById('hero-position').value = '';
             document.querySelectorAll('.hero-btn').forEach(btn => btn.classList.remove('selected'));
         }
@@ -808,11 +1047,12 @@ async function renameFile() {
             btn.addEventListener('click', () => {
                 document.querySelectorAll('.action-btn').forEach(b => b.classList.remove('selected'));
                 btn.classList.add('selected');
-                document.getElementById('primary-action').value = btn.dataset.value;
+                const action = btn.dataset.value;
+                document.getElementById('primary-action').value = action;
+                showDynamicSection(action);
             });
         });
 
-        // Gérer les positions héros (délégation d'événement)
         document.getElementById('hero-position-buttons').addEventListener('click', (e) => {
             if (e.target.classList.contains('hero-btn')) {
                 document.querySelectorAll('.hero-btn').forEach(b => b.classList.remove('selected'));
@@ -821,43 +1061,58 @@ async function renameFile() {
             }
         });
 
-        // Gérer les positions adversaire (délégation d'événement)
-        document.getElementById('vs-position-buttons').addEventListener('click', (e) => {
-            if (e.target.classList.contains('vs-btn')) {
-                document.querySelectorAll('.vs-btn').forEach(b => b.classList.remove('selected'));
-                e.target.classList.add('selected');
-                document.getElementById('vs-position').value = e.target.dataset.value;
-            }
-        });
-
         // Soumettre le formulaire
-document.getElementById('validation-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
+        document.getElementById('validation-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
 
-    // Collecter TOUS les labels des sous-ranges (pas seulement les modifiés)
-    const allRangeLabels = {};
-    document.querySelectorAll('.range-label-select').forEach(select => {
-        const rangeId = parseInt(select.dataset.rangeId);
-        const label = select.value;
-        allRangeLabels[rangeId] = label;
-    });
+            const allRangeLabels = {};
+            document.querySelectorAll('.range-label-select').forEach(select => {
+                const rangeId = parseInt(select.dataset.rangeId);
+                const label = select.value;
+                allRangeLabels[rangeId] = label;
+            });
 
-    const formData = {
-        table_format: document.getElementById('table-format').value,
-        hero_position: document.getElementById('hero-position').value,
-        primary_action: document.getElementById('primary-action').value,
-        vs_position: document.getElementById('vs-position').value,
-        stack_depth: document.getElementById('stack-depth').value,
-        game_type: document.getElementById('game-type').value,
-        variant: document.getElementById('variant').value,
-        sizing: document.getElementById('sizing').value,
-        stakes: document.getElementById('stakes').value,
-        update_json: document.getElementById('update-json').checked,
-        range_labels: Object.keys(allRangeLabels).length > 0 ? allRangeLabels : null  // Changé ici
-    };
+            const primaryAction = document.getElementById('primary-action').value;
+
+            const formData = {
+                table_format: document.getElementById('table-format').value,
+                hero_position: document.getElementById('hero-position').value,
+                primary_action: primaryAction,
+                stack_depth: document.getElementById('stack-depth').value,
+                game_type: document.getElementById('game-type').value,
+                variant: document.getElementById('variant').value,
+                sizing: document.getElementById('sizing').value,
+                stakes: document.getElementById('stakes').value,
+                update_json: document.getElementById('update-json').checked,
+                range_labels: Object.keys(allRangeLabels).length > 0 ? allRangeLabels : null
+            };
+
+            // 🆕 Ajouter les champs spécifiques selon primary_action
+            if (primaryAction === 'defense') {
+                formData.opener = document.getElementById('opener').value;
+            } else if (primaryAction === 'squeeze') {
+                formData.opener = document.getElementById('squeeze-opener').value;
+                formData.callers = document.getElementById('callers').value;
+            } else if (primaryAction === 'vs_limpers') {
+                formData.limpers = document.getElementById('limpers').value;
+            }
 
             if (!formData.table_format || !formData.hero_position || !formData.primary_action) {
                 showMessage('Veuillez remplir tous les champs obligatoires', 'error');
+                return;
+            }
+
+            // Validation spécifique selon primary_action
+            if (primaryAction === 'defense' && !formData.opener) {
+                showMessage('Veuillez sélectionner la position de l\'ouvreur', 'error');
+                return;
+            }
+            if (primaryAction === 'squeeze' && (!formData.opener || !formData.callers)) {
+                showMessage('Veuillez sélectionner l\'ouvreur et au moins un caller', 'error');
+                return;
+            }
+            if (primaryAction === 'vs_limpers' && !formData.limpers) {
+                showMessage('Veuillez sélectionner au moins un limpeur', 'error');
                 return;
             }
 
@@ -882,7 +1137,6 @@ document.getElementById('validation-form').addEventListener('submit', async (e) 
             }
         });
 
-        // Marquer comme non exploitable
         document.getElementById('btn-ignore').addEventListener('click', async () => {
             if (!confirm('Êtes-vous sûr de vouloir marquer ce contexte comme non exploitable ?')) return;
 
@@ -902,14 +1156,12 @@ document.getElementById('validation-form').addEventListener('submit', async (e) 
             }
         });
 
-        // Afficher un message
         function showMessage(text, type) {
             const container = document.getElementById('message-container');
             container.innerHTML = `<div class="message ${type}">${text}</div>`;
             if (type === 'success') setTimeout(() => { container.innerHTML = ''; }, 3000);
         }
 
-        // Charger au démarrage
         loadContext();
     </script>
 </body>
