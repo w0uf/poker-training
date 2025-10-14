@@ -13,7 +13,8 @@ Interface web locale pour l'entraînement de ranges de poker avec pipeline inté
 - Standardisation intelligente des noms et positions
 - Enrichissement automatique des métadonnées
 - **Mapping contextuel prioritaire** : Le `primary_action` du contexte prime sur le nom de la range
-- **Support des contextes multiway** : Squeeze (✅), vs_limpers (🚧 en développement)
+- **Support complet des contextes multiway** : Squeeze (✅), vs_limpers (✅)
+- **Action_sequence JSON** : Gestion des situations complexes (opener + callers, limpers multiples)
 - Détection des contextes nécessitant validation
 - **Validation stricte des métadonnées** avant `quiz_ready=1`
 
@@ -25,6 +26,7 @@ Interface web locale pour l'entraînement de ranges de poker avec pipeline inté
 - **Mise à jour JSON source** : synchronisation automatique des validations
 - **Renommage automatique** : normalisation des noms de fichiers selon le slug
 - **Mise à jour du label_canon de la range principale** : Synchronisé avec le `primary_action`
+- **Construction automatique d'action_sequence** : Détection depuis le nom du contexte
 
 ### Système de Quiz Interactif Intelligent ✨
 - **Configuration flexible** : sélection des contextes et nombre de questions
@@ -32,6 +34,7 @@ Interface web locale pour l'entraînement de ranges de poker avec pipeline inté
   - Open : "Vous avez XX en UTG, que faites-vous ?"
   - Defense : "UTG ouvre. Vous avez XX en CO, que faites-vous ?"
   - Squeeze : "UTG ouvre, CO call. Vous avez XX en BTN, que faites-vous ?"
+  - VS_Limpers : "UTG limp, CO limp. Vous avez XX en BTN, que faites-vous ?"
   - 4bet : "Vous ouvrez, CO 3bet. Vous avez XX, que faites-vous ?"
 - **Sélection intelligente des mains** :
   - Détection automatique des mains borderline (à la frontière de la range)
@@ -40,6 +43,7 @@ Interface web locale pour l'entraînement de ranges de poker avec pipeline inté
 - **Questions defense** : Utilise les sous-ranges pour trouver l'action correcte
 - **Boutons dynamiques contextuels** :
   - Defense : `[FOLD] [CALL] [RAISE]` (3BET → RAISE pour l'UI)
+  - VS_Limpers : `[FOLD] [CALL] [ISO]` (ISO_VALUE/BLUFF → ISO pour l'UI)
   - BB check (action gratuite) : `[CHECK] [RAISE]` (pas de FOLD)
   - Open : `[FOLD] [CALL] [RAISE]`
   - Squeeze : `[FOLD] [CALL] [RAISE]`
@@ -52,6 +56,7 @@ Interface web locale pour l'entraînement de ranges de poker avec pipeline inté
   - **Pour OPEN** : Contient uniquement les mains à open
   - **Pour DEFENSE** : Contient TOUTES les mains jouables (union call + 3bet)
   - **Pour SQUEEZE** : Contient TOUTES les mains à squeeze
+  - **Pour VS_LIMPERS** : Contient TOUTES les mains jouables (overlimper + iso raise)
 - **Sous-ranges (range_key > '1')** : Actions spécifiques (réponses aux réactions adverses)
 - **Labels canoniques** : Classification standardisée pour le quiz
 
@@ -129,7 +134,7 @@ poker-training/
 │   ├── json_parser.py            # Parsing des fichiers JSON
 │   ├── name_standardizer.py      # Standardisation des noms
 │   ├── metadata_enricher.py      # Enrichissement automatique
-│   ├── database_manager.py       # Gestion base de données
+│   ├── database_manager.py       # Gestion base de données + action_sequence
 │   ├── context_validator.py      # Validation des contextes
 │   ├── quiz_generator.py         # Génération des questions
 │   ├── hand_selector.py          # Sélection intelligente des mains
@@ -147,10 +152,11 @@ poker-training/
 - **range_files** : Fichiers importés avec hash et timestamps
 - **range_contexts** : Contextes avec métadonnées enrichies
   - Colonnes dédiées : `table_format`, `hero_position`, `primary_action`, `action_sequence`, etc.
+  - **`action_sequence`** (TEXT, JSON) : Stocke les séquences multiway
   - Statuts : `needs_validation`, `quiz_ready`, `confidence_score`
 - **ranges** : Ranges individuelles avec classification
   - `range_key` : Position dans le fichier (1=principale, 2+=sous-ranges)
-  - `label_canon` : Label standardisé (OPEN, CALL, DEFENSE, SQUEEZE, etc.)
+  - `label_canon` : Label standardisé (OPEN, CALL, DEFENSE, SQUEEZE, ISO, etc.)
   - `name` : Nom lisible pour affichage
 - **range_hands** : Mains avec fréquences
 
@@ -164,6 +170,39 @@ idx_ranges_label_canon          -- Filtrage par label
 idx_ranges_context_label        -- Quiz queries (context + label)
 ```
 
+### Colonne action_sequence (JSON)
+
+Pour gérer les situations multiway complexes, la colonne `action_sequence` stocke les informations sous forme JSON :
+
+#### Format DEFENSE
+```json
+{
+  "opener": "UTG"
+}
+```
+
+#### Format SQUEEZE
+```json
+{
+  "opener": "UTG",
+  "callers": ["CO"]
+}
+```
+
+#### Format VS_LIMPERS
+```json
+{
+  "limpers": ["UTG", "CO"]
+}
+```
+
+**Fonctions utilitaires** (dans `database_manager.py`) :
+- `build_action_sequence()` : Construit le dictionnaire
+- `serialize_action_sequence()` : Convertit en JSON pour la DB
+- `parse_action_sequence()` : Parse le JSON depuis la DB
+- `format_action_sequence_display()` : Format pour affichage ("vs UTG open + CO call")
+- `detect_action_sequence_from_name()` : Détection automatique depuis le nom du contexte
+
 ## 🎲 Structure des ranges
 
 ### Architecture hiérarchique
@@ -171,7 +210,7 @@ idx_ranges_context_label        -- Quiz queries (context + label)
 #### Exemple 1 : Range d'OPEN
 
 ```
-Fichier JSON : "5max_utg_open.json"
+Fichier JSON : "nlhe-5max-utg-open-100bb.json"
 ├── Range 1 (principale) : label_canon='OPEN'
 │   ├── AA, KK, QQ, JJ, TT, 99, AKs, AQs, ...
 │   └── [Mains à open depuis UTG]
@@ -189,7 +228,7 @@ Fichier JSON : "5max_utg_open.json"
 #### Exemple 2 : Range de DEFENSE
 
 ```
-Fichier JSON : "5max_co_defense_vs_utg.json"
+Fichier JSON : "nlhe-5max-co-defense-vs-utg-100bb.json"
 ├── Range 1 (principale) : label_canon='DEFENSE'
 │   ├── AA, KK, QQ, JJ, TT, 99, 88, 77, AKs, AQs, KQs, JTs, ...
 │   └── [TOUTES les mains jouables = union de call + 3bet]
@@ -213,14 +252,19 @@ Fichier JSON : "5max_co_defense_vs_utg.json"
 #### Exemple 3 : Range de SQUEEZE ✅
 
 ```
-Fichier JSON : "5max_btn_squeeze.json"
+Fichier JSON : "nlhe-5max-btn-squeeze-100bb.json"
+Métadonnées: primary_action='squeeze', action_sequence='{"opener":"UTG","callers":["CO"]}'
+
 ├── Range 1 (principale) : label_canon='SQUEEZE'
 │   ├── AA, KK, QQ, JJ, AKs, AQs, ...
 │   └── [Toutes les mains à squeeze depuis BTN vs UTG open + CO call]
-├── Range 2 (sous-range) : label_canon='R3_VALUE'
+├── Range 2 (sous-range) : label_canon='CALL'
+│   ├── 88, 77, JTs, ...
+│   └── [Overcall le call de CO]
+├── Range 3 (sous-range) : label_canon='R3_VALUE'
 │   ├── AA, KK, QQ, JJ, AKs
 │   └── [Squeeze value]
-└── Range 3 (sous-range) : label_canon='R3_BLUFF'
+└── Range 4 (sous-range) : label_canon='R3_BLUFF'
     ├── A5s, A4s, A3s
     └── [Squeeze bluff]
 ```
@@ -228,6 +272,34 @@ Fichier JSON : "5max_btn_squeeze.json"
 **Note importante pour SQUEEZE :**
 - Le `label_canon='SQUEEZE'` est normalisé vers `'RAISE'` dans `poker_constants.py`
 - Ceci permet d'afficher "RAISE" dans l'UI plutôt que le terme technique "SQUEEZE"
+- L'`action_sequence` JSON stocke opener et callers pour générer la question contextuelle
+
+#### Exemple 4 : Range VS_LIMPERS ✅
+
+```
+Fichier JSON : "nlhe-6max-btn-vs_limpers-100bb.json"
+Métadonnées: primary_action='vs_limpers', limpers='UTG,CO', action_sequence='{"limpers":["UTG","CO"]}'
+
+├── Range 1 (principale) : label_canon='RAISE' ou 'ISO'
+│   ├── AA, KK, QQ, JJ, TT, 99, AKs, AQs, KQs, ...
+│   └── [Toutes les mains jouables face aux limpers]
+├── Range 2 (sous-range) : label_canon='CALL'
+│   ├── 88, 77, 66, KQo, JTo, 98s, ...
+│   └── [Overlimper derrière les limpers]
+├── Range 3 (sous-range) : label_canon='ISO_VALUE'
+│   ├── AA, KK, QQ, JJ, TT, 99, AKs, AQs, AJs
+│   └── [Iso raise value]
+└── Range 4 (sous-range) : label_canon='ISO_BLUFF'
+    ├── A5s, A4s, A3s, K9s, K8s, Q9s, J9s, T9s, 98s, 87s
+    └── [Iso raise bluff]
+```
+
+**Note importante pour VS_LIMPERS :**
+- Le `label_canon` de la range principale peut être 'RAISE' (générique) ou 'ISO' (si 'iso' dans le nom)
+- Les actions ISO_VALUE et ISO_BLUFF sont normalisées vers `'ISO'` pour l'UI
+- L'`action_sequence` JSON stocke la liste des limpers : `{"limpers": ["UTG", "CO"]}`
+- Question générée : "Table 6max, vous êtes BTN avec 100bb. UTG et CO limpent. Vous avez XX. Que faites-vous ?"
+- Options : `[FOLD, CALL, ISO]` ou `[FOLD, CALL, RAISE]` selon la normalisation
 
 ### Labels canoniques
 
@@ -235,10 +307,11 @@ Fichier JSON : "5max_btn_squeeze.json"
 - **OPEN** : Range d'ouverture
 - **DEFENSE** : Range de defense (contient toutes les mains jouables)
 - **SQUEEZE** : Range de squeeze (multiway, vs open + call)
-- **CALL** : Call / Complete / Flat
+- **RAISE** : Raise générique (utilisé pour vs_limpers)
+- **ISO** : Iso raise (vs limpers)
+- **CALL** : Call / Complete / Flat / Overlimper
 - **CHECK** : Check
 - **FOLD** : Fold
-- **RAISE** : Raise générique
 
 #### Actions de relance
 - **R3_VALUE** : 3bet Value (normalisé en 3BET, affiché comme RAISE en defense)
@@ -247,7 +320,8 @@ Fichier JSON : "5max_btn_squeeze.json"
 - **R4_BLUFF** : 4bet Bluff (normalisé en 4BET pour le quiz)
 - **R5_ALLIN** : 5bet / All-in
 
-#### Actions spécifiques (à venir)
+#### Actions vs limpers
+- **ISO_RAISE** : Iso raise générique (normalisé en ISO pour le quiz)
 - **ISO_VALUE** : Iso raise Value (normalisé en ISO pour le quiz)
 - **ISO_BLUFF** : Iso raise Bluff (normalisé en ISO pour le quiz)
 
@@ -263,7 +337,11 @@ def map_name_to_label_canon(name: str, range_key: str, primary_action: str = Non
             if 'defense' in primary_action.lower():
                 return 'DEFENSE'
             elif 'squeeze' in primary_action.lower():
-                return 'SQUEEZE'  # ✅ Correction clé
+                return 'SQUEEZE'  # ✅ Squeeze détecté
+            elif 'vs_limpers' in primary_action.lower():
+                if 'iso' in name.lower():
+                    return 'ISO'
+                return 'RAISE'  # ✅ VS_Limpers détecté
             elif 'open' in primary_action.lower():
                 return 'OPEN'
         
@@ -271,6 +349,8 @@ def map_name_to_label_canon(name: str, range_key: str, primary_action: str = Non
         # Ordre important : squeeze AVANT 3bet !
         if 'squeeze' in name.lower() or 'squezze' in name.lower():
             return 'SQUEEZE'
+        elif 'iso' in name.lower() or 'limper' in name.lower():
+            return 'ISO'
         elif 'open' in name.lower():
             return 'OPEN'
         # ...
@@ -283,6 +363,7 @@ def map_name_to_label_canon(name: str, range_key: str, primary_action: str = Non
 | OPEN | Face à 3bet | CALL, R4_VALUE, R4_BLUFF, FOLD |
 | DEFENSE | Réponse à open | CALL, R3_VALUE, R3_BLUFF, FOLD |
 | SQUEEZE | Face à 4bet | CALL, R5_ALLIN, FOLD |
+| VS_LIMPERS | Face à un iso raise adverse | CALL, ISO_VALUE, ISO_BLUFF, FOLD |
 | 3BET / SQUEEZE | Face à 4bet | CALL, R5_ALLIN, FOLD |
 | 4BET | Face à 5bet | CALL, FOLD |
 
@@ -364,7 +445,25 @@ Réponse correcte : RAISE (range principale label_canon='SQUEEZE' normalisé ver
 
 Logique :
 1. label_canon='SQUEEZE' est normalisé vers 'RAISE' dans poker_constants.py
-2. Les options affichent RAISE (plus clair que SQUEEZE pour l'utilisateur)
+2. action_sequence='{"opener":"UTG","callers":["CO"]}' génère la question contextuelle
+3. Les options affichent RAISE (plus clair que SQUEEZE pour l'utilisateur)
+```
+
+#### Question Simple - VS_LIMPERS ✅
+```
+Contexte : Table 6max, vous êtes BTN avec 100bb
+Main affichée : KQs
+Question : UTG et CO limpent. Vous avez KQs. Que faites-vous ?
+
+Boutons disponibles : [FOLD] [CALL] [ISO]
+Réponse correcte : ISO (trouvée dans sous-range label_canon='ISO_VALUE' normalisé vers ISO)
+
+Logique :
+1. action_sequence='{"limpers":["UTG","CO"]}' génère la question
+2. Main KQs est IN-RANGE (dans range principale)
+3. _find_subrange_action(KQs, sous_ranges) trouve KQs dans "iso_value"
+4. Normalisation : ISO_VALUE → ISO pour l'affichage
+5. Format question : "UTG et CO limpent" (détecté depuis action_sequence)
 ```
 
 #### Question Simple - BB CHECK
@@ -382,12 +481,13 @@ Boutons disponibles : [CHECK] [RAISE]
 - **Table de poker virtuelle** : Fond vert réaliste avec effet feutre
 - **Affichage des cartes** : Animation de distribution des cartes
 - **Contexte visible** : Table format, position, stack depth
-- **Questions contextuelles** : Texte adapté selon open/defense/squeeze/4bet/etc.
+- **Questions contextuelles** : Texte adapté selon open/defense/squeeze/vs_limpers/4bet/etc.
 - **Boutons d'action dynamiques** :
   - Adaptation selon le contexte (defense = RAISE au lieu de 3BET)
+  - VS_Limpers = ISO au lieu de ISO_VALUE/BLUFF
   - BB check = pas de FOLD (action gratuite)
   - DEFENSE ne s'affiche jamais comme bouton (c'est un label technique)
-  - Couleurs distinctes (FOLD rouge, CALL bleu, RAISE orange, etc.)
+  - Couleurs distinctes (FOLD rouge, CALL bleu, RAISE orange, ISO violet, etc.)
   - Désactivés après réponse
 - **Feedback immédiat** :
   - ✅ Correct : fond vert avec encouragement
@@ -441,19 +541,53 @@ for i in range(question_count):
         add_to_quiz(question)
 ```
 
+### Format des questions selon action_sequence
+
+Le texte de la question est généré automatiquement depuis `action_sequence` :
+
+```python
+def _format_question(context, hand):
+    action_seq = context.get('action_sequence')  # Dict Python parsé depuis JSON
+    
+    if primary_action == 'defense':
+        opener = action_seq.get('opener', 'UTG')
+        parts.append(f"{opener} ouvre")
+    
+    elif primary_action == 'squeeze':
+        opener = action_seq.get('opener', 'UTG')
+        callers = action_seq.get('callers', [])
+        
+        parts.append(f"{opener} ouvre")
+        
+        if len(callers) == 1:
+            parts.append(f"{callers[0]} call")
+        else:
+            caller_str = ", ".join(callers[:-1]) + f" et {callers[-1]}"
+            parts.append(f"{caller_str} callent")
+    
+    elif primary_action == 'vs_limpers':
+        limpers = action_seq.get('limpers', [])
+        
+        if len(limpers) == 1:
+            parts.append(f"{limpers[0]} limp")
+        else:
+            limper_str = ", ".join(limpers[:-1]) + f" et {limpers[-1]}"
+            parts.append(f"{limper_str} limpent")
+```
+
 ### Fonction _find_subrange_action()
 
-Pour les contextes de defense, cette fonction trouve l'action correcte :
+Pour les contextes de defense et vs_limpers, cette fonction trouve l'action correcte :
 
 ```python
 def _find_subrange_action(hand, ranges):
     """
-    Trouve l'action correcte pour une main dans un contexte defense.
+    Trouve l'action correcte pour une main dans un contexte defense/vs_limpers.
     Cherche dans les sous-ranges (range_key > 1).
     
     Returns:
-        'CALL', '3BET', etc. (action normalisée)
-        Note : 3BET sera converti en RAISE dans _generate_simple_question
+        'CALL', '3BET', 'ISO', etc. (action normalisée)
+        Note : 3BET sera converti en RAISE, ISO_VALUE en ISO dans _generate_simple_question
     """
     for r in ranges:
         if r['range_key'] != '1' and hand in r['hands']:
@@ -475,10 +609,10 @@ ACTION_NORMALIZATION = {
     'R4_VALUE': '4BET',
     'R4_BLUFF': '4BET',
     'R5_ALLIN': 'ALLIN',
-    'ISO_VALUE': 'ISO',
-    'ISO_BLUFF': 'ISO',
-    'ISO_RAISE': 'ISO',
-    'SQUEEZE': 'RAISE',  # ✅ Squeeze normalise vers RAISE pour l'UI
+    'ISO_VALUE': 'ISO',      # ✅ VS_Limpers
+    'ISO_BLUFF': 'ISO',      # ✅ VS_Limpers
+    'ISO_RAISE': 'ISO',      # ✅ VS_Limpers
+    'SQUEEZE': 'RAISE',      # ✅ Squeeze normalise vers RAISE pour l'UI
 }
 ```
 
@@ -510,6 +644,8 @@ def _generate_action_options(correct_answer, main_range_action, context):
         distractors = ['CALL', 'RAISE']  # ✅ RAISE au lieu de 3BET
     elif 'squeeze' in context['primary_action']:
         distractors = ['CALL']
+    elif 'vs_limpers' in context['primary_action']:
+        distractors = ['CALL', 'ISO']  # ✅ Options pour vs_limpers
     # ...
     
     return sort_actions(options)
@@ -576,6 +712,15 @@ cursor.execute("""
     WHERE quiz_ready = 1
 """)
 print(cursor.fetchall())
+
+# Vérifier les action_sequence
+cursor.execute("""
+    SELECT display_name, primary_action, action_sequence
+    FROM range_contexts
+    WHERE action_sequence IS NOT NULL
+""")
+for row in cursor.fetchall():
+    print(f"{row[0]} | {row[1]} | {row[2]}")
 ```
 
 ## 📈 Workflow complet
@@ -586,6 +731,8 @@ print(cursor.fetchall())
 2. Exporter JSON → data/ranges/
    (Inclure les label_canon dans le JSON pour éviter la validation manuelle)
    (Inclure les metadata pour un mapping optimal)
+   (Pour squeeze : inclure opener/callers dans metadata)
+   (Pour vs_limpers : inclure limpers="UTG,CO" dans metadata)
    ↓
 3. Lancer Import Pipeline
    ↓
@@ -593,31 +740,34 @@ print(cursor.fetchall())
    - Métadonnées valides ? (table_format, hero_position, primary_action)
    - Range principale a un label_canon ?
    - Toutes les sous-ranges ont des labels ?
-   - Mapping contextuel correct ? (squeeze → SQUEEZE, pas OPEN)
+   - Mapping contextuel correct ? (squeeze → SQUEEZE, vs_limpers → RAISE/ISO)
+   - Action_sequence construite automatiquement si détectable
    - Si NON → needs_validation=1
    ↓
 5. Si needs_validation=1, valider les contextes:
    - Corriger métadonnées si nécessaire
+   - Ajouter opener/callers/limpers si manquant
    - Le label_canon de la range principale est automatiquement mis à jour
    - Classifier tous les sous-ranges
+   - Action_sequence est construite automatiquement
    - Renommer fichier selon slug
    - Mettre à jour JSON source
    ↓
 6. Contextes prêts (quiz_ready=1)
    ↓
 7. Lancer le quiz !
-   - Sélectionner contextes
+   - Sélectionner contextes (open, defense, squeeze, vs_limpers, etc.)
    - Choisir nombre de questions
    - Questions intelligentes avec mains borderline
-   - Texte adapté au contexte (defense, open, squeeze, etc.)
-   - Boutons adaptés (RAISE au lieu de 3BET en defense)
+   - Texte adapté au contexte (utilise action_sequence pour squeeze/vs_limpers)
+   - Boutons adaptés (RAISE au lieu de 3BET, ISO au lieu de ISO_VALUE, etc.)
    - S'entraîner
    - Consulter les résultats
 ```
 
 ## 🎯 État du développement
 
-### ✅ Fonctionnalités opérationnelles
+### ✅ Fonctionnalités opérationnelles (v4.0)
 
 #### Pipeline et Base de données
 - ✅ Pipeline d'import automatique
@@ -625,6 +775,8 @@ print(cursor.fetchall())
 - ✅ Base de données complète avec index
 - ✅ **Mapping contextuel (primary_action prime sur le nom de la range)**
 - ✅ **Support complet du contexte SQUEEZE**
+- ✅ **Support complet du contexte VS_LIMPERS** 🎉
+- ✅ **Colonne action_sequence JSON** (gestion des situations multiway)
 - ✅ Validation stricte des métadonnées avant quiz_ready=1
 
 #### Validation
@@ -635,18 +787,21 @@ print(cursor.fetchall())
 - ✅ Mise à jour JSON synchronisée
 - ✅ Renommage automatique des fichiers
 - ✅ Mise à jour automatique du label_canon de la range principale
+- ✅ Construction automatique d'action_sequence depuis le nom ou metadata
 
 #### Quiz
 - ✅ **Système de quiz interactif complet**
 - ✅ **Questions simples et conditionnelles**
 - ✅ **Interface immersive type table de poker**
 - ✅ **Sélection intelligente des mains avec détection de borderlines**
-- ✅ **Questions contextuelles adaptées (defense, open, squeeze, 4bet, etc.)**
+- ✅ **Questions contextuelles adaptées (defense, open, squeeze, vs_limpers, 4bet, etc.)**
 - ✅ **Gestion spéciale des ranges DEFENSE avec _find_subrange_action()**
-- ✅ **Support complet SQUEEZE (mapping correct, normalisation vers RAISE)**
+- ✅ **Support complet SQUEEZE** (mapping correct, normalisation vers RAISE)
+- ✅ **Support complet VS_LIMPERS** (détection limpers, questions adaptées, options ISO)
 - ✅ **Boutons dynamiques selon le contexte**
   - ✅ BB check = pas de FOLD (action gratuite)
   - ✅ Defense = RAISE au lieu de 3BET pour l'UI
+  - ✅ VS_Limpers = ISO au lieu de ISO_VALUE/BLUFF
   - ✅ DEFENSE ne s'affiche jamais comme option (label technique)
 - ✅ **Statistiques et résultats détaillés**
 
@@ -655,15 +810,23 @@ print(cursor.fetchall())
 - ✅ Interface de validation interactive
 - ✅ Interface web responsive
 
-### 🚧 Améliorations en cours
+### 🚧 Améliorations prioritaires (v4.1)
 
-#### Contextes multiway
-- ✅ **SQUEEZE** : Complètement opérationnel
-- 🚧 **VS_LIMPERS** : En développement (prochaine évolution)
-  - Même principe que SQUEEZE
-  - Support des actions ISO (iso raise value/bluff)
-  - Questions adaptées : "UTG limp, CO limp. Vous avez XX en BTN, que faites-vous ?"
-  - Boutons : `[FOLD] [CALL] [RAISE]` ou `[FOLD] [CALL] [ISO]` selon le contexte
+#### Context Validator - Performance au premier import
+- 🔄 **Détection intelligente au premier import**
+  - Détecter automatiquement opener/callers/limpers depuis le nom du fichier
+  - Construire action_sequence dès l'import si possible
+  - Réduire le besoin de validation manuelle
+- 🔄 **Validation cohérence positions**
+  - Pour SQUEEZE : vérifier que opener ≠ callers
+  - Pour VS_LIMPERS : vérifier que hero ≠ limpers
+  - Alertes si incohérence détectée
+
+#### Slug et renommage automatique
+- 🔄 **Mise à jour du slug à chaque changement de metadata**
+  - Recalcul automatique si table_format, hero_position ou primary_action change
+  - Proposition de renommer le fichier JSON source
+  - Historique des modifications
 
 #### Quiz
 - 🔄 **Éviter les doublons** : Ne pas poser deux fois la même main dans un quiz
@@ -678,25 +841,21 @@ print(cursor.fetchall())
 - 📱 Interface mobile optimisée
 - 🎨 Thèmes personnalisables
 
-### 🔮 Roadmap
-
-**Court terme (v4.0)**
-- 🎯 **Contexte VS_LIMPERS** : Support complet avec action_sequence
-- 📝 **Questions ISO** : "UTG limp, CO limp. Vous avez AKo, que faites-vous ?"
-- 🔧 **Amélioration détection borderlines** : Affinage de l'algorithme
+### 🔮 Roadmap (v5.0+)
 
 **Moyen terme**
 - Support formats additionnels (PIO, GTO+)
 - Mode hors-ligne complet
 - Synchronisation cloud (optionnel)
 - Partage de ranges entre utilisateurs
+- **Contextes 3-way et 4-way** (plusieurs callers, plusieurs limpers)
 
 **Long terme**
 - Analytics avancées avec graphiques
 - Mode entraînement vs mode examen
 - Timer par question (optionnel)
 - Classement et achievements
-- Support des contextes 3-way et 4-way
+- Intégration avec trackers de poker
 
 ## 🤝 Contribution
 
@@ -721,7 +880,7 @@ Projet sous licence libre - voir [LICENSE](LICENSE) pour plus de détails.
 
 ## 🐛 Problèmes connus et solutions
 
-### SQUEEZE affichait 'DEFENSE' comme option ❌ → ✅ Corrigé
+### SQUEEZE affichait 'DEFENSE' comme option ❌ → ✅ Corrigé (v3.6)
 **Problème** : Le contexte squeeze générait `['FOLD', 'CALL', 'DEFENSE']` au lieu de `['FOLD', 'CALL', 'RAISE']`
 
 **Cause** : 
@@ -736,7 +895,7 @@ Projet sous licence libre - voir [LICENSE](LICENSE) pour plus de détails.
 4. Normalisation : `ACTION_NORMALIZATION['SQUEEZE'] = 'RAISE'`
 5. Filtrage : DEFENSE ne s'ajoute jamais comme option (c'est un label technique)
 
-### Defense affichait '3BET' au lieu de 'RAISE' ❌ → ✅ Corrigé
+### Defense affichait '3BET' au lieu de 'RAISE' ❌ → ✅ Corrigé (v3.5)
 **Problème** : Les options affichaient `['FOLD', 'CALL', '3BET']` au lieu de `['FOLD', 'CALL', 'RAISE']`
 
 **Cause** : Le terme "3BET" est trop technique pour l'utilisateur final
@@ -747,7 +906,7 @@ Projet sous licence libre - voir [LICENSE](LICENSE) pour plus de détails.
 
 ---
 
-**Dernière mise à jour** : 14/10/2025 
-**Version** : 3.6 - Support complet SQUEEZE + préparation VS_LIMPERS
+**Dernière mise à jour** : 15/01/2025  
+**Version** : 4.0 - Support complet VS_LIMPERS + action_sequence JSON
 
 Créé avec ❤️ pour la communauté poker
