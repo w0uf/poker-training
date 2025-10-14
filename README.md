@@ -747,7 +747,7 @@ Projet sous licence libre - voir [LICENSE](LICENSE) pour plus de détails.
 
 ---
 
-**Dernière mise à jour** : 15/01/2025  
+**Dernière mise à jour** : 14/10/2025 
 **Version** : 3.6 - Support complet SQUEEZE + préparation VS_LIMPERS
 
 Créé avec ❤️ pour la communauté poker
