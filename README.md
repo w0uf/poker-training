@@ -12,7 +12,8 @@ Interface web locale pour l'entraînement de ranges de poker avec pipeline inté
 - Import et parsing des fichiers JSON
 - Standardisation intelligente des noms et positions
 - Enrichissement automatique des métadonnées
-- **Mapping contextuel** : Le `primary_action` du contexte prime sur le nom de la range
+- **Mapping contextuel prioritaire** : Le `primary_action` du contexte prime sur le nom de la range
+- **Support des contextes multiway** : Squeeze (✅), vs_limpers (🚧 en développement)
 - Détection des contextes nécessitant validation
 - **Validation stricte des métadonnées** avant `quiz_ready=1`
 
@@ -23,23 +24,25 @@ Interface web locale pour l'entraînement de ranges de poker avec pipeline inté
 - **Score de confiance** : calculé selon le % de sous-ranges classifiés
 - **Mise à jour JSON source** : synchronisation automatique des validations
 - **Renommage automatique** : normalisation des noms de fichiers selon le slug
-- **🆕 Mise à jour du label_canon de la range principale** : Synchronisé avec le `primary_action`
+- **Mise à jour du label_canon de la range principale** : Synchronisé avec le `primary_action`
 
 ### Système de Quiz Interactif Intelligent ✨
 - **Configuration flexible** : sélection des contextes et nombre de questions
 - **Questions contextuelles** : adaptation du texte selon le type de situation
   - Open : "Vous avez XX en UTG, que faites-vous ?"
   - Defense : "UTG ouvre. Vous avez XX en CO, que faites-vous ?"
+  - Squeeze : "UTG ouvre, CO call. Vous avez XX en BTN, que faites-vous ?"
   - 4bet : "Vous ouvrez, CO 3bet. Vous avez XX, que faites-vous ?"
-- **🆕 Sélection intelligente des mains** :
+- **Sélection intelligente des mains** :
   - Détection automatique des mains borderline (à la frontière de la range)
   - Pondération vers les décisions difficiles pour un entraînement ciblé
   - Équilibrage 50/50 entre mains IN et OUT of range
 - **Questions defense** : Utilise les sous-ranges pour trouver l'action correcte
 - **Boutons dynamiques contextuels** :
-  - BB check (action gratuite) : [CHECK] [RAISE] (pas de FOLD)
-  - Defense : [FOLD] [CALL] [3BET]
-  - Open : [FOLD] [CALL] [RAISE]
+  - Defense : `[FOLD] [CALL] [RAISE]` (3BET → RAISE pour l'UI)
+  - BB check (action gratuite) : `[CHECK] [RAISE]` (pas de FOLD)
+  - Open : `[FOLD] [CALL] [RAISE]`
+  - Squeeze : `[FOLD] [CALL] [RAISE]`
 - **Interface immersive** : table de poker virtuelle avec affichage des cartes
 - **Feedback immédiat** : indication correcte/incorrecte avec explications
 - **Statistiques détaillées** : score, progression, résultats finaux
@@ -48,6 +51,7 @@ Interface web locale pour l'entraînement de ranges de poker avec pipeline inté
 - **Range principale (range_key='1')** : 
   - **Pour OPEN** : Contient uniquement les mains à open
   - **Pour DEFENSE** : Contient TOUTES les mains jouables (union call + 3bet)
+  - **Pour SQUEEZE** : Contient TOUTES les mains à squeeze
 - **Sous-ranges (range_key > '1')** : Actions spécifiques (réponses aux réactions adverses)
 - **Labels canoniques** : Classification standardisée pour le quiz
 
@@ -127,6 +131,9 @@ poker-training/
 │   ├── metadata_enricher.py      # Enrichissement automatique
 │   ├── database_manager.py       # Gestion base de données
 │   ├── context_validator.py      # Validation des contextes
+│   ├── quiz_generator.py         # Génération des questions
+│   ├── hand_selector.py          # Sélection intelligente des mains
+│   ├── poker_constants.py        # Constantes et mappings
 │   ├── pipeline_runner.py        # Orchestrateur principal
 │   └── quiz_action_mapper.py     # Mapping actions pour quiz
 ├── integrated_pipeline.py        # Point d'entrée pipeline
@@ -139,11 +146,11 @@ poker-training/
 
 - **range_files** : Fichiers importés avec hash et timestamps
 - **range_contexts** : Contextes avec métadonnées enrichies
-  - Colonnes dédiées : `table_format`, `hero_position`, `primary_action`, etc.
+  - Colonnes dédiées : `table_format`, `hero_position`, `primary_action`, `action_sequence`, etc.
   - Statuts : `needs_validation`, `quiz_ready`, `confidence_score`
 - **ranges** : Ranges individuelles avec classification
   - `range_key` : Position dans le fichier (1=principale, 2+=sous-ranges)
-  - `label_canon` : Label standardisé (CALL, R4_VALUE, DEFENSE, etc.)
+  - `label_canon` : Label standardisé (OPEN, CALL, DEFENSE, SQUEEZE, etc.)
   - `name` : Nom lisible pour affichage
 - **range_hands** : Mains avec fréquences
 
@@ -179,7 +186,7 @@ Fichier JSON : "5max_utg_open.json"
     └── [Face à 3bet adverse → 4bet bluff]
 ```
 
-#### Exemple 2 : Range de DEFENSE 🆕
+#### Exemple 2 : Range de DEFENSE
 
 ```
 Fichier JSON : "5max_co_defense_vs_utg.json"
@@ -200,45 +207,72 @@ Fichier JSON : "5max_co_defense_vs_utg.json"
 **⚠️ Important pour les ranges de defense :**
 - La range principale (range_key='1') contient **TOUTES** les mains non-fold (union complète)
 - Les sous-ranges définissent les **actions spécifiques** (CALL, 3BET)
-- Le quiz utilise `find_defense_action()` pour chercher dans les sous-ranges
+- Le quiz utilise `_find_subrange_action()` pour chercher dans les sous-ranges
+- L'action 3BET est convertie en **RAISE** pour l'affichage UI (plus clair pour l'utilisateur)
+
+#### Exemple 3 : Range de SQUEEZE ✅
+
+```
+Fichier JSON : "5max_btn_squeeze.json"
+├── Range 1 (principale) : label_canon='SQUEEZE'
+│   ├── AA, KK, QQ, JJ, AKs, AQs, ...
+│   └── [Toutes les mains à squeeze depuis BTN vs UTG open + CO call]
+├── Range 2 (sous-range) : label_canon='R3_VALUE'
+│   ├── AA, KK, QQ, JJ, AKs
+│   └── [Squeeze value]
+└── Range 3 (sous-range) : label_canon='R3_BLUFF'
+    ├── A5s, A4s, A3s
+    └── [Squeeze bluff]
+```
+
+**Note importante pour SQUEEZE :**
+- Le `label_canon='SQUEEZE'` est normalisé vers `'RAISE'` dans `poker_constants.py`
+- Ceci permet d'afficher "RAISE" dans l'UI plutôt que le terme technique "SQUEEZE"
 
 ### Labels canoniques
 
 #### Actions principales
 - **OPEN** : Range d'ouverture
-- **DEFENSE** : 🆕 Range de defense (contient toutes les mains jouables)
+- **DEFENSE** : Range de defense (contient toutes les mains jouables)
+- **SQUEEZE** : Range de squeeze (multiway, vs open + call)
 - **CALL** : Call / Complete / Flat
 - **CHECK** : Check
 - **FOLD** : Fold
 - **RAISE** : Raise générique
 
 #### Actions de relance
-- **R3_VALUE** : 3bet Value (normalisé en 3BET pour le quiz)
-- **R3_BLUFF** : 3bet Bluff (normalisé en 3BET pour le quiz)
+- **R3_VALUE** : 3bet Value (normalisé en 3BET, affiché comme RAISE en defense)
+- **R3_BLUFF** : 3bet Bluff (normalisé en 3BET, affiché comme RAISE en defense)
 - **R4_VALUE** : 4bet Value (normalisé en 4BET pour le quiz)
 - **R4_BLUFF** : 4bet Bluff (normalisé en 4BET pour le quiz)
 - **R5_ALLIN** : 5bet / All-in
 
-#### Actions spécifiques
+#### Actions spécifiques (à venir)
 - **ISO_VALUE** : Iso raise Value (normalisé en ISO pour le quiz)
 - **ISO_BLUFF** : Iso raise Bluff (normalisé en ISO pour le quiz)
 
 ### Logique de validation et mapping
 
-**🆕 Mapping contextuel avec priorité au primary_action**
+**Mapping contextuel avec priorité au primary_action**
 
 ```python
 def map_name_to_label_canon(name: str, range_key: str, primary_action: str = None):
     if range_key == '1':  # Range principale
         # PRIORITÉ : Le contexte prime sur le nom !
-        if primary_action and 'defense' in primary_action.lower():
-            return 'DEFENSE'  # Même si le nom contient "open"
+        if primary_action:
+            if 'defense' in primary_action.lower():
+                return 'DEFENSE'
+            elif 'squeeze' in primary_action.lower():
+                return 'SQUEEZE'  # ✅ Correction clé
+            elif 'open' in primary_action.lower():
+                return 'OPEN'
         
         # Sinon mapping classique basé sur le nom
-        if 'open' in name.lower():
+        # Ordre important : squeeze AVANT 3bet !
+        if 'squeeze' in name.lower() or 'squezze' in name.lower():
+            return 'SQUEEZE'
+        elif 'open' in name.lower():
             return 'OPEN'
-        elif 'defense' in name.lower():
-            return 'DEFENSE'
         # ...
 ```
 
@@ -248,133 +282,9 @@ def map_name_to_label_canon(name: str, range_key: str, primary_action: str = Non
 |-------------------|------------------|---------------------|
 | OPEN | Face à 3bet | CALL, R4_VALUE, R4_BLUFF, FOLD |
 | DEFENSE | Réponse à open | CALL, R3_VALUE, R3_BLUFF, FOLD |
+| SQUEEZE | Face à 4bet | CALL, R5_ALLIN, FOLD |
 | 3BET / SQUEEZE | Face à 4bet | CALL, R5_ALLIN, FOLD |
 | 4BET | Face à 5bet | CALL, FOLD |
-
-## 🔍 Pipeline d'import
-
-### Étapes du traitement
-
-1. **Parsing JSON** : Extraction des ranges et mains
-2. **Standardisation** : Détection automatique des métadonnées
-   - Format de table (5max, 6max, 9max, HU)
-   - Position héros (UTG, CO, BTN, etc.)
-   - Action principale (open, defense, 3bet, etc.)
-   - Position adversaire si applicable
-3. **Enrichissement** : Ajout des métadonnées par défaut
-   - Type de jeu : Cash Game
-   - Variante : NLHE
-   - Stack depth : 100bb
-4. **Mapping contextuel** : 🆕 Calcul du `label_canon` en tenant compte du `primary_action`
-5. **🆕 Vérification stricte des métadonnées** :
-   - `table_format` doit être défini et valide (pas N/A)
-   - `hero_position` doit être défini et valide
-   - `primary_action` doit être défini et valide
-   - Si métadonnées invalides → `quiz_ready=0`, `needs_validation=1`
-6. **Calcul de confiance** : Score basé sur la qualité de la détection
-7. **Vérification quiz_ready** : Le contexte est prêt si :
-   - ✅ Métadonnées valides
-   - ✅ Range principale a un `label_canon` valide
-   - ✅ Toutes les sous-ranges ont des `label_canon` valides
-8. **Sauvegarde** : Persistance en base de données
-
-### Exemple de détection
-
-```
-Nom du fichier : "5max_co_defense_vs_utg.json"
-Métadonnées détectées : primary_action='defense'
-Nom de range principale : "open_utg" (copié depuis un fichier open)
-↓
-🆕 Mapping contextuel :
-- primary_action='defense' PRIME sur le nom
-- label_canon='DEFENSE' (pas 'OPEN' !)
-↓
-Résultat :
-- table_format: "5max"
-- hero_position: "CO"
-- vs_position: "UTG"
-- primary_action: "defense"
-- label_canon (range 1): "DEFENSE" ✅
-- confidence_score: 100%
-- quiz_ready: 1
-- needs_validation: 0
-```
-
-## ✅ Système de validation
-
-### Interface de validation
-
-Accessible via `http://localhost:5000/validate?id=<context_id>`
-
-#### Fonctionnalités
-
-1. **Validation des métadonnées du contexte**
-   - Format de table (dropdown)
-   - Position héros (boutons)
-   - Action principale (boutons)
-   - Position adversaire (optionnel)
-   - Stack depth, variante, stakes, sizing
-
-2. **🆕 Mise à jour automatique du label_canon de la range principale**
-   - Si vous changez `primary_action` de "open" à "defense"
-   - Le `label_canon` de la range principale est automatiquement mis à jour
-   - Utilise la même logique que le pipeline (mapping contextuel)
-
-3. **Classification des sous-ranges**
-   - Table interactive avec toutes les sous-ranges
-   - Sélection du label canonique pour chaque range
-   - Indication visuelle des modifications (rouge)
-   - Compteur de modifications en temps réel
-
-4. **Détection d'incohérences**
-   - Vérification cohérence action/sous-ranges
-   - Warnings informatifs (pas bloquants)
-   - Suggestions de correction
-
-5. **Actions disponibles**
-   - ✅ **Valider et sauvegarder** : Met à jour la base
-   - 📝 **Mettre à jour le JSON source** : Synchronise le fichier
-   - 📁 **Renommer le fichier** : Normalise selon le slug
-   - 🗑️ **Marquer non exploitable** : Exclut du quiz
-
-### Score de confiance et quiz_ready
-
-```python
-# 🆕 Calcul automatique strict
-if metadata_incomplete:
-    quiz_ready = 0
-    needs_validation = 1
-    confidence_score = 0
-elif range_principale_sans_label:
-    quiz_ready = 0
-    needs_validation = 1
-    confidence_score = 0
-elif sous_ranges_sans_labels:
-    quiz_ready = 0
-    needs_validation = 1
-    completed = sous_ranges_ok / total_sous_ranges
-    confidence_score = completed * 100
-else:
-    quiz_ready = 1
-    needs_validation = 0
-    confidence_score = 100%
-```
-
-### Slug et renommage
-
-Chaque contexte génère un slug unique :
-
-```
-Format : nlhe-{format}-{position}-{action}-{depth}
-Exemple : nlhe-5max-utg-open-100bb
-         nlhe-5max-co-def-vs-open-utg-100bb
-```
-
-Renommage automatique :
-```
-"5max open utg.json" → "nlhe-5max-utg-open-100bb.json"
-"poker-range-1760198195644.json" → "nlhe-5max-co-def-vs-open-utg-100bb.json"
-```
 
 ## 🎮 Système de Quiz Interactif
 
@@ -386,7 +296,7 @@ Renommage automatique :
 2. **Nombre de questions** : Slider de 5 à 50 questions
 3. **Lancement** : Génération instantanée des questions
 
-### 🆕 Sélection intelligente des mains
+### Sélection intelligente des mains
 
 Le système privilégie les **mains borderline** (à la frontière de la range) pour un entraînement optimal :
 
@@ -417,7 +327,7 @@ OUT-RANGE : [..., A7s(78), A6s(74), A5s(71), ...]
 
 ### Types de Questions
 
-#### Question Simple - OPEN (60%)
+#### Question Simple - OPEN
 ```
 Contexte : Table 5max, vous êtes UTG avec 100bb
 Main affichée : AJs
@@ -427,22 +337,37 @@ Boutons disponibles : [FOLD] [CALL] [RAISE]
 Réponse correcte : RAISE (range principale label_canon='OPEN')
 ```
 
-#### Question Simple - DEFENSE 🆕 (60%)
+#### Question Simple - DEFENSE ✅
 ```
 Contexte : Table 5max, vous êtes CO avec 100bb
 Main affichée : KQs
 Question : UTG ouvre. Vous avez KQs. Que faites-vous ?
 
-Boutons disponibles : [FOLD] [CALL] [3BET]
+Boutons disponibles : [FOLD] [CALL] [RAISE]
 Réponse correcte : CALL (trouvée dans sous-range label_canon='CALL')
 
 Logique :
 1. Main KQs est IN-RANGE (dans range principale DEFENSE)
-2. Appel de find_defense_action(KQs, sous_ranges)
+2. Appel de _find_subrange_action(KQs, sous_ranges)
 3. Trouve KQs dans sous-range "call" → retourne 'CALL'
+4. Conversion 3BET → RAISE pour l'affichage (si applicable)
 ```
 
-#### Question Simple - BB CHECK 🆕 (60%)
+#### Question Simple - SQUEEZE ✅
+```
+Contexte : Table 5max, vous êtes BTN avec 100bb
+Main affichée : AQs
+Question : UTG ouvre, CO call. Vous avez AQs. Que faites-vous ?
+
+Boutons disponibles : [FOLD] [CALL] [RAISE]
+Réponse correcte : RAISE (range principale label_canon='SQUEEZE' normalisé vers RAISE)
+
+Logique :
+1. label_canon='SQUEEZE' est normalisé vers 'RAISE' dans poker_constants.py
+2. Les options affichent RAISE (plus clair que SQUEEZE pour l'utilisateur)
+```
+
+#### Question Simple - BB CHECK
 ```
 Contexte : Table 6max, vous êtes BB avec 100bb
 Main affichée : 72o
@@ -452,25 +377,16 @@ Boutons disponibles : [CHECK] [RAISE]
 (Pas de FOLD car action gratuite !)
 ```
 
-#### Question Conditionnelle (40%)
-```
-Contexte : Table 5max, vous êtes UTG avec 100bb
-Main affichée : JJ
-Question : Vous ouvrez avec JJ, un adversaire relance.
-
-Boutons disponibles : [FOLD] [CALL] [4BET]
-Réponse correcte : CALL (sous-range label_canon='CALL')
-```
-
 ### Interface du Quiz
 
 - **Table de poker virtuelle** : Fond vert réaliste avec effet feutre
 - **Affichage des cartes** : Animation de distribution des cartes
 - **Contexte visible** : Table format, position, stack depth
-- **🆕 Questions contextuelles** : Texte adapté selon open/defense/4bet/etc.
+- **Questions contextuelles** : Texte adapté selon open/defense/squeeze/4bet/etc.
 - **Boutons d'action dynamiques** :
-  - Adaptation selon le contexte (defense = pas de OPEN)
+  - Adaptation selon le contexte (defense = RAISE au lieu de 3BET)
   - BB check = pas de FOLD (action gratuite)
+  - DEFENSE ne s'affiche jamais comme bouton (c'est un label technique)
   - Couleurs distinctes (FOLD rouge, CALL bleu, RAISE orange, etc.)
   - Désactivés après réponse
 - **Feedback immédiat** :
@@ -505,12 +421,15 @@ for i in range(question_count):
     if random() < 0.6 OR pas_de_sous_ranges:
         question = generate_simple_question()
         
-        # 🆕 Sélection intelligente avec borderlines
+        # Sélection intelligente avec borderlines
         hand = smart_hand_choice(in_range, out_range, is_in_range=True)
         
-        # 🆕 Pour DEFENSE : trouve l'action dans les sous-ranges
+        # Pour DEFENSE : trouve l'action dans les sous-ranges
         if label_canon == 'DEFENSE':
-            correct_answer = find_defense_action(hand, ranges)
+            correct_answer = _find_subrange_action(hand, ranges)
+            # Conversion 3BET → RAISE pour l'UI
+            if correct_answer == '3BET':
+                correct_answer = 'RAISE'
         else:
             correct_answer = normalize_action(label_canon)
     else:
@@ -522,18 +441,19 @@ for i in range(question_count):
         add_to_quiz(question)
 ```
 
-### 🆕 Fonction find_defense_action()
+### Fonction _find_subrange_action()
 
 Pour les contextes de defense, cette fonction trouve l'action correcte :
 
 ```python
-def find_defense_action(hand, ranges):
+def _find_subrange_action(hand, ranges):
     """
     Trouve l'action correcte pour une main dans un contexte defense.
     Cherche dans les sous-ranges (range_key > 1).
     
     Returns:
         'CALL', '3BET', etc. (action normalisée)
+        Note : 3BET sera converti en RAISE dans _generate_simple_question
     """
     for r in ranges:
         if r['range_key'] != '1' and hand in r['hands']:
@@ -549,18 +469,25 @@ def find_defense_action(hand, ranges):
 Les actions sont normalisées pour éviter les doublons :
 
 ```python
-R3_VALUE, R3_BLUFF → 3BET
-R4_VALUE, R4_BLUFF → 4BET
-R5_ALLIN → ALLIN
-ISO_VALUE, ISO_BLUFF → ISO
+ACTION_NORMALIZATION = {
+    'R3_VALUE': '3BET',
+    'R3_BLUFF': '3BET',
+    'R4_VALUE': '4BET',
+    'R4_BLUFF': '4BET',
+    'R5_ALLIN': 'ALLIN',
+    'ISO_VALUE': 'ISO',
+    'ISO_BLUFF': 'ISO',
+    'ISO_RAISE': 'ISO',
+    'SQUEEZE': 'RAISE',  # ✅ Squeeze normalise vers RAISE pour l'UI
+}
 ```
 
-### 🆕 Génération des options de réponse
+### Génération des options de réponse
 
 Les options s'adaptent intelligemment au contexte :
 
 ```python
-def generate_simple_action_options(correct_answer, main_range_action, context):
+def _generate_action_options(correct_answer, main_range_action, context):
     options = []
     
     # 1. Toujours la bonne réponse
@@ -572,13 +499,17 @@ def generate_simple_action_options(correct_answer, main_range_action, context):
     else:
         options.append('FOLD')
     
-    # 3. Pour DEFENSE, ne pas ajouter l'action principale (qui est 'DEFENSE')
-    if main_range_action != 'DEFENSE':
-        options.append(main_range_action)
+    # 3. Pour DEFENSE, ne JAMAIS ajouter 'DEFENSE' comme option
+    #    (c'est un label technique, pas une action jouable)
+    if main_range_action and main_range_action != 'DEFENSE':
+        if main_range_action not in options:
+            options.append(main_range_action)
     
     # 4. Distracteurs intelligents selon le contexte
     if 'defense' in context['primary_action']:
-        distractors = ['3BET', 'CALL', 'RAISE']
+        distractors = ['CALL', 'RAISE']  # ✅ RAISE au lieu de 3BET
+    elif 'squeeze' in context['primary_action']:
+        distractors = ['CALL']
     # ...
     
     return sort_actions(options)
@@ -611,100 +542,6 @@ def generate_simple_action_options(correct_answer, main_range_action, context):
 - `GET /api/quiz/generate` : Génère les questions du quiz
 - `POST /api/quiz/question` : Obtient la prochaine question
 
-### Exemple d'utilisation
-
-```python
-# Valider un contexte avec mise à jour du primary_action
-POST /api/validation/validate/2
-{
-    "table_format": "5max",
-    "hero_position": "CO",
-    "primary_action": "defense",  # 🆕 Changé de "open" à "defense"
-    "vs_position": "UTG",
-    "stack_depth": "100bb",
-    "range_labels": {
-        "2": "CALL",
-        "3": "R3_VALUE",
-        "4": "R3_BLUFF"
-    },
-    "update_json": true
-}
-# → La range principale (range_key='1') sera automatiquement 
-#    mise à jour avec label_canon='DEFENSE'
-
-# Générer un quiz
-GET /api/quiz/generate?contexts=1,2,3&count=10
-→ Retourne 10 questions aléatoires depuis les contextes 1, 2 et 3
-```
-
-## 🔧 Format JSON supporté
-
-### Structure attendue
-
-```json
-{
-  "version": "1.0",
-  "timestamp": "2025-10-09T14:41:30.166Z",
-  "source": {
-    "url": "https://site2wouf.fr/poker-range-editor.php",
-    "tool": "Poker Range Grid"
-  },
-  "data": {
-    "ranges": {
-      "1": {
-        "name": "defense_bb",
-        "color": "#1eff00",
-        "label_canon": "DEFENSE"
-      },
-      "2": {
-        "name": "call",
-        "color": "#002aff",
-        "label_canon": "CALL"
-      },
-      "3": {
-        "name": "3bet_value",
-        "color": "#ff0000",
-        "label_canon": "R3_VALUE"
-      },
-      "4": {
-        "name": "3bet_bluff",
-        "color": "#ffa500",
-        "label_canon": "R3_BLUFF"
-      }
-    },
-    "values": {
-      "AA": [1, 3],
-      "KK": [1, 3],
-      "AKs": [1, 2],
-      "JTs": [1, 2],
-      "A5s": [1, 4]
-    },
-    "maxIndex": 4
-  },
-  "metadata": {
-    "table_format": "5max",
-    "hero_position": "BB",
-    "vs_position": "UTG",
-    "primary_action": "defense",
-    "stack_depth": "100bb",
-    "validated": true,
-    "validated_by_user": true
-  }
-}
-```
-
-### Sections du JSON
-
-- **source** : Métadonnées de l'outil source
-- **data.ranges** : Définition des ranges avec **label_canon obligatoire**
-- **data.values** : Affectation des mains aux ranges
-- **metadata** : Métadonnées du contexte (ajoutées lors de la validation)
-
-⚠️ **Important** : Pour qu'un contexte soit `quiz_ready=1`, **toutes les conditions** doivent être remplies :
-1. ✅ Métadonnées valides (`table_format`, `hero_position`, `primary_action`)
-2. ✅ Range principale a un `label_canon` valide
-3. ✅ Toutes les sous-ranges ont des `label_canon` valides
-
 ## 🧪 Tests et debugging
 
 ### Routes de debug
@@ -715,19 +552,6 @@ http://localhost:5000/debug_all_contexts  # Liste tous les contextes
 http://localhost:5000/debug_metadata      # Métadonnées détaillées
 ```
 
-### Test du pipeline standalone
-
-```bash
-# Test complet
-python integrated_pipeline.py
-
-# Test avec statut uniquement
-python modules/pipeline_runner.py --status
-
-# Test d'un module spécifique
-python modules/name_standardizer.py
-```
-
 ### Vérification de la base
 
 ```python
@@ -735,11 +559,7 @@ import sqlite3
 conn = sqlite3.connect('data/poker_trainer.db')
 cursor = conn.cursor()
 
-# Vérifier la structure
-cursor.execute("PRAGMA table_info(ranges)")
-print(cursor.fetchall())
-
-# 🆕 Vérifier le mapping contextuel
+# Vérifier le mapping contextuel
 cursor.execute("""
     SELECT rc.display_name, rc.primary_action, r.name, r.label_canon
     FROM ranges r
@@ -748,15 +568,6 @@ cursor.execute("""
 """)
 for row in cursor.fetchall():
     print(f"{row[0]} | {row[1]} | {row[2]} → {row[3]}")
-
-# Statistiques des labels
-cursor.execute("""
-    SELECT label_canon, COUNT(*) 
-    FROM ranges 
-    WHERE label_canon IS NOT NULL
-    GROUP BY label_canon
-""")
-print(cursor.fetchall())
 
 # Vérifier les contextes prêts pour le quiz
 cursor.execute("""
@@ -778,15 +589,16 @@ print(cursor.fetchall())
    ↓
 3. Lancer Import Pipeline
    ↓
-4. 🆕 Vérification automatique stricte :
+4. Vérification automatique stricte :
    - Métadonnées valides ? (table_format, hero_position, primary_action)
    - Range principale a un label_canon ?
    - Toutes les sous-ranges ont des labels ?
+   - Mapping contextuel correct ? (squeeze → SQUEEZE, pas OPEN)
    - Si NON → needs_validation=1
    ↓
 5. Si needs_validation=1, valider les contextes:
    - Corriger métadonnées si nécessaire
-   - 🆕 Le label_canon de la range principale est automatiquement mis à jour
+   - Le label_canon de la range principale est automatiquement mis à jour
    - Classifier tous les sous-ranges
    - Renommer fichier selon slug
    - Mettre à jour JSON source
@@ -796,8 +608,9 @@ print(cursor.fetchall())
 7. Lancer le quiz !
    - Sélectionner contextes
    - Choisir nombre de questions
-   - 🆕 Questions intelligentes avec mains borderline
-   - 🆕 Texte adapté au contexte (defense, open, etc.)
+   - Questions intelligentes avec mains borderline
+   - Texte adapté au contexte (defense, open, squeeze, etc.)
+   - Boutons adaptés (RAISE au lieu de 3BET en defense)
    - S'entraîner
    - Consulter les résultats
 ```
@@ -810,8 +623,9 @@ print(cursor.fetchall())
 - ✅ Pipeline d'import automatique
 - ✅ Standardisation intelligente
 - ✅ Base de données complète avec index
-- ✅ 🆕 Mapping contextuel (primary_action prime sur le nom de la range)
-- ✅ 🆕 Validation stricte des métadonnées avant quiz_ready=1
+- ✅ **Mapping contextuel (primary_action prime sur le nom de la range)**
+- ✅ **Support complet du contexte SQUEEZE**
+- ✅ Validation stricte des métadonnées avant quiz_ready=1
 
 #### Validation
 - ✅ Système de validation complet
@@ -820,16 +634,20 @@ print(cursor.fetchall())
 - ✅ Score de confiance automatique
 - ✅ Mise à jour JSON synchronisée
 - ✅ Renommage automatique des fichiers
-- ✅ 🆕 Mise à jour automatique du label_canon de la range principale
+- ✅ Mise à jour automatique du label_canon de la range principale
 
 #### Quiz
 - ✅ **Système de quiz interactif complet**
 - ✅ **Questions simples et conditionnelles**
 - ✅ **Interface immersive type table de poker**
-- ✅ **🆕 Sélection intelligente des mains avec détection de borderlines**
-- ✅ **🆕 Questions contextuelles adaptées (defense, open, 4bet, etc.)**
-- ✅ **🆕 Gestion spéciale des ranges DEFENSE avec find_defense_action()**
-- ✅ **🆕 Boutons dynamiques selon le contexte (BB check = pas de FOLD)**
+- ✅ **Sélection intelligente des mains avec détection de borderlines**
+- ✅ **Questions contextuelles adaptées (defense, open, squeeze, 4bet, etc.)**
+- ✅ **Gestion spéciale des ranges DEFENSE avec _find_subrange_action()**
+- ✅ **Support complet SQUEEZE (mapping correct, normalisation vers RAISE)**
+- ✅ **Boutons dynamiques selon le contexte**
+  - ✅ BB check = pas de FOLD (action gratuite)
+  - ✅ Defense = RAISE au lieu de 3BET pour l'UI
+  - ✅ DEFENSE ne s'affiche jamais comme option (label technique)
 - ✅ **Statistiques et résultats détaillés**
 
 #### Interface web
@@ -837,7 +655,15 @@ print(cursor.fetchall())
 - ✅ Interface de validation interactive
 - ✅ Interface web responsive
 
-### 🚧 Améliorations prévues
+### 🚧 Améliorations en cours
+
+#### Contextes multiway
+- ✅ **SQUEEZE** : Complètement opérationnel
+- 🚧 **VS_LIMPERS** : En développement (prochaine évolution)
+  - Même principe que SQUEEZE
+  - Support des actions ISO (iso raise value/bluff)
+  - Questions adaptées : "UTG limp, CO limp. Vous avez XX en BTN, que faites-vous ?"
+  - Boutons : `[FOLD] [CALL] [RAISE]` ou `[FOLD] [CALL] [ISO]` selon le contexte
 
 #### Quiz
 - 🔄 **Éviter les doublons** : Ne pas poser deux fois la même main dans un quiz
@@ -854,14 +680,23 @@ print(cursor.fetchall())
 
 ### 🔮 Roadmap
 
+**Court terme (v4.0)**
+- 🎯 **Contexte VS_LIMPERS** : Support complet avec action_sequence
+- 📝 **Questions ISO** : "UTG limp, CO limp. Vous avez AKo, que faites-vous ?"
+- 🔧 **Amélioration détection borderlines** : Affinage de l'algorithme
+
+**Moyen terme**
 - Support formats additionnels (PIO, GTO+)
 - Mode hors-ligne complet
 - Synchronisation cloud (optionnel)
 - Partage de ranges entre utilisateurs
+
+**Long terme**
 - Analytics avancées avec graphiques
 - Mode entraînement vs mode examen
 - Timer par question (optionnel)
 - Classement et achievements
+- Support des contextes 3-way et 4-way
 
 ## 🤝 Contribution
 
@@ -884,9 +719,35 @@ Projet sous licence libre - voir [LICENSE](LICENSE) pour plus de détails.
 - [Flask Documentation](https://flask.palletsprojects.com/)
 - [Repository GitHub](https://github.com/w0uf/poker-training)
 
+## 🐛 Problèmes connus et solutions
+
+### SQUEEZE affichait 'DEFENSE' comme option ❌ → ✅ Corrigé
+**Problème** : Le contexte squeeze générait `['FOLD', 'CALL', 'DEFENSE']` au lieu de `['FOLD', 'CALL', 'RAISE']`
+
+**Cause** : 
+1. `label_canon='None'` pour la range principale du squeeze
+2. `map_name_to_label_canon()` ne gérait pas correctement le cas squeeze
+3. L'action 'DEFENSE' s'ajoutait comme option
+
+**Solution** :
+1. Correction du mapping : `primary_action='squeeze'` → `label_canon='SQUEEZE'`
+2. Ordre de détection : chercher 'squeeze' AVANT '3bet' dans le nom
+3. Gestion de la faute d'orthographe : 'squezze' détecté aussi
+4. Normalisation : `ACTION_NORMALIZATION['SQUEEZE'] = 'RAISE'`
+5. Filtrage : DEFENSE ne s'ajoute jamais comme option (c'est un label technique)
+
+### Defense affichait '3BET' au lieu de 'RAISE' ❌ → ✅ Corrigé
+**Problème** : Les options affichaient `['FOLD', 'CALL', '3BET']` au lieu de `['FOLD', 'CALL', 'RAISE']`
+
+**Cause** : Le terme "3BET" est trop technique pour l'utilisateur final
+
+**Solution** :
+1. Conversion contextuelle : Si `primary_action='defense'` et `correct_answer='3BET'` → `correct_answer='RAISE'`
+2. Distracteurs adaptés : `_get_contextual_distractors('defense')` retourne `['CALL', 'RAISE']`
+
 ---
 
-**Dernière mise à jour** : 12/10/2025  
-**Version** : 3.5 - Quiz intelligent avec sélection de mains borderline et gestion contexte DEFENSE
+**Dernière mise à jour** : 15/01/2025  
+**Version** : 3.6 - Support complet SQUEEZE + préparation VS_LIMPERS
 
 Créé avec ❤️ pour la communauté poker
