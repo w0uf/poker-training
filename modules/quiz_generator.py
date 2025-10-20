@@ -27,6 +27,14 @@ class QuizGenerator:
             db_path = module_dir / "data" / "poker_trainer.db"
         self.db_path = Path(db_path)
 
+        # 🆕 Positions par format
+        self.POSITIONS_BY_FORMAT = {
+            '5max': ['UTG', 'CO', 'BTN', 'SB', 'BB'],
+            '6max': ['UTG', 'MP', 'CO', 'BTN', 'SB', 'BB'],
+            '9max': ['UTG', 'UTG+1', 'MP', 'MP+1', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB'],
+            'HU': ['BTN', 'BB']
+        }
+
     def get_connection(self):
         """Crée une connexion à la base de données"""
         conn = sqlite3.connect(self.db_path)
@@ -304,6 +312,7 @@ class QuizGenerator:
 
         # Trier dans un ordre fixe
         return sort_actions(options)
+
     def _get_contextual_distractors(self, primary_action: str) -> List[str]:
         """
         Retourne des distracteurs pertinents selon le contexte.
@@ -329,10 +338,127 @@ class QuizGenerator:
         else:
             return ['CALL']  # générique
 
+    # 🆕 FONCTIONS HELPER POUR POSITIONS DYNAMIQUES
+
+    def _get_positions(self, table_format: str) -> List[str]:
+        """Retourne les positions pour un format donné"""
+        return self.POSITIONS_BY_FORMAT.get(table_format, self.POSITIONS_BY_FORMAT['6max'])
+
+    def _get_random_opener_for_defense(self, hero_pos: str, table_format: str, action_seq: Dict) -> str:
+        """
+        Retourne l'opener pour une situation de defense.
+        Utilise action_sequence si présent, sinon choisit aléatoirement.
+        """
+        # Option 1 : Opener spécifique dans action_sequence
+        if action_seq and action_seq.get('opener'):
+            return action_seq['opener']
+
+        # Option 2 : Range générique → choisir aléatoirement
+        positions = self._get_positions(table_format)
+
+        if hero_pos not in positions:
+            return "UTG"  # Fallback
+
+        hero_idx = positions.index(hero_pos)
+
+        # Positions valides = toutes celles avant le héros
+        valid_openers = positions[:hero_idx]
+
+        if valid_openers:
+            opener = random.choice(valid_openers)
+            print(f"  🎲 Opener aléatoire choisi: {opener} (parmi {valid_openers})")
+            return opener
+
+        return "UTG"  # Fallback
+
+    def _get_squeeze_scenario(self, hero_pos: str, table_format: str, action_seq: Dict) -> tuple:
+        """
+        Retourne le scénario complet pour squeeze (opener, callers_text).
+        Utilise action_sequence si présent, sinon génère aléatoirement.
+        """
+        positions = self._get_positions(table_format)
+
+        if hero_pos not in positions:
+            return "UTG", "un joueur call"
+
+        hero_idx = positions.index(hero_pos)
+
+        # OPENER
+        if action_seq and action_seq.get('opener'):
+            opener = action_seq['opener']
+        else:
+            # Choisir un opener au moins 2 positions avant héros
+            valid_openers = positions[:max(0, hero_idx - 2)]
+            opener = random.choice(valid_openers) if valid_openers else "UTG"
+            print(f"  🎲 Squeeze opener aléatoire: {opener}")
+
+        # CALLERS
+        if action_seq and action_seq.get('callers'):
+            callers = action_seq['callers']
+            if len(callers) == 1:
+                callers_text = f"{callers[0]} call"
+            else:
+                callers_text = f"{' et '.join(callers)} callent"
+        elif action_seq and action_seq.get('callers_count'):
+            count = action_seq['callers_count']
+            callers_text = f"{count} joueur(s) callent"
+        else:
+            # Générique : 1 caller aléatoire entre opener et héros
+            if opener in positions:
+                opener_idx = positions.index(opener)
+                valid_callers = positions[opener_idx + 1:hero_idx]
+                if valid_callers:
+                    caller = random.choice(valid_callers)
+                    callers_text = f"{caller} call"
+                    print(f"  🎲 Squeeze caller aléatoire: {caller}")
+                else:
+                    callers_text = "un joueur call"
+            else:
+                callers_text = "un joueur call"
+
+        return opener, callers_text
+
+    def _get_limpers_scenario(self, hero_pos: str, table_format: str, action_seq: Dict) -> str:
+        """
+        Retourne le scénario pour vs_limpers.
+        Utilise action_sequence si présent, sinon génère aléatoirement.
+        """
+        positions = self._get_positions(table_format)
+
+        if hero_pos not in positions:
+            return "un joueur limp"
+
+        hero_idx = positions.index(hero_pos)
+
+        if action_seq and action_seq.get('limpers'):
+            limpers = action_seq['limpers']
+            if len(limpers) == 1:
+                return f"{limpers[0]} limp"
+            else:
+                return f"{', '.join(limpers[:-1])} et {limpers[-1]} limpent"
+
+        elif action_seq and action_seq.get('limpers_count'):
+            count = action_seq['limpers_count']
+            return f"{count} joueur(s) limpent"
+
+        else:
+            # Générique : 1-2 limpers aléatoires
+            valid_limpers = positions[:hero_idx]
+            num_limpers = random.randint(1, min(2, len(valid_limpers)))
+            limpers = random.sample(valid_limpers, num_limpers)
+
+            print(f"  🎲 Limpers aléatoires: {limpers}")
+
+            if len(limpers) == 1:
+                return f"{limpers[0]} limp"
+            else:
+                return f"{', '.join(limpers[:-1])} et {limpers[-1]} limpent"
+
     def _format_question(self, context: Dict, hand: str) -> str:
         """
         Formate le texte de la question selon le contexte.
         Gère action_sequence pour squeeze et vs_limpers.
+        🆕 Génère aléatoirement opener/callers/limpers si non spécifiés.
 
         Args:
             context: Dictionnaire du contexte
@@ -355,47 +481,20 @@ class QuizGenerator:
             pass
 
         elif primary_action == 'defense':
-            if action_seq and action_seq.get('opener'):
-                opener = action_seq['opener']
-                parts.append(f"{opener} ouvre")
-            else:
-                # Fallback
-                vs_pos = context.get('vs_position', 'UTG')
-                if vs_pos and vs_pos != 'N/A':
-                    parts.append(f"{vs_pos} ouvre")
-                else:
-                    parts.append("Un adversaire ouvre")
+            # 🆕 Utiliser la fonction helper avec choix aléatoire
+            opener = self._get_random_opener_for_defense(position, table, action_seq)
+            parts.append(f"{opener} ouvre")
 
         elif primary_action == 'squeeze':
-            if action_seq:
-                opener = action_seq.get('opener', 'UTG')
-                callers = action_seq.get('callers', [])
-
-                parts.append(f"{opener} ouvre")
-
-                if callers:
-                    if len(callers) == 1:
-                        parts.append(f"{callers[0]} call")
-                    else:
-                        caller_str = ", ".join(callers[:-1]) + f" et {callers[-1]}"
-                        parts.append(f"{caller_str} callent")
-            else:
-                # Fallback
-                parts.append("Un adversaire ouvre, un autre call")
+            # 🆕 Utiliser la fonction helper avec choix aléatoire
+            opener, callers_text = self._get_squeeze_scenario(position, table, action_seq)
+            parts.append(f"{opener} ouvre")
+            parts.append(callers_text)
 
         elif primary_action == 'vs_limpers':
-            if action_seq:
-                limpers = action_seq.get('limpers', [])
-
-                if limpers:
-                    if len(limpers) == 1:
-                        parts.append(f"{limpers[0]} limp")
-                    else:
-                        limper_str = ", ".join(limpers[:-1]) + f" et {limpers[-1]}"
-                        parts.append(f"{limper_str} limpent")
-            else:
-                # Fallback
-                parts.append("Un ou plusieurs adversaires limpent")
+            # 🆕 Utiliser la fonction helper avec choix aléatoire
+            limpers_text = self._get_limpers_scenario(position, table, action_seq)
+            parts.append(limpers_text)
 
         elif primary_action == 'check':
             parts.append("Personne n'a ouvert")

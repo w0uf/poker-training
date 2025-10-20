@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "timestamp": "2025-10-19T16:55:23.925Z",
+  "timestamp": "2025-10-11T15:56:35.644Z",
   "source": {
     "url": "https://site2wouf.fr/poker-range-editor.php",
     "tool": "Poker Range Grid",
@@ -9,23 +9,23 @@
   "data": {
     "ranges": {
       "1": {
-        "name": "open_utg",
-        "color": "#1eff00"
+        "name": "défense MP vs open utg",
+        "color": "#d4af37"
       },
       "2": {
-        "name": "call",
-        "color": "#002aff",
-        "label_canon": "CALL"
+        "name": "3bet_value",
+        "color": "#ff1100",
+        "label_canon": "R3_VALUE"
       },
       "3": {
-        "name": "4bet_value",
-        "color": "#ff0000",
-        "label_canon": "R4_VALUE"
+        "name": "call",
+        "color": "#001eff",
+        "label_canon": "CALL"
       },
       "4": {
-        "name": "4bet_bluff",
+        "name": "3bet_value",
         "color": "#ff6a00",
-        "label_canon": "R4_BLUFF"
+        "label_canon": "R3_VALUE"
       }
     },
     "values": {
@@ -34,83 +34,75 @@
       "44": [],
       "55": [],
       "66": [
-        1
+        1,
+        3
       ],
       "77": [
-        1
+        1,
+        3
       ],
       "88": [
-        1
+        1,
+        3
       ],
       "99": [
-        1
+        1,
+        3
       ],
       "AA": [
         1,
-        3
-      ],
-      "AJo": [
-        1
-      ],
-      "AJs": [
-        1
-      ],
-      "AKo": [
-        1,
-        3
+        2
       ],
       "AKs": [
         1,
-        3
-      ],
-      "AQo": [
-        1
+        2
       ],
       "AQs": [
         1,
-        2
+        3
       ],
-      "ATo": [
-        1
+      "AJs": [
+        1,
+        3
       ],
       "ATs": [
-        1
-      ],
-      "JJ": [
-        1,
-        2
-      ],
-      "KJs": [
-        1
-      ],
-      "KK": [
         1,
         3
-      ],
-      "KQo": [
-        1
-      ],
-      "KQs": [
-        1,
-        4
-      ],
-      "QQ": [
-        1,
-        3
-      ],
-      "TT": [
-        1,
-        2
       ],
       "A9s": [],
       "A8s": [],
       "A7s": [],
       "A6s": [],
-      "A5s": [],
-      "A4s": [],
+      "A5s": [
+        1,
+        4
+      ],
+      "A4s": [
+        1,
+        4
+      ],
       "A3s": [],
       "A2s": [],
-      "KTs": [],
+      "AKo": [
+        1,
+        2
+      ],
+      "KK": [
+        1,
+        2
+      ],
+      "KQs": [
+        1,
+        3
+      ],
+      "KJs": [
+        1,
+        4
+      ],
+      "KTs": [
+        1,
+        3
+      ],
       "K9s": [],
       "K8s": [],
       "K7s": [],
@@ -119,8 +111,23 @@
       "K4s": [],
       "K3s": [],
       "K2s": [],
-      "QJs": [],
-      "QTs": [],
+      "AQo": [],
+      "KQo": [
+        1,
+        4
+      ],
+      "QQ": [
+        1,
+        2
+      ],
+      "QJs": [
+        1,
+        3
+      ],
+      "QTs": [
+        1,
+        4
+      ],
       "Q9s": [],
       "Q8s": [],
       "Q7s": [],
@@ -129,9 +136,17 @@
       "Q4s": [],
       "Q3s": [],
       "Q2s": [],
+      "AJo": [],
       "KJo": [],
       "QJo": [],
-      "JTs": [],
+      "JJ": [
+        1,
+        3
+      ],
+      "JTs": [
+        1,
+        4
+      ],
       "J9s": [],
       "J8s": [],
       "J7s": [],
@@ -140,10 +155,18 @@
       "J4s": [],
       "J3s": [],
       "J2s": [],
+      "ATo": [],
       "KTo": [],
       "QTo": [],
       "JTo": [],
-      "T9s": [],
+      "TT": [
+        1,
+        3
+      ],
+      "T9s": [
+        1,
+        4
+      ],
       "T8s": [],
       "T7s": [],
       "T6s": [],
@@ -156,7 +179,10 @@
       "Q9o": [],
       "J9o": [],
       "T9o": [],
-      "98s": [],
+      "98s": [
+        1,
+        4
+      ],
       "97s": [],
       "96s": [],
       "95s": [],
@@ -169,7 +195,10 @@
       "J8o": [],
       "T8o": [],
       "98o": [],
-      "87s": [],
+      "87s": [
+        1,
+        4
+      ],
       "86s": [],
       "85s": [],
       "84s": [],
@@ -252,13 +281,13 @@
   },
   "metadata": {
     "table_format": "5max",
-    "hero_position": "UTG",
+    "hero_position": "BTN",
     "vs_position": null,
-    "primary_action": "open",
+    "primary_action": "defense",
     "game_type": "Cash Game",
     "variant": "NLHE",
     "stack_depth": "100bb",
-    "stakes": "NL2",
+    "stakes": "",
     "sizing": "",
     "validated": true,
     "validated_by_user": true

@@ -405,7 +405,93 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-    </style>
+        <style>
+/* === Cartes PNG + animation de distribution (patch minimal) === */
+:root {
+  --card-w: 90px;
+  --card-h: 125px;
+  --deal-ms: 380ms;
+  --deal-stagger: 140ms;
+}
+
+#handDisplay {
+  position: relative;
+  min-height: calc(var(--card-h) + 10px); /* réserve la place des cartes */
+  display: flex;
+  justify-content: center;
+  gap: 16px; /* l’écart final entre les 2 slots */
+}
+
+/* slots “fantômes” pour calculer les positions finales */
+.card-slot {
+  width: var(--card-w);
+  height: var(--card-h);
+  border-radius: 10px;
+}
+
+/* vraies images de cartes (position absolue + transitions) */
+.card-img {
+  image-rendering: -webkit-optimize-contrast; /* Chrome/Safari */
+  image-rendering: crisp-edges;               /* Firefox */
+  transform: translateZ(0);                   /* forçage GPU */
+}
+
+/* état initial: centre de la table */
+.card-img.from-center {
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%) scale(0.25) rotate(var(--deal-rot, -3deg));
+  opacity: 0.0;
+  filter: blur(1px);
+}
+
+/* état final: position slot + légère rotation */
+.card-img.to-slot {
+  transform: translate(0,0) scale(1) rotate(var(--deal-rot, 0deg));
+  opacity: 1;
+  filter: none;
+}
+
+/* petit pop à l’arrivée */
+.card-img.arrived {
+  box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+  transform: translate(0,0) scale(1.02) rotate(var(--deal-rot, 0deg));
+}
+/* === fin patch cartes === */
+
+ #handDisplay{
+  position: relative;
+  min-height: 110px;
+  margin-bottom: 24px;
+  display: flex;
+  justify-content: center;
+  gap: 0;                 /* ok */
+}
+
+/* tailles natives de tes PNG (72x96) */
+.card-slot{
+  width: 72px;
+  height: 96px;
+  border-radius: 10px;
+}
+
+/* chevauchement : on tire le 2e slot vers la gauche */
+.card-slot + .card-slot{
+  margin-left: -22px;     /* ← règle l'overlap ici */
+}
+
+/* z-index homogène, l'ordre d’insertion mettra la 2e carte au-dessus */
+.card-img{
+  position: absolute;
+  z-index: 10;
+}
+#buttonsContainer{
+  position: relative;
+  z-index: 0;                  /* et les boutons en-dessous si chevauchement */
+}
+</style>
+
+
 </head>
 <body>
     <div class="container">
@@ -840,5 +926,86 @@
         console.log('🎯 Quiz anti-doublons activé');
         init();
     </script>
+<script>
+// === Cartes PNG (config de chemin) ===
+// Tu exposes /cards/<filename> côté Flask (route que tu gères)
+const CARD_URL_PREFIX = '/cards/';
+
+// === Helpers couleurs ===
+const SUITS_BLACK = ['s','c']; // ♠ ♣
+const SUITS_RED   = ['h','d']; // ♥ ♦
+const ALL_SUITS   = [...SUITS_BLACK, ...SUITS_RED];
+const DEAL_MS     = 380;   // durée d’un “vol”
+const STAGGER     = 140;   // délai entre carte 1 et 2
+
+const rand   = (min, max) => Math.random() * (max - min) + min;
+const choice = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+// Convertit "AJs" / "72o" / "QQ" → ["As.png","Js.png"] etc.
+function handToCardFiles(handStr) {
+  const suited  = /s$/.test(handStr);
+  const offsuit = /o$/.test(handStr);
+  const r1 = handStr[0].toUpperCase();
+  const r2 = handStr[1].toUpperCase();
+
+  // Paire (pas de suffixe et r1===r2)
+  if (!suited && !offsuit && r1 === r2) {
+    const s1 = choice(ALL_SUITS);
+    let s2; do { s2 = choice(ALL_SUITS); } while (s2 === s1);
+    return [`${r1}${s1}.png`, `${r2}${s2}.png`];
+  }
+  // Suited → même couleur
+  if (suited) {
+    const s = choice(ALL_SUITS);
+    return [`${r1}${s}.png`, `${r2}${s}.png`];
+  }
+  // Offsuit → noir + rouge
+  const s1 = choice(SUITS_BLACK);
+  const s2 = choice(SUITS_RED);
+  return [`${r1}${s1}.png`, `${r2}${s2}.png`];
+}
+
+// Remplace l’ancienne version si elle existe
+function displayHand(hand) {
+  const container = document.getElementById('handDisplay');
+  if (!container) return; // sécurité si pas de zone d’affichage
+  container.innerHTML = '';
+
+  // 1) Deux slots flex “fantômes” → permettent d’obtenir les positions finales
+  const slot1 = document.createElement('div');
+  const slot2 = document.createElement('div');
+  slot1.className = 'card-slot';
+  slot2.className = 'card-slot';
+  container.appendChild(slot1);
+  container.appendChild(slot2);
+
+  // 2) Calcule les positions cibles
+  const files = handToCardFiles(hand);
+  const cRect = container.getBoundingClientRect();
+  const targets = [slot1, slot2].map(slot => {
+    const r = slot.getBoundingClientRect();
+    return { left: r.left - cRect.left, top: r.top - cRect.top };
+  });
+
+  // 3) Crée les images au centre, puis anime vers les slots
+  files.forEach((file, i) => {
+    const img = document.createElement('img');
+    img.className = 'card-img from-center';
+    img.src = CARD_URL_PREFIX + file;
+    img.alt = file.replace('.png','');
+    img.style.setProperty('--deal-rot', rand(-6, 6).toFixed(2) + 'deg');
+    container.appendChild(img);
+
+    setTimeout(() => {
+      img.style.left = targets[i].left + 'px';
+      img.style.top  = targets[i].top  + 'px';
+      img.classList.add('to-slot');
+      setTimeout(() => img.classList.add('arrived'), DEAL_MS);
+    }, i * STAGGER);
+  });
+}
+// === fin patch cartes ===
+</script>
+
 </body>
 </html>

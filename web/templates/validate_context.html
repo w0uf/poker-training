@@ -81,6 +81,7 @@
             margin-bottom: 8px; font-size: 14px;
         }
         .form-group label .required { color: #e74c3c; margin-left: 3px; }
+        .form-group label .optional { color: #95a5a6; margin-left: 3px; font-weight: normal; font-style: italic; }
 
         .form-group select, .form-group input {
             width: 100%; padding: 12px; border: 2px solid #e0e0e0;
@@ -104,7 +105,17 @@
         .btn-option.selected { background: #667eea; color: white; border-color: #667eea; }
         .btn-option:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        /* 🆕 Styles pour les champs dynamiques multiway */
+        .btn-option.disabled-pos {
+            opacity: 0.3;
+            cursor: not-allowed;
+            background: #f5f5f5;
+        }
+
+        .btn-option.disabled-pos:hover {
+            border-color: #e0e0e0;
+            background: #f5f5f5;
+        }
+
         .dynamic-section {
             display: none;
             background: #f0f7ff;
@@ -161,20 +172,28 @@
             margin-left: 4px;
         }
 
-        .add-position-btn {
-            padding: 8px 16px;
-            background: #3498db;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 13px;
-            font-weight: 600;
-            transition: background 0.3s;
+        .or-separator {
+            position: relative;
+            text-align: center;
+            margin: 20px 0;
+            padding-top: 20px;
+            border-top: 2px dashed #ddd;
         }
 
-        .add-position-btn:hover {
-            background: #2980b9;
+        .or-separator span {
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #f0f7ff;
+            padding: 0 10px;
+            color: #95a5a6;
+            font-weight: 600;
+            font-size: 12px;
+        }
+
+        .count-input {
+            width: 120px !important;
         }
 
         .actions {
@@ -195,7 +214,6 @@
         .message.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
         .message.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
 
-        /* --- Table d'édition des sous-ranges --- */
         .subranges-table {
             width: 100%;
             border-collapse: collapse;
@@ -317,6 +335,26 @@
             background: #e74c3c;
             margin-left: 8px;
         }
+
+        .generic-info {
+            background: #e8f5e9;
+            border-left: 4px solid #4caf50;
+            padding: 10px;
+            margin-top: 10px;
+            font-size: 12px;
+            color: #2e7d32;
+        }
+
+        .position-warning {
+            background: #ffebee;
+            border-left: 4px solid #f44336;
+            padding: 10px;
+            margin-top: 10px;
+            font-size: 12px;
+            color: #c62828;
+            font-weight: 600;
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -382,14 +420,14 @@
                         <div class="button-grid">
                             <button type="button" class="btn-option action-btn" data-value="open">🎯 Open</button>
                             <button type="button" class="btn-option action-btn" data-value="defense">🛡️ Defense</button>
-                            <button type="button" class="btn-option action-btn" data-value="squeeze">🤏 Squeeze</button>
-                            <button type="button" class="btn-option action-btn" data-value="vs_limpers">🐌 Vs Limpers</button>
+                            <button type="button" class="btn-option action-btn" data-value="squeeze">🤜 Squeeze</button>
+                            <button type="button" class="btn-option action-btn" data-value="vs_limpers">🌊 Vs Limpers</button>
                         </div>
                         <input type="hidden" id="primary-action" name="primary_action" required>
                     </div>
                 </div>
 
-                <!-- 🆕 Section contexte détaillé (dynamique selon primary_action) -->
+                <!-- Section contexte détaillé (dynamique selon primary_action) -->
                 <div class="form-section context-details">
                     <h2>🎲 Détails du contexte</h2>
 
@@ -397,22 +435,36 @@
                     <div id="defense-details" class="dynamic-section">
                         <h3>🛡️ Defense (heads-up)</h3>
                         <p class="help-text">Vous défendez face à une ouverture unique</p>
+
+                        <div id="defense-warning" class="position-warning">
+                            ⚠️ Position invalide pour defense
+                        </div>
+
                         <div class="form-group">
-                            <label>Position de l'ouvreur <span class="required">*</span></label>
+                            <label>Position de l'ouvreur <span class="optional">(optionnel)</span></label>
+                            <p class="help-text">Laissez vide pour une range defense générique</p>
                             <div class="button-grid" id="opener-buttons">
                                 <!-- Rempli dynamiquement -->
                             </div>
                             <input type="hidden" id="opener" name="opener">
                         </div>
+                        <div class="generic-info">
+                            💡 Une range générique (sans position) sera utilisable contre n'importe quel ouvreur
+                        </div>
                     </div>
 
                     <!-- Squeeze : opener + callers -->
                     <div id="squeeze-details" class="dynamic-section">
-                        <h3>🤏 Squeeze (multiway)</h3>
+                        <h3>🤜 Squeeze (multiway)</h3>
                         <p class="help-text">Vous squeezez face à une ouverture + call(s)</p>
 
+                        <div id="squeeze-warning" class="position-warning">
+                            ⚠️ Position invalide pour squeeze
+                        </div>
+
                         <div class="form-group">
-                            <label>Position de l'ouvreur <span class="required">*</span></label>
+                            <label>Position de l'ouvreur <span class="optional">(optionnel)</span></label>
+                            <p class="help-text">Laissez vide pour une range squeeze générique</p>
                             <div class="button-grid" id="squeeze-opener-buttons">
                                 <!-- Rempli dynamiquement -->
                             </div>
@@ -420,7 +472,7 @@
                         </div>
 
                         <div class="form-group">
-                            <label>Caller(s) <span class="required">*</span></label>
+                            <label>Méthode 1 : Positions spécifiques des callers <span class="optional">(optionnel)</span></label>
                             <p class="help-text">Sélectionnez les positions qui ont callé l'ouverture</p>
                             <div class="position-tag-container" id="callers-container">
                                 <span class="small-dim">Aucun caller sélectionné</span>
@@ -430,15 +482,35 @@
                             </div>
                             <input type="hidden" id="callers" name="callers">
                         </div>
+
+                        <div class="or-separator">
+                            <span>OU</span>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Méthode 2 : Nombre de callers <span class="optional">(optionnel)</span></label>
+                            <p class="help-text">Indiquez juste le nombre si les positions exactes n'importent pas</p>
+                            <input type="text" id="callers-count" name="callers_count"
+                                   placeholder="Ex: 1, 2, 3+"
+                                   class="count-input">
+                        </div>
+
+                        <div class="generic-info">
+                            💡 Une range squeeze générique pourra être utilisée dans toutes les situations multiway
+                        </div>
                     </div>
 
                     <!-- Vs Limpers : limpers -->
                     <div id="limpers-details" class="dynamic-section">
-                        <h3>🐌 Vs Limpers (multiway)</h3>
+                        <h3>🌊 Vs Limpers (multiway)</h3>
                         <p class="help-text">Vous agissez face à un ou plusieurs limps</p>
 
+                        <div id="limpers-warning" class="position-warning">
+                            ⚠️ Position invalide pour vs_limpers
+                        </div>
+
                         <div class="form-group">
-                            <label>Limpeur(s) <span class="required">*</span></label>
+                            <label>Méthode 1 : Positions spécifiques des limpers <span class="optional">(optionnel)</span></label>
                             <p class="help-text">Sélectionnez les positions qui ont limpé</p>
                             <div class="position-tag-container" id="limpers-container">
                                 <span class="small-dim">Aucun limpeur sélectionné</span>
@@ -447,6 +519,22 @@
                                 <!-- Rempli dynamiquement -->
                             </div>
                             <input type="hidden" id="limpers" name="limpers">
+                        </div>
+
+                        <div class="or-separator">
+                            <span>OU</span>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Méthode 2 : Nombre de limpers <span class="optional">(optionnel)</span></label>
+                            <p class="help-text">Indiquez juste le nombre si les positions exactes n'importent pas</p>
+                            <input type="text" id="limpers-count" name="limpers_count"
+                                   placeholder="Ex: 1, 2, 3+"
+                                   class="count-input">
+                        </div>
+
+                        <div class="generic-info">
+                            💡 Une range vs_limpers générique pourra être utilisée contre n'importe quel nombre de limpers
                         </div>
                     </div>
                 </div>
@@ -558,6 +646,317 @@
         let selectedCallers = [];
         let selectedLimpers = [];
         let currentTableFormat = '6max';
+
+        // 🆕 VALIDATION DES POSITIONS PAR CONTEXTE (avec masquage dynamique)
+
+        function validateDefensePositions() {
+            const heroPosition = document.getElementById('hero-position').value;
+            const primaryAction = document.getElementById('primary-action').value;
+            const warningEl = document.getElementById('defense-warning');
+
+            if (primaryAction !== 'defense' || !heroPosition) {
+                if (warningEl) warningEl.style.display = 'none';
+                return true;
+            }
+
+            const positions = POSITIONS_BY_FORMAT[currentTableFormat];
+            const heroIdx = positions.indexOf(heroPosition);
+
+            // Héros doit être au moins à l'index 1 pour defense
+            if (heroIdx < 1) {
+                if (warningEl) {
+                    warningEl.style.display = 'block';
+                    warningEl.textContent =
+                        `⚠️ Pour defense, le héros doit être au moins en position ${positions[1]} (besoin d'au moins une position avant pour l'opener)`;
+                }
+                return false;
+            }
+
+            // ✅ Position valide → masquer le warning
+            if (warningEl) warningEl.style.display = 'none';
+            updateDefensePositionConstraints(positions, heroIdx);
+            return true;
+        }
+
+        function validateSqueezePositions() {
+            const heroPosition = document.getElementById('hero-position').value;
+            const primaryAction = document.getElementById('primary-action').value;
+            const warningEl = document.getElementById('squeeze-warning');
+
+            if (primaryAction !== 'squeeze' || !heroPosition) {
+                if (warningEl) warningEl.style.display = 'none';
+                return true;
+            }
+
+            const positions = POSITIONS_BY_FORMAT[currentTableFormat];
+            const heroIdx = positions.indexOf(heroPosition);
+
+            // Héros doit être au moins à l'index 2 pour squeeze
+            if (heroIdx < 2) {
+                if (warningEl) {
+                    warningEl.style.display = 'block';
+                    warningEl.textContent =
+                        `⚠️ Pour squeeze, le héros doit être au moins en position ${positions[2]} (besoin de place pour opener + caller(s))`;
+                }
+                return false;
+            }
+
+            // ✅ Position valide → masquer le warning
+            if (warningEl) warningEl.style.display = 'none';
+            updateSqueezePositionConstraints(positions, heroIdx);
+            return true;
+        }
+
+        function validateLimpersPositions() {
+            const heroPosition = document.getElementById('hero-position').value;
+            const primaryAction = document.getElementById('primary-action').value;
+            const warningEl = document.getElementById('limpers-warning');
+
+            if (primaryAction !== 'vs_limpers' || !heroPosition) {
+                if (warningEl) warningEl.style.display = 'none';
+                return true;
+            }
+
+            const positions = POSITIONS_BY_FORMAT[currentTableFormat];
+            const heroIdx = positions.indexOf(heroPosition);
+
+            // Héros doit être au moins à l'index 1 pour vs_limpers
+            if (heroIdx < 1) {
+                if (warningEl) {
+                    warningEl.style.display = 'block';
+                    warningEl.textContent =
+                        `⚠️ Pour vs_limpers, le héros doit être au moins en position ${positions[1]} (besoin d'au moins une position avant pour les limpers)`;
+                }
+                return false;
+            }
+
+            // ✅ Position valide → masquer le warning
+            if (warningEl) warningEl.style.display = 'none';
+            updateLimpersPositionConstraints(positions, heroIdx);
+            return true;
+        }
+
+        function updateDefensePositionConstraints(positions, heroIdx) {
+            const openerButtons = document.getElementById('opener-buttons');
+            if (!openerButtons) return;
+
+            openerButtons.querySelectorAll('.btn-option').forEach(btn => {
+                const pos = btn.dataset.value;
+                const posIdx = positions.indexOf(pos);
+
+                // Désactiver si après ou égal au héros
+                if (posIdx >= heroIdx) {
+                    btn.disabled = true;
+                    btn.classList.add('disabled-pos');
+                    btn.title = 'Doit être avant le héros';
+                } else {
+                    btn.disabled = false;
+                    btn.classList.remove('disabled-pos');
+                    btn.title = '';
+                }
+            });
+        }
+
+        function updateSqueezePositionConstraints(positions, heroIdx) {
+            // OPENER : au moins 2 positions avant le héros
+            const minOpenerGap = 2;
+            const maxOpenerIdx = heroIdx - minOpenerGap;
+
+            const openerButtons = document.getElementById('squeeze-opener-buttons');
+            if (openerButtons) {
+                openerButtons.querySelectorAll('.btn-option').forEach(btn => {
+                    const pos = btn.dataset.value;
+                    const posIdx = positions.indexOf(pos);
+
+                    // Désactiver si trop proche du héros
+                    if (posIdx > maxOpenerIdx || posIdx >= heroIdx) {
+                        btn.disabled = true;
+                        btn.classList.add('disabled-pos');
+                        btn.title = `Position trop proche du héros (besoin de ${minOpenerGap} positions d'écart minimum)`;
+                    } else {
+                        btn.disabled = false;
+                        btn.classList.remove('disabled-pos');
+                        btn.title = '';
+                    }
+                });
+            }
+
+            // CALLERS : entre opener et héros
+            updateCallersConstraints(positions, heroIdx);
+        }
+
+        function updateCallersConstraints(positions, heroIdx) {
+            const opener = document.getElementById('squeeze-opener').value;
+            const callersButtons = document.getElementById('callers-buttons');
+
+            if (!callersButtons) return;
+
+            callersButtons.querySelectorAll('.btn-option').forEach(btn => {
+                const pos = btn.dataset.value;
+                const posIdx = positions.indexOf(pos);
+
+                // Toujours invalides : après le héros
+                if (posIdx >= heroIdx) {
+                    btn.disabled = true;
+                    btn.classList.add('disabled-pos');
+                    btn.title = 'Doit être avant le héros';
+                    return;
+                }
+
+                // Si opener sélectionné, callers doivent être après opener
+                if (opener) {
+                    const openerIdx = positions.indexOf(opener);
+                    if (posIdx <= openerIdx) {
+                        btn.disabled = true;
+                        btn.classList.add('disabled-pos');
+                        btn.title = 'Doit être après l\'opener';
+                    } else {
+                        btn.disabled = false;
+                        btn.classList.remove('disabled-pos');
+                        btn.title = '';
+                    }
+                } else {
+                    // Pas d'opener : désactiver tant qu'opener pas sélectionné
+                    btn.disabled = true;
+                    btn.classList.add('disabled-pos');
+                    btn.title = 'Sélectionnez d\'abord un opener';
+                }
+            });
+        }
+
+        function updateLimpersPositionConstraints(positions, heroIdx) {
+            const limpersButtons = document.getElementById('limpers-buttons');
+            if (!limpersButtons) return;
+
+            limpersButtons.querySelectorAll('.btn-option').forEach(btn => {
+                const pos = btn.dataset.value;
+                const posIdx = positions.indexOf(pos);
+
+                // Désactiver si après ou égal au héros
+                if (posIdx >= heroIdx) {
+                    btn.disabled = true;
+                    btn.classList.add('disabled-pos');
+                    btn.title = 'Doit être avant le héros';
+                } else {
+                    btn.disabled = false;
+                    btn.classList.remove('disabled-pos');
+                    btn.title = '';
+                }
+            });
+        }
+
+        // 🆕 FONCTION DE GÉNÉRATION DU SLUG EN TEMPS RÉEL
+        function generateSlugLive() {
+            const tableFormat = document.getElementById('table-format').value || '6max';
+            const heroPosition = document.getElementById('hero-position').value || 'UTG';
+            const primaryAction = document.getElementById('primary-action').value || 'open';
+            const stackDepth = document.getElementById('stack-depth').value || '100bb';
+
+            let ctxKey = '';
+
+            // OPEN
+            if (primaryAction === 'open') {
+                ctxKey = 'open';
+            }
+            // DEFENSE
+            else if (primaryAction === 'defense') {
+                const opener = document.getElementById('opener').value;
+                if (opener) {
+                    ctxKey = `defense-vs-${opener.toLowerCase()}`;
+                } else {
+                    ctxKey = 'defense';
+                }
+            }
+            // SQUEEZE
+            else if (primaryAction === 'squeeze') {
+                const opener = document.getElementById('squeeze-opener').value;
+                const positions = [opener, ...selectedCallers].filter(p => p);
+
+                if (positions.length > 0) {
+                    ctxKey = `squeeze-${positions.map(p => p.toLowerCase()).join('-')}`;
+                } else {
+                    ctxKey = 'squeeze';
+                }
+            }
+            // VS_LIMPERS
+            else if (primaryAction === 'vs_limpers') {
+                const limpersCount = document.getElementById('limpers-count').value;
+
+                if (limpersCount) {
+                    ctxKey = `vs-${limpersCount}limpers`;
+                } else if (selectedLimpers.length > 0) {
+                    ctxKey = `vs-limpers-${selectedLimpers.map(l => l.toLowerCase()).join('-')}`;
+                } else {
+                    ctxKey = 'vs-limpers';
+                }
+            }
+            else {
+                ctxKey = primaryAction.replace(/\s+/g, '-');
+            }
+
+            // Construire le slug
+            const slug = `nlhe-${tableFormat.replace(/\s+/g, '').toLowerCase()}-${heroPosition.toLowerCase()}-${ctxKey}-${stackDepth.toLowerCase()}`;
+
+            // Nettoyer le slug (enlever caractères spéciaux)
+            const cleanSlug = slug.replace(/[^a-z0-9\-\.]/g, '');
+
+            // Mettre à jour l'affichage
+            const slugElement = document.getElementById('slug');
+            if (slugElement) {
+                slugElement.textContent = cleanSlug;
+            }
+
+            // Mettre à jour aussi le titre humain
+            updateHumanTitle();
+        }
+
+        // 🆕 FONCTION DE GÉNÉRATION DU TITRE HUMAIN EN TEMPS RÉEL
+        function updateHumanTitle() {
+            const tableFormat = document.getElementById('table-format').value || '6max';
+            const heroPosition = document.getElementById('hero-position').value || 'UTG';
+            const primaryAction = document.getElementById('primary-action').value || 'open';
+            const stackDepth = document.getElementById('stack-depth').value || '100bb';
+
+            let ctx = '';
+
+            if (primaryAction === 'open') {
+                ctx = 'Open';
+            } else if (primaryAction === 'defense') {
+                const opener = document.getElementById('opener').value;
+                if (opener) {
+                    ctx = `Défense vs ${opener} open`;
+                } else {
+                    ctx = 'Défense';
+                }
+            } else if (primaryAction === 'squeeze') {
+                const opener = document.getElementById('squeeze-opener').value;
+                if (opener && selectedCallers.length > 0) {
+                    ctx = `Squeeze vs ${opener} open + ${selectedCallers.join(' + ')} call`;
+                } else if (opener) {
+                    ctx = `Squeeze vs ${opener} open`;
+                } else {
+                    ctx = 'Squeeze';
+                }
+            } else if (primaryAction === 'vs_limpers') {
+                const limpersCount = document.getElementById('limpers-count').value;
+                if (limpersCount) {
+                    ctx = `Vs ${limpersCount} limper(s)`;
+                } else if (selectedLimpers.length > 0) {
+                    ctx = `Vs ${selectedLimpers.join(' + ')} limp`;
+                } else {
+                    ctx = 'Vs limpers';
+                }
+            } else {
+                ctx = primaryAction.charAt(0).toUpperCase() + primaryAction.slice(1);
+            }
+
+            const humanTitle = `${tableFormat} · ${heroPosition} · ${ctx} · ${stackDepth}`;
+
+            const titleElement = document.getElementById('human-title');
+            if (titleElement) {
+                titleElement.textContent = humanTitle;
+            }
+        }
 
         // Charger les données du contexte
         async function loadContext() {
@@ -847,7 +1246,6 @@
                     }
                 });
 
-                // 🆕 Pré-remplir action_sequence si présent
                 if (data.action_sequence) {
                     const seq = data.action_sequence;
 
@@ -863,11 +1261,23 @@
                             selectedCallers = seq.callers;
                             setTimeout(() => renderSelectedCallers(), 100);
                         }
+                        if (seq.callers_count) {
+                            setTimeout(() => {
+                                document.getElementById('callers-count').value = seq.callers_count;
+                            }, 100);
+                        }
                     }
 
-                    if (data.primary_action === 'vs_limpers' && seq.limpers) {
-                        selectedLimpers = seq.limpers;
-                        setTimeout(() => renderSelectedLimpers(), 100);
+                    if (data.primary_action === 'vs_limpers') {
+                        if (seq.limpers) {
+                            selectedLimpers = seq.limpers;
+                            setTimeout(() => renderSelectedLimpers(), 100);
+                        }
+                        if (seq.limpers_count) {
+                            setTimeout(() => {
+                                document.getElementById('limpers-count').value = seq.limpers_count;
+                            }, 100);
+                        }
                     }
                 }
             }
@@ -877,6 +1287,9 @@
             if (data.variant) document.getElementById('variant').value = data.variant;
             if (data.sizing) document.getElementById('sizing').value = data.sizing;
             if (data.stakes) document.getElementById('stakes').value = data.stakes;
+
+            // 🆕 Générer le slug initial après préchargement
+            setTimeout(generateSlugLive, 200);
         }
 
         function selectOption(fieldId, value) {
@@ -888,28 +1301,27 @@
             });
         }
 
-        // 🆕 Afficher/masquer sections dynamiques selon primary_action
         function showDynamicSection(action) {
-            // Masquer toutes les sections dynamiques
             document.querySelectorAll('.dynamic-section').forEach(section => {
                 section.classList.remove('visible');
             });
 
-            // Afficher la bonne section
             if (action === 'defense') {
+                if (!validateDefensePositions()) return;
                 document.getElementById('defense-details').classList.add('visible');
                 updateDynamicPositionButtons('opener');
             } else if (action === 'squeeze') {
+                if (!validateSqueezePositions()) return;
                 document.getElementById('squeeze-details').classList.add('visible');
                 updateDynamicPositionButtons('squeeze-opener');
                 updateDynamicPositionButtons('callers');
             } else if (action === 'vs_limpers') {
+                if (!validateLimpersPositions()) return;
                 document.getElementById('limpers-details').classList.add('visible');
                 updateDynamicPositionButtons('limpers');
             }
         }
 
-        // 🆕 Mettre à jour les boutons de positions dynamiques
         function updateDynamicPositionButtons(target) {
             const positions = POSITIONS_BY_FORMAT[currentTableFormat];
             const container = document.getElementById(`${target}-buttons`);
@@ -930,29 +1342,56 @@
                 } else if (target === 'limpers') {
                     btn.addEventListener('click', () => addLimper(pos));
                 } else {
-                    // opener ou squeeze-opener
                     btn.addEventListener('click', (e) => {
                         container.querySelectorAll('.btn-option').forEach(b => b.classList.remove('selected'));
                         e.target.classList.add('selected');
-                        document.getElementById(target.replace('-buttons', '')).value = pos;
+                        const fieldId = target.replace('-buttons', '');
+                        document.getElementById(fieldId).value = pos;
+
+                        // 🆕 Si squeeze-opener, mettre à jour les contraintes des callers
+                        if (target === 'squeeze-opener') {
+                            const heroPosition = document.getElementById('hero-position').value;
+                            const heroIdx = positions.indexOf(heroPosition);
+                            updateCallersConstraints(positions, heroIdx);
+                        }
+
+                        generateSlugLive();
                     });
                 }
 
                 container.appendChild(btn);
             });
+
+            // 🆕 Appliquer les contraintes après création des boutons
+            const heroPosition = document.getElementById('hero-position').value;
+            if (heroPosition) {
+                const heroIdx = positions.indexOf(heroPosition);
+
+                if (target === 'opener') {
+                    updateDefensePositionConstraints(positions, heroIdx);
+                } else if (target === 'squeeze-opener') {
+                    updateSqueezePositionConstraints(positions, heroIdx);
+                } else if (target === 'callers') {
+                    updateCallersConstraints(positions, heroIdx);
+                } else if (target === 'limpers') {
+                    updateLimpersPositionConstraints(positions, heroIdx);
+                }
+            }
         }
 
-        // 🆕 Gérer les callers (squeeze)
         function addCaller(position) {
             if (!selectedCallers.includes(position)) {
                 selectedCallers.push(position);
                 renderSelectedCallers();
+                document.getElementById('callers-count').value = '';
+                generateSlugLive();
             }
         }
 
         function removeCaller(position) {
             selectedCallers = selectedCallers.filter(p => p !== position);
             renderSelectedCallers();
+            generateSlugLive();
         }
 
         function renderSelectedCallers() {
@@ -973,17 +1412,19 @@
             document.getElementById('callers').value = selectedCallers.join(',');
         }
 
-        // 🆕 Gérer les limpers (vs_limpers)
         function addLimper(position) {
             if (!selectedLimpers.includes(position)) {
                 selectedLimpers.push(position);
                 renderSelectedLimpers();
+                document.getElementById('limpers-count').value = '';
+                generateSlugLive();
             }
         }
 
         function removeLimper(position) {
             selectedLimpers = selectedLimpers.filter(p => p !== position);
             renderSelectedLimpers();
+            generateSlugLive();
         }
 
         function renderSelectedLimpers() {
@@ -1004,7 +1445,34 @@
             document.getElementById('limpers').value = selectedLimpers.join(',');
         }
 
-        // Gérer la sélection du format de table
+        // 🆕 ÉCOUTEURS D'ÉVÉNEMENTS POUR MISE À JOUR EN TEMPS RÉEL
+        document.addEventListener('DOMContentLoaded', () => {
+            const callersCountField = document.getElementById('callers-count');
+            const limpersCountField = document.getElementById('limpers-count');
+
+            if (callersCountField) {
+                callersCountField.addEventListener('input', () => {
+                    if (callersCountField.value) {
+                        selectedCallers = [];
+                        renderSelectedCallers();
+                    }
+                    generateSlugLive();
+                });
+            }
+
+            if (limpersCountField) {
+                limpersCountField.addEventListener('input', () => {
+                    if (limpersCountField.value) {
+                        selectedLimpers = [];
+                        renderSelectedLimpers();
+                    }
+                    generateSlugLive();
+                });
+            }
+
+            document.getElementById('stack-depth').addEventListener('change', generateSlugLive);
+        });
+
         document.getElementById('table-format-buttons').addEventListener('click', (e) => {
             if (e.target.classList.contains('btn-option')) {
                 document.querySelectorAll('#table-format-buttons .btn-option').forEach(btn => {
@@ -1016,10 +1484,19 @@
                 currentTableFormat = format;
                 updatePositionButtons(format);
 
-                // Réinitialiser aussi les positions dynamiques
                 const primaryAction = document.getElementById('primary-action').value;
                 if (primaryAction) {
                     showDynamicSection(primaryAction);
+                }
+
+                generateSlugLive();
+
+                // 🆕 Revalider après changement de format
+                const heroPosition = document.getElementById('hero-position').value;
+                if (heroPosition && primaryAction) {
+                    if (primaryAction === 'defense') validateDefensePositions();
+                    else if (primaryAction === 'squeeze') validateSqueezePositions();
+                    else if (primaryAction === 'vs_limpers') validateLimpersPositions();
                 }
             }
         });
@@ -1042,14 +1519,20 @@
             document.querySelectorAll('.hero-btn').forEach(btn => btn.classList.remove('selected'));
         }
 
-        // Gérer les clics sur les boutons d'action
         document.querySelectorAll('.action-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 document.querySelectorAll('.action-btn').forEach(b => b.classList.remove('selected'));
                 btn.classList.add('selected');
                 const action = btn.dataset.value;
                 document.getElementById('primary-action').value = action;
+
+                // 🆕 Masquer tous les warnings d'abord
+                document.getElementById('defense-warning').style.display = 'none';
+                document.getElementById('squeeze-warning').style.display = 'none';
+                document.getElementById('limpers-warning').style.display = 'none';
+
                 showDynamicSection(action);
+                generateSlugLive();
             });
         });
 
@@ -1058,6 +1541,18 @@
                 document.querySelectorAll('.hero-btn').forEach(b => b.classList.remove('selected'));
                 e.target.classList.add('selected');
                 document.getElementById('hero-position').value = e.target.dataset.value;
+
+                // 🆕 Valider immédiatement (AVANT de regénérer la section)
+                const primaryAction = document.getElementById('primary-action').value;
+                if (primaryAction === 'defense') {
+                    validateDefensePositions();
+                } else if (primaryAction === 'squeeze') {
+                    validateSqueezePositions();
+                } else if (primaryAction === 'vs_limpers') {
+                    validateLimpersPositions();
+                }
+
+                generateSlugLive();
             }
         });
 
@@ -1087,32 +1582,19 @@
                 range_labels: Object.keys(allRangeLabels).length > 0 ? allRangeLabels : null
             };
 
-            // 🆕 Ajouter les champs spécifiques selon primary_action
             if (primaryAction === 'defense') {
                 formData.opener = document.getElementById('opener').value;
             } else if (primaryAction === 'squeeze') {
                 formData.opener = document.getElementById('squeeze-opener').value;
                 formData.callers = document.getElementById('callers').value;
+                formData.callers_count = document.getElementById('callers-count').value;
             } else if (primaryAction === 'vs_limpers') {
                 formData.limpers = document.getElementById('limpers').value;
+                formData.limpers_count = document.getElementById('limpers-count').value;
             }
 
             if (!formData.table_format || !formData.hero_position || !formData.primary_action) {
                 showMessage('Veuillez remplir tous les champs obligatoires', 'error');
-                return;
-            }
-
-            // Validation spécifique selon primary_action
-            if (primaryAction === 'defense' && !formData.opener) {
-                showMessage('Veuillez sélectionner la position de l\'ouvreur', 'error');
-                return;
-            }
-            if (primaryAction === 'squeeze' && (!formData.opener || !formData.callers)) {
-                showMessage('Veuillez sélectionner l\'ouvreur et au moins un caller', 'error');
-                return;
-            }
-            if (primaryAction === 'vs_limpers' && !formData.limpers) {
-                showMessage('Veuillez sélectionner au moins un limpeur', 'error');
                 return;
             }
 

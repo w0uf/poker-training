@@ -192,3 +192,20 @@ def get_hand_strength(hand):
         Force de la main (0-100) ou 50 par défaut
     """
     return HAND_STRENGTH.get(hand, 50)
+
+AVAILABLE_LABELS = {
+    'OPEN': 'Open',
+    'CALL': 'Call',
+    'FOLD': 'Fold',
+    'RAISE': 'Raise',
+    'R3_VALUE': '3bet Value',
+    'R3_BLUFF': '3bet Bluff',
+    'R4_VALUE': '4bet Value',
+    'R4_BLUFF': '4bet Bluff',
+    'R5_ALLIN': '5bet All-in',
+    'ISO_VALUE': 'Iso Value',
+    'ISO_BLUFF': 'Iso Bluff',
+    'CHECK': 'Check',
+    'DEFENSE': 'Defense',
+    'UNKNOWN': 'Inconnu'
+}

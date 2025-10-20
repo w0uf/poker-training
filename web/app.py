@@ -1,4 +1,4 @@
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, send_from_directory
 import subprocess
 import os
 import sys
@@ -8,6 +8,8 @@ from pathlib import Path
 import re
 from datetime import datetime
 import random
+
+CARDS_DIR = os.path.join(os.path.dirname(__file__), '..', 'data', 'cartes')
 
 # Ajouter le chemin vers les modules
 sys.path.insert(0, str(Path(__file__).parent.parent / 'modules'))
@@ -47,6 +49,95 @@ ORPHAN_COUNT = 0
 # ============================================
 # UTILITAIRES
 # ============================================
+
+def generate_human_title_and_slug(table_format, hero_position, primary_action, action_sequence, stack_depth):
+    """
+    Génère le titre humain et le slug pour un contexte
+
+    Args:
+        table_format: Format de table (6max, 9max, etc.)
+        hero_position: Position du héros (BTN, CO, etc.)
+        primary_action: Action principale (open, defense, squeeze, vs_limpers)
+        action_sequence: Dict contenant opener, callers, limpers, etc.
+        stack_depth: Profondeur de stack (100bb, etc.)
+
+    Returns:
+        tuple: (human_title, slug)
+    """
+    # HUMAN TITLE
+    if primary_action == 'open':
+        action_text = 'Open'
+    elif primary_action == 'defense':
+        if action_sequence and action_sequence.get('opener'):
+            opener = action_sequence['opener']
+            action_text = f'Défense vs {opener} open'
+        else:
+            action_text = 'Défense'
+    elif primary_action == 'squeeze':
+        opener = action_sequence.get('opener') if action_sequence else None
+        callers = action_sequence.get('callers', []) if action_sequence else []
+
+        if opener and callers:
+            callers_text = ' + '.join(callers)
+            action_text = f'Squeeze vs {opener} open + {callers_text} call'
+        elif opener:
+            action_text = f'Squeeze vs {opener} open'
+        else:
+            action_text = 'Squeeze'
+    elif primary_action == 'vs_limpers':
+        limpers_count = action_sequence.get('limpers_count') if action_sequence else None
+        limpers = action_sequence.get('limpers', []) if action_sequence else []
+
+        if limpers_count:
+            action_text = f'Vs {limpers_count} limper(s)'
+        elif limpers:
+            limpers_text = ' + '.join(limpers)
+            action_text = f'Vs {limpers_text} limp'
+        else:
+            action_text = 'Vs limpers'
+    else:
+        action_text = primary_action.capitalize()
+
+    human_title = f"{table_format} · {hero_position} · {action_text} · {stack_depth}"
+
+    # SLUG
+    if primary_action == 'open':
+        ctx_key = 'open'
+    elif primary_action == 'defense':
+        opener = action_sequence.get('opener') if action_sequence else None
+        if opener:
+            ctx_key = f'defense-vs-{opener.lower()}'
+        else:
+            ctx_key = 'defense'
+    elif primary_action == 'squeeze':
+        opener = action_sequence.get('opener') if action_sequence else None
+        callers = action_sequence.get('callers', []) if action_sequence else []
+
+        positions = [opener] + callers if opener else callers
+        positions = [p for p in positions if p]
+
+        if positions:
+            ctx_key = f'squeeze-{"-".join([p.lower() for p in positions])}'
+        else:
+            ctx_key = 'squeeze'
+    elif primary_action == 'vs_limpers':
+        limpers_count = action_sequence.get('limpers_count') if action_sequence else None
+        limpers = action_sequence.get('limpers', []) if action_sequence else []
+
+        if limpers_count:
+            ctx_key = f'vs-{limpers_count}limpers'
+        elif limpers:
+            ctx_key = f'vs-limpers-{"-".join([l.lower() for l in limpers])}'
+        else:
+            ctx_key = 'vs-limpers'
+    else:
+        ctx_key = primary_action.replace(' ', '-').lower()
+
+    slug = f"nlhe-{table_format.lower()}-{hero_position.lower()}-{ctx_key}-{stack_depth.lower()}"
+    slug = slug.replace(' ', '').replace('+', '')  # Nettoyer
+
+    return human_title, slug
+
 
 def get_db_connection():
     """Retourne une connexion à la base de données"""
@@ -242,6 +333,10 @@ def update_source_json(context_id: int, metadata: dict, range_labels: dict = Non
 # ============================================
 # ROUTES PRINCIPALES
 # ============================================
+@app.route('/cards/<path:filename>')
+def cards_static(filename):
+    return send_from_directory(CARDS_DIR, filename)
+
 
 @app.route('/')
 def dashboard():
@@ -485,22 +580,117 @@ def validate_page():
 
 
 @app.route('/api/validation/context/<int:context_id>')
-def get_context_for_validation(context_id):
-    """Récupère les informations d'un contexte pour validation."""
-    if not VALIDATOR_AVAILABLE:
-        return jsonify({'error': 'Module de validation non disponible'}), 500
+def get_validation_context(context_id):
+    """Retourne les données d'un contexte pour validation"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
 
-    try:
-        context = validator.get_context_for_validation(context_id)
+    # Récupérer TOUTES les métadonnées
+    cursor.execute("""
+        SELECT 
+            rc.id, rc.original_name, rc.display_name, rc.cleaned_name,
+            rc.table_format, rc.hero_position, rc.vs_position, rc.primary_action,
+            rc.action_sequence,
+            rc.stack_depth, rc.game_type, rc.variant, rc.sizing, rc.stakes,
+            rc.confidence_score, rc.needs_validation,
+            rf.filename, rf.file_path
+        FROM range_contexts rc
+        LEFT JOIN range_files rf ON rc.file_id = rf.id
+        WHERE rc.id = ?
+    """, (context_id,))
 
-        if not context:
-            return jsonify({'error': 'Contexte non trouvé'}), 404
-        return jsonify(context)
-    except Exception as e:
-        print(f"Erreur get_context_for_validation: {e}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({'error': str(e)}), 500
+    row = cursor.fetchone()
+
+    if not row:
+        conn.close()
+        return jsonify({'error': 'Contexte non trouvé'}), 404
+
+    # Construire le contexte
+    context = {
+        'id': row[0],
+        'original_name': row[1],
+        'display_name': row[2],
+        'cleaned_name': row[3],
+        'table_format': row[4],
+        'hero_position': row[5],
+        'vs_position': row[6],
+        'primary_action': row[7],
+        'action_sequence': json.loads(row[8]) if row[8] else None,
+        'stack_depth': row[9],
+        'game_type': row[10],
+        'variant': row[11],
+        'sizing': row[12],
+        'stakes': row[13],
+        'confidence_score': row[14],
+        'needs_validation': row[15],
+        'filename': row[16],
+        'file_path': row[17]
+    }
+
+    # 🆕 Générer human_title et slug avec la fonction helper
+    if context['table_format'] and context['hero_position'] and context['primary_action']:
+        context['human_title'], context['slug'] = generate_human_title_and_slug(
+            context['table_format'],
+            context['hero_position'],
+            context['primary_action'],
+            context['action_sequence'],
+            context['stack_depth']
+        )
+    else:
+        context['human_title'] = context['display_name'] or context['original_name']
+        context['slug'] = context['cleaned_name'] or context['original_name']
+
+    # Récupérer les ranges et leurs mains
+    cursor.execute("""
+        SELECT 
+            r.id, r.range_key, r.name, r.color, r.label_canon,
+            COUNT(DISTINCT rh.hand) as hand_count
+        FROM ranges r
+        LEFT JOIN range_hands rh ON r.id = rh.range_id
+        WHERE r.context_id = ?
+        GROUP BY r.id
+        ORDER BY r.range_key
+    """, (context_id,))
+
+    ranges = []
+    for r in cursor.fetchall():
+        ranges.append({
+            'id': r[0],
+            'range_key': r[1],
+            'name': r[2],
+            'color': r[3],
+            'label_canon': r[4],
+            'hand_count': r[5]
+        })
+
+    context['ranges'] = ranges
+
+    # Résumé des sous-ranges
+    subranges_summary = {}
+    for r in ranges:
+        if r['range_key'] != '1' and r['label_canon']:
+            label = r['label_canon']
+            subranges_summary[label] = subranges_summary.get(label, 0) + 1
+
+    context['subranges_summary'] = subranges_summary
+
+    # Labels disponibles
+    from poker_constants import AVAILABLE_LABELS
+    context['available_labels'] = AVAILABLE_LABELS
+
+    # Générer des warnings si nécessaire
+    warnings = []
+
+    if context['primary_action'] == 'defense' and len(ranges) == 1:
+        warnings.append("Contexte DEFENSE sans sous-ranges détectés")
+
+    if context['confidence_score'] < 60:
+        warnings.append(f"Confiance de détection faible : {context['confidence_score']}%")
+
+    context['warnings'] = warnings
+
+    conn.close()
+    return jsonify(context)
 
 
 @app.route('/api/validation/candidates')
@@ -978,7 +1168,45 @@ def api_debug_db():
 @app.route('/api/dashboard/stats')
 def api_dashboard_stats():
     """API pour les statistiques du dashboard"""
-    return jsonify({'recent_imports': [], 'status': 'success'})
+    try:
+        stats = get_pipeline_stats()
+
+        # Ajouter les stats d'import récents si nécessaire
+        conn = get_db_connection()
+        if conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT filename, created_at 
+                FROM range_files 
+                ORDER BY created_at DESC 
+                LIMIT 5
+            """)
+            recent_imports = [
+                {'filename': row[0], 'date': row[1]}
+                for row in cursor.fetchall()
+            ]
+            conn.close()
+        else:
+            recent_imports = []
+
+        return jsonify({
+            'status': 'success',
+            'stats': stats,
+            'recent_imports': recent_imports
+        })
+
+    except Exception as e:
+        print(f"Erreur api_dashboard_stats: {e}")
+        return jsonify({
+            'status': 'error',
+            'error': str(e),
+            'stats': {
+                'total_files': 0,
+                'total_contexts': 0,
+                'total_ranges': 0,
+                'total_hands': 0
+            }
+        }), 500
 
 
 @app.route('/api/dashboard/contexts')

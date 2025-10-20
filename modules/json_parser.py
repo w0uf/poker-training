@@ -17,6 +17,7 @@ class RangeData:
     name: str
     color: str
     hands: Dict[str, List[int]]  # main -> liste des range_keys
+    label_canon: Optional[str] = None  # 🆕 Label canonique
 
 
 @dataclass
@@ -27,6 +28,7 @@ class ParsedContext:
     context_name: str
     ranges: List[RangeData]
     source_path: str
+    metadata: Optional[Dict] = None  # 🆕 Métadonnées du JSON
 
 
 class JSONRangeParser:
@@ -84,6 +86,9 @@ class JSONRangeParser:
         # Extraire le nom du contexte (nom du fichier sans extension)
         context_name = file_path.stem
 
+        # 🆕 Extraire les metadata si présentes
+        metadata = data.get('metadata', {})
+
         # Créer les ranges
         ranges = []
         for range_key, range_info in ranges_def.items():
@@ -94,10 +99,14 @@ class JSONRangeParser:
                 if int(range_key) in range_keys:
                     range_hands[hand] = range_keys
 
+            # 🆕 Extraire label_canon si présent
+            label_canon = range_info.get('label_canon')
+
             ranges.append(RangeData(
                 name=range_info['name'],
                 color=range_info['color'],
-                hands=range_hands
+                hands=range_hands,
+                label_canon=label_canon  # 🆕
             ))
 
         return ParsedContext(
@@ -105,7 +114,8 @@ class JSONRangeParser:
             file_hash=file_hash,
             context_name=context_name,
             ranges=ranges,
-            source_path=str(file_path)
+            source_path=str(file_path),
+            metadata=metadata  # 🆕
         )
 
     def _parse_pio(self, file_path: Path, file_hash: str, data: Dict) -> ParsedContext:
