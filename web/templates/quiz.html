@@ -92,6 +92,7 @@
             border-radius: 12px;
             margin-bottom: 30px;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            position: relative;
         }
 
         .context-info {
@@ -115,6 +116,25 @@
             color: #1976D2;
         }
 
+        /* Variante */
+        .question-variant {
+            background: #f8f9fa;
+            border-left: 4px solid #6c757d;
+            padding: 10px 14px;
+            margin-bottom: 20px;
+            font-style: italic;
+            color: #495057;
+            border-radius: 4px;
+            font-size: 0.95em;
+        }
+
+        .question-variant::before {
+            content: "Variante : ";
+            font-weight: 600;
+            font-style: normal;
+            color: #343a40;
+        }
+
         /* Zone de question */
         .question-zone {
             text-align: center;
@@ -133,42 +153,6 @@
             display: inline-flex;
             gap: 10px;
             margin: 20px 0;
-        }
-
-        .card {
-            width: 80px;
-            height: 112px;
-            background: white;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 2.5rem;
-            font-weight: 700;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
-            position: relative;
-            animation: dealCard 0.3s ease-out;
-        }
-
-        @keyframes dealCard {
-            from {
-                transform: translateY(-100px) rotate(-10deg);
-                opacity: 0;
-            }
-            to {
-                transform: translateY(0) rotate(0);
-                opacity: 1;
-            }
-        }
-
-        .card.red { color: #d32f2f; }
-        .card.black { color: #212121; }
-
-        .card-suit {
-            position: absolute;
-            font-size: 1rem;
-            top: 5px;
-            left: 5px;
         }
 
         /* Boutons d'action */
@@ -232,16 +216,6 @@
 
         .btn-raise, .btn-open {
             background: linear-gradient(135deg, #ffa726 0%, #ff9800 100%);
-            color: white;
-        }
-
-        .btn-3bet, .btn-4bet, .btn-5bet {
-            background: linear-gradient(135deg, #ef5350 0%, #e53935 100%);
-            color: white;
-        }
-
-        .btn-allin {
-            background: linear-gradient(135deg, #ab47bc 0%, #9c27b0 100%);
             color: white;
         }
 
@@ -405,100 +379,62 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-        <style>
-/* === Cartes PNG + animation de distribution (patch minimal) === */
-:root {
-  --card-w: 90px;
-  --card-h: 125px;
-  --deal-ms: 380ms;
-  --deal-stagger: 140ms;
-}
 
-#handDisplay {
-  position: relative;
-  min-height: calc(var(--card-h) + 10px); /* réserve la place des cartes */
-  display: flex;
-  justify-content: center;
-  gap: 16px; /* l’écart final entre les 2 slots */
-}
+        /* Cartes PNG */
+        #handDisplay {
+            position: relative;
+            min-height: 110px;
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: center;
+            gap: 0;
+        }
 
-/* slots “fantômes” pour calculer les positions finales */
-.card-slot {
-  width: var(--card-w);
-  height: var(--card-h);
-  border-radius: 10px;
-}
+        .card-slot {
+            width: 72px;
+            height: 96px;
+            border-radius: 10px;
+        }
 
-/* vraies images de cartes (position absolue + transitions) */
-.card-img {
-  image-rendering: -webkit-optimize-contrast; /* Chrome/Safari */
-  image-rendering: crisp-edges;               /* Firefox */
-  transform: translateZ(0);                   /* forçage GPU */
-}
+        .card-slot + .card-slot {
+            margin-left: -22px;
+        }
 
-/* état initial: centre de la table */
-.card-img.from-center {
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%) scale(0.25) rotate(var(--deal-rot, -3deg));
-  opacity: 0.0;
-  filter: blur(1px);
-}
+        .card-img {
+            position: absolute;
+            z-index: 10;
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
+            transform: translateZ(0);
+        }
 
-/* état final: position slot + légère rotation */
-.card-img.to-slot {
-  transform: translate(0,0) scale(1) rotate(var(--deal-rot, 0deg));
-  opacity: 1;
-  filter: none;
-}
+        .card-img.from-center {
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%) scale(0.25) rotate(var(--deal-rot, -3deg));
+            opacity: 0.0;
+            filter: blur(1px);
+        }
 
-/* petit pop à l’arrivée */
-.card-img.arrived {
-  box-shadow: 0 6px 18px rgba(0,0,0,0.35);
-  transform: translate(0,0) scale(1.02) rotate(var(--deal-rot, 0deg));
-}
-/* === fin patch cartes === */
+        .card-img.to-slot {
+            transform: translate(0,0) scale(1) rotate(var(--deal-rot, 0deg));
+            opacity: 1;
+            filter: none;
+            transition: all 0.38s ease-out;
+        }
 
- #handDisplay{
-  position: relative;
-  min-height: 110px;
-  margin-bottom: 24px;
-  display: flex;
-  justify-content: center;
-  gap: 0;                 /* ok */
-}
-
-/* tailles natives de tes PNG (72x96) */
-.card-slot{
-  width: 72px;
-  height: 96px;
-  border-radius: 10px;
-}
-
-/* chevauchement : on tire le 2e slot vers la gauche */
-.card-slot + .card-slot{
-  margin-left: -22px;     /* ← règle l'overlap ici */
-}
-
-/* z-index homogène, l'ordre d’insertion mettra la 2e carte au-dessus */
-.card-img{
-  position: absolute;
-  z-index: 10;
-}
-#buttonsContainer{
-  position: relative;
-  z-index: 0;                  /* et les boutons en-dessous si chevauchement */
-}
-</style>
-
-
+        .card-img.arrived {
+            box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+            transform: translate(0,0) scale(1.02) rotate(var(--deal-rot, 0deg));
+        }
+    </style>
 </head>
 <body>
     <div class="container">
         <!-- Header avec progression -->
         <div class="quiz-header">
             <div class="score">
-                <span id="correctCount">0</span> / <span id="answeredCount">0</span> ✔
+                <span id="correctCount">0</span> / <span id="answeredCount">0</span> ✓
             </div>
             <div class="progress-bar">
                 <div class="progress-fill" id="progressBar"></div>
@@ -518,28 +454,25 @@
         <div id="quizZone" style="display: none;">
             <!-- Contexte -->
             <div class="context-card">
-                <div class="context-info" id="contextInfo">
-                    <!-- Rempli dynamiquement -->
-                </div>
+                <div class="context-info" id="contextInfo"></div>
             </div>
 
             <!-- Table de poker -->
             <div class="poker-table">
                 <div class="question-zone">
+                    <!-- Variante -->
+                    <div id="questionVariant" class="question-variant" style="display: none;"></div>
+
                     <div class="situation-text" id="situationText"></div>
 
-                    <div class="hand-display" id="handDisplay">
-                        <!-- Cartes affichées ici -->
-                    </div>
+                    <div class="hand-display" id="handDisplay"></div>
 
-                    <div class="action-buttons" id="actionButtons">
-                        <!-- Boutons générés dynamiquement -->
-                    </div>
+                    <div class="action-buttons" id="actionButtons"></div>
 
                     <div class="feedback" id="feedback">
                         <div class="feedback-title" id="feedbackTitle"></div>
                         <div id="feedbackText"></div>
-                        <button class="next-btn" id="nextBtn" onclick="nextQuestion()">
+                        <button class="next-btn" id="nextBtn">
                             Continuer →
                         </button>
                     </div>
@@ -586,143 +519,122 @@
         // ============================================
         // VARIABLES GLOBALES
         // ============================================
-        let selectedContexts = [];      // 🆕 Contextes sélectionnés
-        let totalQuestions = 0;          // 🆕 Nombre de questions demandé
-        let currentQuestionNum = 0;      // 🆕 Numéro de la question actuelle
-        let askedQuestions = [];         // 🆕 Historique des questions posées
+        let questions = [];
+        let currentQuestionIndex = 0;
+        let currentQuestionNum = 0;
         let correctAnswers = 0;
-        let answeredQuestions = 0;
         let currentQuestion = null;
+
+        // Variables pour drill_down
+        let isDrillDown = false;
+        let currentLevel = 0;
+        let drillDownLevels = [];
 
         // ============================================
         // INITIALISATION
         // ============================================
         async function init() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const contexts = urlParams.get('contexts');
-            const count = urlParams.get('count');
+            console.log('[QUIZ] Initialisation...');
 
-            if (!contexts) {
-                alert('Erreur: Aucun contexte sélectionné');
+            const questionsData = sessionStorage.getItem('quizQuestions');
+            console.log('[QUIZ] SessionStorage:', questionsData ? 'présent' : 'vide');
+
+            if (!questionsData) {
+                console.error('[QUIZ] Erreur: sessionStorage vide');
+                alert('Erreur: Aucune question disponible');
                 window.location.href = '/quiz-setup';
                 return;
             }
 
-            // 🆕 Stocker les paramètres
-            selectedContexts = contexts.split(',').map(id => parseInt(id));
-            totalQuestions = parseInt(count) || 10;
-
-            // Reset des compteurs
-            askedQuestions = [];
-            currentQuestionNum = 0;
-            correctAnswers = 0;
-            answeredQuestions = 0;
-
-            // Afficher le total
-            document.getElementById('totalQuestions').textContent = totalQuestions;
-
-            console.log(`Quiz initialisé: ${totalQuestions} questions, contextes: ${selectedContexts}`);
-
-            // Masquer le loading et afficher la zone de quiz
-            document.getElementById('loading').style.display = 'none';
-            document.getElementById('quizZone').style.display = 'block';
-
-            // 🆕 Charger la première question
-            await loadNextQuestion();
-        }
-
-        // ============================================
-        // CHARGEMENT D'UNE QUESTION (NOUVEAU)
-        // ============================================
-        async function loadNextQuestion() {
             try {
-                console.log(`[QUIZ] Chargement question ${currentQuestionNum + 1}/${totalQuestions}`);
-                console.log(`[QUIZ] Historique: ${askedQuestions.length} questions déjà posées`);
+                questions = JSON.parse(questionsData);
+                console.log('[QUIZ] Questions chargées:', questions.length);
 
-                const response = await fetch('/api/quiz/question', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        context_ids: selectedContexts,
-                        excluded: askedQuestions  // 🆕 Envoyer l'historique
-                    })
-                });
+                if (!questions || questions.length === 0) {
+                    throw new Error('Liste vide');
+                }
 
-                if (!response.ok) {
-                    if (response.status === 404) {
-                        const data = await response.json();
-                        console.log('[QUIZ] Plus de questions disponibles');
-
-                        // Fin anticipée si au moins quelques questions
-                        if (currentQuestionNum > 0) {
-                            alert(`Toutes les questions uniques ont été utilisées (${currentQuestionNum} posées)`);
-                            showResults();
-                        } else {
-                            alert('Impossible de générer des questions. Vérifiez les contextes sélectionnés.');
-                            window.location.href = '/quiz-setup';
-                        }
-                        return;
+                // Calculer total sous-questions
+                let totalSubQuestions = 0;
+                questions.forEach(q => {
+                    if (q.type === 'drill_down' && q.levels) {
+                        totalSubQuestions += q.levels.length;
+                    } else {
+                        totalSubQuestions += 1;
                     }
-                    throw new Error('Erreur réseau');
-                }
-
-                const data = await response.json();
-
-                if (!data || !data.question) {
-                    throw new Error('Données invalides reçues');
-                }
-
-                // 🆕 Incrémenter et tracker
-                currentQuestionNum++;
-                currentQuestion = data.question;
-
-                askedQuestions.push({
-                    hand: currentQuestion.hand,
-                    context_id: currentQuestion.context_id
                 });
 
-                console.log(`[QUIZ] ✅ Question ${currentQuestionNum} chargée: ${currentQuestion.hand} (context ${currentQuestion.context_id})`);
+                console.log('[QUIZ] Total:', totalSubQuestions);
+                document.getElementById('totalQuestions').textContent = totalSubQuestions;
 
-                // Afficher la question
-                displayQuestion(currentQuestion);
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('quizZone').style.display = 'block';
 
+                loadNextQuestion();
             } catch (error) {
                 console.error('[QUIZ] Erreur:', error);
-                alert(`Erreur: ${error.message}`);
-
-                if (currentQuestionNum === 0) {
-                    window.location.href = '/quiz-setup';
-                } else {
-                    showResults();
-                }
+                alert('Erreur parsing: ' + error.message);
+                window.location.href = '/quiz-setup';
             }
         }
 
         // ============================================
-        // AFFICHAGE D'UNE QUESTION
+        // CHARGEMENT QUESTION
+        // ============================================
+        function loadNextQuestion() {
+            if (currentQuestionIndex >= questions.length) {
+                showResults();
+                return;
+            }
+
+            currentQuestion = questions[currentQuestionIndex];
+            currentQuestionIndex++;
+
+            isDrillDown = currentQuestion.type === 'drill_down';
+
+            if (isDrillDown) {
+                drillDownLevels = currentQuestion.levels;
+                currentLevel = 0;
+            }
+
+            displayQuestion(currentQuestion);
+        }
+
+        // ============================================
+        // AFFICHAGE
         // ============================================
         function displayQuestion(question) {
-            // Update progress
             document.getElementById('currentQuestion').textContent = currentQuestionNum;
-            const progress = (currentQuestionNum / totalQuestions) * 100;
+            const totalSubQuestions = parseInt(document.getElementById('totalQuestions').textContent);
+            const progress = Math.min(100, (currentQuestionNum / totalSubQuestions) * 100);
             document.getElementById('progressBar').style.width = progress + '%';
 
-            // Hide feedback
             document.getElementById('feedback').style.display = 'none';
 
-            // Show context
+            // Variante
+            const variantDiv = document.getElementById('questionVariant');
+            if (question.variant) {
+                variantDiv.textContent = question.variant;
+                variantDiv.style.display = 'block';
+            } else {
+                variantDiv.style.display = 'none';
+            }
+
             displayContext(question.context_info);
-
-            // Show situation
-            document.getElementById('situationText').textContent = question.question;
-
-            // Show hand
             displayHand(question.hand);
 
-            // Show action buttons
-            displayActionButtons(question.options);
+            if (isDrillDown) {
+                displayDrillDownLevel(currentLevel);
+            } else {
+                document.getElementById('situationText').innerHTML = question.question;
+                displayActionButtons(question.options);
+            }
+        }
+
+        function displayDrillDownLevel(levelIndex) {
+            const level = drillDownLevels[levelIndex];
+            document.getElementById('situationText').innerHTML = level.question;
+            displayActionButtons(level.options);
         }
 
         function displayContext(context) {
@@ -740,129 +652,123 @@
             document.getElementById('contextInfo').innerHTML = html;
         }
 
-        function displayHand(hand) {
-            const handDisplay = document.getElementById('handDisplay');
-            handDisplay.innerHTML = '';
+        function displayActionButtons(options) {
+            const container = document.getElementById('actionButtons');
+            container.innerHTML = '';
 
-            // Parse hand (ex: "AJs" -> As, Js)
-            const cards = parseHand(hand);
+            options.forEach(action => {
+                const btn = document.createElement('button');
+                let cssClass = action.toLowerCase();
+                if (['open', '3bet', '4bet', 'iso', 'raise'].includes(cssClass)) {
+                    cssClass = 'raise';
+                }
 
-            cards.forEach((card, index) => {
-                setTimeout(() => {
-                    const cardEl = document.createElement('div');
-                    cardEl.className = `card ${card.color}`;
-                    cardEl.innerHTML = `
-                        <span class="card-suit">${card.suit}</span>
-                        ${card.rank}
-                    `;
-                    handDisplay.appendChild(cardEl);
-                }, index * 100);
+                btn.className = `action-btn btn-${cssClass}`;
+                btn.textContent = translateAction(action);
+                btn.setAttribute('data-action', action);
+                container.appendChild(btn);
             });
         }
 
-        function parseHand(hand) {
-            // Gère AKs, 72o, QQ, etc.
-            const suited = hand.includes('s');
-            const offsuit = hand.includes('o');
-
-            let rank1 = hand[0];
-            let rank2 = hand[1];
-
-            const cards = [];
-
-            if (rank1 === rank2) {
-                // Paire
-                cards.push({ rank: rank1, suit: '♠', color: 'black' });
-                cards.push({ rank: rank2, suit: '♥', color: 'red' });
-            } else if (suited) {
-                cards.push({ rank: rank1, suit: '♠', color: 'black' });
-                cards.push({ rank: rank2, suit: '♠', color: 'black' });
-            } else {
-                cards.push({ rank: rank1, suit: '♠', color: 'black' });
-                cards.push({ rank: rank2, suit: '♥', color: 'red' });
-            }
-
-            return cards;
-        }
-
-        function displayActionButtons(options) {
-    const container = document.getElementById('actionButtons');
-    container.innerHTML = '';
-
-    const validOptions = options.filter(opt => opt != null && opt !== '' && opt !== 'null');
-
-    if (validOptions.length === 0) {
-        container.innerHTML = '<p style="color: red;">Erreur: Aucune option disponible</p>';
-        return;
-    }
-
-    // Les options arrivent déjà triées du backend
-    validOptions.forEach(action => {
-        const btn = document.createElement('button');
-
-        // 🆕 Normaliser la classe CSS pour tous les raises
-        let cssClass = action.toLowerCase().replace('_', '');
-        if (['open', '3bet', '4bet', 'iso', 'raise'].includes(cssClass)) {
-            cssClass = 'raise';  // Tous deviennent .btn-raise
-        }
-
-        btn.className = `action-btn btn-${cssClass}`;
-        btn.textContent = translateAction(action);
-        btn.setAttribute('data-action', action);
-        container.appendChild(btn);
-    });
-
-    console.log(`✅ ${validOptions.length} bouton(s) créés : ${validOptions.join(', ')}`);
-}
-
         function translateAction(action) {
-    const translations = {
-        'FOLD': 'Fold',
-        'CHECK': 'Check',
-        'CALL': 'Call',
-        'RAISE': 'Raise',
-        'OPEN': 'Raise',     // Premier raise = open
-        '3BET': 'Raise',     // Re-raise = 3bet
-        '4BET': 'Raise',     // Re-re-raise = 4bet
-        'ISO': 'Raise',      // Isolation raise
-        'ALLIN': 'All-in'
-    };
-    return translations[action] || action;
-}
+            const translations = {
+                'FOLD': 'Fold',
+                'CHECK': 'Check',
+                'CALL': 'Call',
+                'RAISE': 'Raise',
+                'OPEN': 'Raise',
+                '3BET': 'Raise',
+                '4BET': 'Raise'
+            };
+            return translations[action] || action;
+        }
 
         // ============================================
-        // GESTION DES RÉPONSES
+        // RÉPONSES
         // ============================================
         function handleAnswer(selectedAction) {
-            const isCorrect = selectedAction === currentQuestion.correct_answer;
-
-            // Disable all buttons
             document.querySelectorAll('.action-btn').forEach(btn => btn.disabled = true);
 
-            // Update counters
-            answeredQuestions++;
-            if (isCorrect) correctAnswers++;
-
-            document.getElementById('answeredCount').textContent = answeredQuestions;
-            document.getElementById('correctCount').textContent = correctAnswers;
-
-            // Show feedback
-            showFeedback(isCorrect, selectedAction);
+            if (isDrillDown) {
+                handleDrillDownAnswer(selectedAction);
+            } else {
+                handleSimpleAnswer(selectedAction);
+            }
         }
 
-        function showFeedback(isCorrect, selectedAction) {
+        function handleSimpleAnswer(selectedAction) {
+            const isCorrect = selectedAction === currentQuestion.correct_answer;
+
+            currentQuestionNum++;
+            if (isCorrect) correctAnswers++;
+
+            updateScoreDisplay();
+            showFeedback(isCorrect, selectedAction, currentQuestion.correct_answer);
+        }
+
+        function handleDrillDownAnswer(selectedAction) {
+            const level = drillDownLevels[currentLevel];
+            const isCorrect = selectedAction === level.correct_answer;
+
+            currentQuestionNum++;
+            if (isCorrect) correctAnswers++;
+
+            updateScoreDisplay();
+
+            const totalSubQuestions = parseInt(document.getElementById('totalQuestions').textContent);
+            const reachedLimit = currentQuestionNum >= totalSubQuestions;
+
+            if (!isCorrect || currentLevel === drillDownLevels.length - 1 || reachedLimit) {
+                showFeedback(isCorrect, selectedAction, level.correct_answer, true);
+            } else {
+                showFeedback(isCorrect, selectedAction, level.correct_answer, false);
+            }
+        }
+
+        function updateScoreDisplay() {
+            document.getElementById('currentQuestion').textContent = currentQuestionNum;
+            document.getElementById('answeredCount').textContent = currentQuestionNum;
+            document.getElementById('correctCount').textContent = correctAnswers;
+
+            const totalSubQuestions = parseInt(document.getElementById('totalQuestions').textContent);
+            const progress = Math.min(100, (currentQuestionNum / totalSubQuestions) * 100);
+            document.getElementById('progressBar').style.width = progress + '%';
+        }
+
+        function showFeedback(isCorrect, selectedAction, correctAnswer, isFinal = true) {
             const feedback = document.getElementById('feedback');
             const title = document.getElementById('feedbackTitle');
             const text = document.getElementById('feedbackText');
+            const nextBtn = document.getElementById('nextBtn');
 
             feedback.className = 'feedback ' + (isCorrect ? 'correct' : 'incorrect');
 
             if (isCorrect) {
                 title.textContent = '✓ Correct !';
                 text.textContent = '';
+
+                if (isDrillDown && !isFinal) {
+                    nextBtn.textContent = 'Continuer →';
+                    nextBtn.onclick = () => {
+                        currentLevel++;
+                        feedback.style.display = 'none';
+
+                        const totalSubQuestions = parseInt(document.getElementById('totalQuestions').textContent);
+                        if (currentQuestionNum >= totalSubQuestions) {
+                            showResults();
+                        } else {
+                            displayDrillDownLevel(currentLevel);
+                        }
+                    };
+                } else {
+                    nextBtn.textContent = 'Continuer →';
+                    nextBtn.onclick = nextQuestion;
+                }
             } else {
                 title.textContent = '✗ Incorrect';
-                text.textContent = `La bonne réponse était : ${translateAction(currentQuestion.correct_answer)}`;
+                text.textContent = `La bonne réponse était : ${translateAction(correctAnswer)}`;
+                nextBtn.textContent = 'Continuer →';
+                nextBtn.onclick = nextQuestion;
             }
 
             feedback.style.display = 'block';
@@ -871,33 +777,33 @@
         // ============================================
         // NAVIGATION
         // ============================================
-        async function nextQuestion() {
-            // 🆕 Vérifier si on a atteint le nombre demandé
-            if (currentQuestionNum >= totalQuestions) {
+        function nextQuestion() {
+            const totalSubQuestions = parseInt(document.getElementById('totalQuestions').textContent);
+
+            if (currentQuestionNum >= totalSubQuestions) {
                 showResults();
                 return;
             }
 
-            // 🆕 Charger la prochaine question
-            await loadNextQuestion();
+            loadNextQuestion();
         }
 
         function showResults() {
             document.getElementById('quizZone').style.display = 'none';
             document.getElementById('resultsScreen').style.display = 'block';
 
-            const percentage = answeredQuestions > 0
-                ? Math.round((correctAnswers / answeredQuestions) * 100)
+            const percentage = currentQuestionNum > 0
+                ? Math.round((correctAnswers / currentQuestionNum) * 100)
                 : 0;
 
             document.getElementById('finalScore').textContent = percentage;
-            document.getElementById('totalAnswered').textContent = answeredQuestions;
+            document.getElementById('totalAnswered').textContent = currentQuestionNum;
             document.getElementById('totalCorrect').textContent = correctAnswers;
-            document.getElementById('totalIncorrect').textContent = answeredQuestions - correctAnswers;
+            document.getElementById('totalIncorrect').textContent = currentQuestionNum - correctAnswers;
         }
 
         function retryQuiz() {
-            location.reload();
+            window.location.href = '/quiz-setup';
         }
 
         function goHome() {
@@ -905,13 +811,11 @@
         }
 
         // ============================================
-        // LISTENER GLOBAL POUR LES BOUTONS
+        // LISTENERS
         // ============================================
         document.addEventListener('click', function(e) {
-            // Si c'est un bouton d'action
             if (e.target.classList.contains('action-btn')) {
                 const action = e.target.getAttribute('data-action');
-
                 if (action && !e.target.disabled) {
                     e.preventDefault();
                     e.stopPropagation();
@@ -921,91 +825,81 @@
         }, true);
 
         // ============================================
+        // CARTES PNG
+        // ============================================
+        const CARD_URL_PREFIX = '/cards/';
+        const SUITS_BLACK = ['s','c'];
+        const SUITS_RED   = ['h','d'];
+        const ALL_SUITS   = [...SUITS_BLACK, ...SUITS_RED];
+        const DEAL_MS     = 380;
+        const STAGGER     = 140;
+
+        const rand   = (min, max) => Math.random() * (max - min) + min;
+        const choice = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+        function handToCardFiles(handStr) {
+            const suited  = /s$/.test(handStr);
+            const offsuit = /o$/.test(handStr);
+            const r1 = handStr[0].toUpperCase();
+            const r2 = handStr[1].toUpperCase();
+
+            if (!suited && !offsuit && r1 === r2) {
+                const s1 = choice(ALL_SUITS);
+                let s2; do { s2 = choice(ALL_SUITS); } while (s2 === s1);
+                return [`${r1}${s1}.png`, `${r2}${s2}.png`];
+            }
+
+            if (suited) {
+                const s = choice(ALL_SUITS);
+                return [`${r1}${s}.png`, `${r2}${s}.png`];
+            }
+
+            const s1 = choice(SUITS_BLACK);
+            const s2 = choice(SUITS_RED);
+            return [`${r1}${s1}.png`, `${r2}${s2}.png`];
+        }
+
+        function displayHand(hand) {
+            const container = document.getElementById('handDisplay');
+            if (!container) return;
+            container.innerHTML = '';
+
+            const slot1 = document.createElement('div');
+            const slot2 = document.createElement('div');
+            slot1.className = 'card-slot';
+            slot2.className = 'card-slot';
+            container.appendChild(slot1);
+            container.appendChild(slot2);
+
+            const files = handToCardFiles(hand);
+            const cRect = container.getBoundingClientRect();
+            const targets = [slot1, slot2].map(slot => {
+                const r = slot.getBoundingClientRect();
+                return { left: r.left - cRect.left, top: r.top - cRect.top };
+            });
+
+            files.forEach((file, i) => {
+                const img = document.createElement('img');
+                img.className = 'card-img from-center';
+                img.src = CARD_URL_PREFIX + file;
+                img.alt = file.replace('.png','');
+                img.style.setProperty('--deal-rot', rand(-6, 6).toFixed(2) + 'deg');
+                container.appendChild(img);
+
+                setTimeout(() => {
+                    img.style.left = targets[i].left + 'px';
+                    img.style.top  = targets[i].top  + 'px';
+                    img.classList.add('to-slot');
+                    setTimeout(() => img.classList.add('arrived'), DEAL_MS);
+                }, i * STAGGER);
+            });
+        }
+
+        // ============================================
         // DÉMARRAGE
         // ============================================
-        console.log('🎯 Quiz anti-doublons activé');
+        console.log('🎯 Quiz chargé');
         init();
     </script>
-<script>
-// === Cartes PNG (config de chemin) ===
-// Tu exposes /cards/<filename> côté Flask (route que tu gères)
-const CARD_URL_PREFIX = '/cards/';
-
-// === Helpers couleurs ===
-const SUITS_BLACK = ['s','c']; // ♠ ♣
-const SUITS_RED   = ['h','d']; // ♥ ♦
-const ALL_SUITS   = [...SUITS_BLACK, ...SUITS_RED];
-const DEAL_MS     = 380;   // durée d’un “vol”
-const STAGGER     = 140;   // délai entre carte 1 et 2
-
-const rand   = (min, max) => Math.random() * (max - min) + min;
-const choice = (arr) => arr[Math.floor(Math.random() * arr.length)];
-
-// Convertit "AJs" / "72o" / "QQ" → ["As.png","Js.png"] etc.
-function handToCardFiles(handStr) {
-  const suited  = /s$/.test(handStr);
-  const offsuit = /o$/.test(handStr);
-  const r1 = handStr[0].toUpperCase();
-  const r2 = handStr[1].toUpperCase();
-
-  // Paire (pas de suffixe et r1===r2)
-  if (!suited && !offsuit && r1 === r2) {
-    const s1 = choice(ALL_SUITS);
-    let s2; do { s2 = choice(ALL_SUITS); } while (s2 === s1);
-    return [`${r1}${s1}.png`, `${r2}${s2}.png`];
-  }
-  // Suited → même couleur
-  if (suited) {
-    const s = choice(ALL_SUITS);
-    return [`${r1}${s}.png`, `${r2}${s}.png`];
-  }
-  // Offsuit → noir + rouge
-  const s1 = choice(SUITS_BLACK);
-  const s2 = choice(SUITS_RED);
-  return [`${r1}${s1}.png`, `${r2}${s2}.png`];
-}
-
-// Remplace l’ancienne version si elle existe
-function displayHand(hand) {
-  const container = document.getElementById('handDisplay');
-  if (!container) return; // sécurité si pas de zone d’affichage
-  container.innerHTML = '';
-
-  // 1) Deux slots flex “fantômes” → permettent d’obtenir les positions finales
-  const slot1 = document.createElement('div');
-  const slot2 = document.createElement('div');
-  slot1.className = 'card-slot';
-  slot2.className = 'card-slot';
-  container.appendChild(slot1);
-  container.appendChild(slot2);
-
-  // 2) Calcule les positions cibles
-  const files = handToCardFiles(hand);
-  const cRect = container.getBoundingClientRect();
-  const targets = [slot1, slot2].map(slot => {
-    const r = slot.getBoundingClientRect();
-    return { left: r.left - cRect.left, top: r.top - cRect.top };
-  });
-
-  // 3) Crée les images au centre, puis anime vers les slots
-  files.forEach((file, i) => {
-    const img = document.createElement('img');
-    img.className = 'card-img from-center';
-    img.src = CARD_URL_PREFIX + file;
-    img.alt = file.replace('.png','');
-    img.style.setProperty('--deal-rot', rand(-6, 6).toFixed(2) + 'deg');
-    container.appendChild(img);
-
-    setTimeout(() => {
-      img.style.left = targets[i].left + 'px';
-      img.style.top  = targets[i].top  + 'px';
-      img.classList.add('to-slot');
-      setTimeout(() => img.classList.add('arrived'), DEAL_MS);
-    }, i * STAGGER);
-  });
-}
-// === fin patch cartes ===
-</script>
-
 </body>
 </html>

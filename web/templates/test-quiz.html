@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Test API Quiz</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #1a1a1a; color: #0f0; }
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; margin: 10px 0; }
+        pre { background: #000; padding: 10px; overflow-x: auto; border: 1px solid #0f0; }
+        .error { color: #f00; }
+        .success { color: #0f0; }
+        .info { color: #ff0; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Diagnostic API Quiz</h1>
+
+    <h2>Étape 1 : Vérifier les contextes disponibles</h2>
+    <button onclick="testGetContexts()">Charger les contextes</button>
+    <pre id="contextsResult"></pre>
+
+    <h2>Étape 2 : Tester l'API de génération</h2>
+    <label>ID du contexte : <input type="number" id="contextId" value="4"></label>
+    <button onclick="testGenerateQuiz()">Générer 5 questions</button>
+    <pre id="generateResult"></pre>
+
+    <h2>Étape 3 : Tester sessionStorage</h2>
+    <button onclick="testSessionStorage()">Test sessionStorage</button>
+    <pre id="storageResult"></pre>
+
+    <h2>Étape 4 : Simuler le flux complet</h2>
+    <button onclick="testFullFlow()">Flux complet (comme le vrai quiz)</button>
+    <pre id="fullFlowResult"></pre>
+
+    <script>
+        function log(elementId, message, type = 'info') {
+            const el = document.getElementById(elementId);
+            const className = type === 'error' ? 'error' : (type === 'success' ? 'success' : 'info');
+            el.innerHTML += `<span class="${className}">[${new Date().toLocaleTimeString()}] ${message}</span>\n`;
+        }
+
+        async function testGetContexts() {
+            const el = document.getElementById('contextsResult');
+            el.innerHTML = '';
+            log('contextsResult', '🔄 Chargement des contextes...');
+
+            try {
+                const response = await fetch('/api/quiz/available-contexts');
+                log('contextsResult', `Status: ${response.status}`, response.ok ? 'success' : 'error');
+
+                const data = await response.json();
+                log('contextsResult', `✅ ${data.contexts.length} contextes trouvés`, 'success');
+                log('contextsResult', JSON.stringify(data.contexts, null, 2));
+            } catch (error) {
+                log('contextsResult', `❌ ERREUR: ${error.message}`, 'error');
+            }
+        }
+
+        async function testGenerateQuiz() {
+            const el = document.getElementById('generateResult');
+            el.innerHTML = '';
+            const contextId = parseInt(document.getElementById('contextId').value);
+
+            log('generateResult', `🔄 Génération de 5 questions pour contexte ${contextId}...`);
+
+            try {
+                const response = await fetch('/api/quiz/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        context_ids: [contextId],
+                        question_count: 5,
+                        variants: {}
+                    })
+                });
+
+                log('generateResult', `Status: ${response.status}`, response.ok ? 'success' : 'error');
+
+                const data = await response.json();
+
+                if (data.error) {
+                    log('generateResult', `❌ ERREUR API: ${data.error}`, 'error');
+                } else if (data.questions) {
+                    log('generateResult', `✅ ${data.questions.length} questions générées`, 'success');
+                    log('generateResult', JSON.stringify(data.questions, null, 2));
+                } else {
+                    log('generateResult', `⚠️ Réponse inattendue: ${JSON.stringify(data)}`, 'error');
+                }
+            } catch (error) {
+                log('generateResult', `❌ ERREUR: ${error.message}`, 'error');
+            }
+        }
+
+        async function testSessionStorage() {
+            const el = document.getElementById('storageResult');
+            el.innerHTML = '';
+
+            log('storageResult', '🔄 Test sessionStorage...');
+
+            // Tester l'écriture
+            const testData = { test: 'data', timestamp: Date.now() };
+            sessionStorage.setItem('test_quiz', JSON.stringify(testData));
+            log('storageResult', '✅ Écriture OK', 'success');
+
+            // Tester la lecture
+            const retrieved = sessionStorage.getItem('test_quiz');
+            if (retrieved) {
+                log('storageResult', '✅ Lecture OK', 'success');
+                log('storageResult', `Données: ${retrieved}`);
+            } else {
+                log('storageResult', '❌ Lecture FAILED', 'error');
+            }
+
+            // Vérifier quizQuestions
+            const quizData = sessionStorage.getItem('quizQuestions');
+            if (quizData) {
+                log('storageResult', '✅ quizQuestions existe', 'success');
+                log('storageResult', `Taille: ${quizData.length} caractères`);
+                try {
+                    const parsed = JSON.parse(quizData);
+                    log('storageResult', `${parsed.length} questions stockées`);
+                } catch (e) {
+                    log('storageResult', '❌ JSON invalide', 'error');
+                }
+            } else {
+                log('storageResult', '⚠️ quizQuestions est vide', 'info');
+            }
+        }
+
+        async function testFullFlow() {
+            const el = document.getElementById('fullFlowResult');
+            el.innerHTML = '';
+            const contextId = parseInt(document.getElementById('contextId').value);
+
+            log('fullFlowResult', '🔄 FLUX COMPLET...');
+
+            // Étape 1 : Générer le quiz
+            log('fullFlowResult', 'Étape 1/3 : Appel API...');
+            try {
+                const response = await fetch('/api/quiz/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        context_ids: [contextId],
+                        question_count: 5,
+                        variants: {}
+                    })
+                });
+
+                log('fullFlowResult', `Status: ${response.status}`, response.ok ? 'success' : 'error');
+
+                if (!response.ok) {
+                    throw new Error('HTTP ' + response.status);
+                }
+
+                const data = await response.json();
+
+                if (!data.questions || data.questions.length === 0) {
+                    log('fullFlowResult', '❌ Aucune question dans la réponse', 'error');
+                    return;
+                }
+
+                log('fullFlowResult', `✅ ${data.questions.length} questions reçues`, 'success');
+
+                // Étape 2 : Stocker dans sessionStorage
+                log('fullFlowResult', 'Étape 2/3 : Stockage sessionStorage...');
+                sessionStorage.setItem('quizQuestions', JSON.stringify(data.questions));
+                log('fullFlowResult', '✅ Stockage OK', 'success');
+
+                // Étape 3 : Vérifier la lecture
+                log('fullFlowResult', 'Étape 3/3 : Vérification lecture...');
+                const stored = sessionStorage.getItem('quizQuestions');
+                if (stored) {
+                    const parsed = JSON.parse(stored);
+                    log('fullFlowResult', `✅ ${parsed.length} questions récupérées`, 'success');
+                    log('fullFlowResult', '✅ FLUX COMPLET OK !', 'success');
+                    log('fullFlowResult', '\n🚀 Tu peux maintenant aller sur /quiz');
+                } else {
+                    log('fullFlowResult', '❌ sessionStorage vide après stockage', 'error');
+                }
+
+            } catch (error) {
+                log('fullFlowResult', `❌ ERREUR: ${error.message}`, 'error');
+                console.error(error);
+            }
+        }
+    </script>
+</body>
+</html>

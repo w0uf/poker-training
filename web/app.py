@@ -17,6 +17,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / 'modules'))
 # Imports des modules refactorisés
 from quiz_generator import QuizGenerator
 from poker_constants import ALL_POKER_HANDS
+from conflict_detector import detect_context_conflicts
 
 # Importer context_validator si disponible
 try:
@@ -215,7 +216,7 @@ def update_source_json(context_id: int, metadata: dict, range_labels: dict = Non
 
         conn = get_db_connection()
         if not conn:
-            print("[JSON] ❌ Connexion DB impossible")
+            print("[JSON] ✗ Connexion DB impossible")
             return False, "Connexion DB impossible"
 
         cursor = conn.cursor()
@@ -233,7 +234,7 @@ def update_source_json(context_id: int, metadata: dict, range_labels: dict = Non
 
         if not result or not result[0]:
             conn.close()
-            print("[JSON] ❌ Fichier source non trouvé en DB")
+            print("[JSON] ✗ Fichier source non trouvé en DB")
             return False, "Fichier source non trouvé"
 
         file_path_relative = result[0]
@@ -245,7 +246,7 @@ def update_source_json(context_id: int, metadata: dict, range_labels: dict = Non
 
         if not file_path.exists():
             conn.close()
-            print(f"[JSON] ❌ Fichier introuvable: {file_path}")
+            print(f"[JSON] ✗ Fichier introuvable: {file_path}")
             return False, f"Fichier non trouvé: {file_path}"
 
         # Charger le JSON
@@ -324,7 +325,7 @@ def update_source_json(context_id: int, metadata: dict, range_labels: dict = Non
         return True, "JSON mis à jour avec succès"
 
     except Exception as e:
-        print(f"[JSON] ❌ Erreur: {e}")
+        print(f"[JSON] ✗ Erreur: {e}")
         import traceback
         traceback.print_exc()
         return False, f"Erreur mise à jour JSON: {str(e)}"
@@ -1374,9 +1375,9 @@ def debug_structure():
     return result
 
 
-# ======================
-# ROUTES QUIZ
-# ======================
+# ============================================
+# ROUTES QUIZ - CONFIGURATION ET GENERATION
+# ============================================
 
 @app.route('/quiz-setup')
 def quiz_setup():
@@ -1439,69 +1440,7 @@ def get_available_contexts():
 @app.route('/quiz')
 def quiz():
     """Page du quiz interactif"""
-    # Récupère les paramètres
-    context_ids = request.args.get('contexts', '')
-    question_count = request.args.get('count', '10')
-
-    if not context_ids:
-        return "Erreur: Aucun contexte sélectionné", 400
-
-    return render_template('quiz.html',
-                           context_ids=context_ids,
-                           question_count=question_count)
-
-
-@app.route('/api/quiz/generate')
-def generate_quiz_questions():
-    """Génère les questions pour le quiz"""
-    try:
-        context_ids = request.args.get('contexts', '').split(',')
-        question_count = int(request.args.get('count', 10))
-
-        if not context_ids or not context_ids[0]:
-            return jsonify({'error': 'Aucun contexte fourni'}), 400
-
-        # Convertir les IDs en entiers
-        context_ids = [int(id) for id in context_ids if id]
-
-        print(f"[QUIZ] Génération de {question_count} questions pour contextes: {context_ids}")
-
-        # Utiliser le générateur refactorisé
-        generator = QuizGenerator()
-        questions = []
-        attempts = 0
-        max_attempts = question_count * 3
-
-        while len(questions) < question_count and attempts < max_attempts:
-            attempts += 1
-            context_id = random.choice(context_ids)
-
-            # Générer une question
-            question = generator.generate_question(context_id)
-
-            if question:
-                questions.append(question)
-
-        if len(questions) == 0:
-            print(f"[QUIZ] ❌ ERREUR: Aucune question générée après {attempts} tentatives")
-            return jsonify({
-                'error': 'Impossible de générer des questions. Les contextes sélectionnés ont des données incomplètes.'
-            }), 400
-
-        print(
-            f"[QUIZ] ✅ {len(questions)} questions générées sur {question_count} demandées (après {attempts} tentatives)")
-
-        return jsonify({
-            'success': True,
-            'questions': questions,
-            'total': len(questions)
-        })
-
-    except Exception as e:
-        print(f"[QUIZ] ❌ Exception: {e}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({'error': str(e)}), 500
+    return render_template('quiz.html')
 
 
 @app.route('/api/quiz/question', methods=['POST'])
@@ -1530,7 +1469,7 @@ def get_next_quiz_question():
             question = generator.generate_question(context_id)
 
             if not question:
-                print(f"[QUIZ] ❌ Contexte {context_id} a échoué (question = None)")
+                print(f"[QUIZ] ✗ Contexte {context_id} a échoué (question = None)")
                 continue
 
             # Vérifier si déjà posée
@@ -1551,12 +1490,170 @@ def get_next_quiz_question():
         }), 404
 
     except Exception as e:
-        print(f"[QUIZ] ❌ Erreur: {e}")
+        print(f"[QUIZ] ✗ Erreur: {e}")
         import traceback
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 
+# ============================================
+# 🆕 ROUTES GESTION DES CONFLITS ET VARIANTES
+# ============================================
+
+@app.route('/api/quiz/detect-conflicts', methods=['POST'])
+def detect_conflicts():
+    """
+    Détecte les conflits entre contextes sélectionnés.
+
+    Body JSON:
+        {
+            "context_ids": [1, 2, 3]
+        }
+
+    Returns JSON:
+        {
+            "has_conflicts": true,
+            "conflicts": {
+                "6max|UTG|100bb|open|GENERIC": {
+                    "contexts": [
+                        {"id": 1, "name": "UTG 100bb open range agressive"},
+                        {"id": 2, "name": "UTG 100bb open range tight"}
+                    ],
+                    "conflicts_by_level": {
+                        "0": {"AKo": {"1": "RAISE", "2": "CALL"}},
+                        "1": {"AKs": {"1": "RAISE", "2": "CALL"}}
+                    },
+                    "total_conflicts": 2
+                }
+            }
+        }
+    """
+    try:
+        data = request.get_json()
+        context_ids = data.get('context_ids', [])
+
+        if not context_ids or len(context_ids) < 2:
+            return jsonify({
+                'has_conflicts': False,
+                'conflicts': {}
+            })
+
+        # Détecter les conflits
+        conflicts = detect_context_conflicts(context_ids)
+
+        return jsonify({
+            'has_conflicts': bool(conflicts),
+            'conflicts': conflicts
+        })
+
+    except Exception as e:
+        print(f"[API] Erreur détection conflits: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/quiz/generate', methods=['POST'])
+def generate_quiz_with_variants():
+    """
+    Génère un quiz avec support des variantes.
+    🆕 Respecte le nombre de SOUS-QUESTIONS demandé (drill-down = N sous-questions)
+
+    Body JSON:
+        {
+            "context_ids": [1, 2],
+            "question_count": 10,
+            "variants": {
+                "1": "Fin de soirée",
+                "2": "Début de session"
+            }
+        }
+
+    Returns JSON:
+        {
+            "questions": [
+                {
+                    "type": "simple",
+                    "context_id": 1,
+                    "variant": "Fin de soirée",
+                    "hand": "AKs",
+                    "question": "...",
+                    "options": [...],
+                    "correct_answer": "RAISE"
+                }
+            ]
+        }
+    """
+    try:
+        data = request.get_json()
+        context_ids = data.get('context_ids', [])
+        question_count = data.get('question_count', 10)
+        variants = data.get('variants', {})  # Dict {context_id: variant_text}
+
+        if not context_ids:
+            return jsonify({'error': 'Aucun contexte sélectionné'}), 400
+
+        generator = QuizGenerator()
+        questions = []
+        total_subquestions = 0  # 🆕 Compteur de sous-questions
+        max_attempts = question_count * 10  # Éviter boucle infinie
+        attempts = 0
+
+        # 🆕 Générer jusqu'à atteindre le nombre de sous-questions demandé
+        while total_subquestions < question_count and attempts < max_attempts:
+            attempts += 1
+
+            # Choisir un contexte aléatoire
+            context_id = random.choice(context_ids)
+
+            # Générer la question
+            question = generator.generate_question(context_id)
+
+            if question:
+                # 🆕 Calculer combien de sous-questions cette question ajoute
+                if question['type'] == 'drill_down':
+                    subq_count = len(question['levels'])
+                else:
+                    subq_count = 1
+
+                # 🆕 Vérifier si on peut ajouter cette question sans dépasser
+                if total_subquestions + subq_count <= question_count:
+                    # Ajouter la variante si elle existe
+                    variant = variants.get(str(context_id))
+                    if variant:
+                        question['variant'] = variant
+
+                    questions.append(question)
+                    total_subquestions += subq_count
+                    print(
+                        f"[QUIZ GEN] Question ajoutée ({question['type']}), sous-questions: {total_subquestions}/{question_count}")
+                else:
+                    # Pas assez de place pour cette question
+                    # Si c'est un drill-down trop long, réessayer avec une autre question
+                    print(
+                        f"[QUIZ GEN] Question ignorée (trop longue), sous-questions actuelles: {total_subquestions}/{question_count}")
+                    continue
+
+        print(f"[QUIZ GEN] ✅ Quiz généré: {len(questions)} questions, {total_subquestions} sous-questions")
+
+        return jsonify({
+            'questions': questions
+        })
+
+    except Exception as e:
+        print(f"[API] Erreur génération quiz: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'error': str(e)
+        }), 500
+
+
+@app.route('/test-quiz')
+def test_quiz():
+    return render_template('test-quiz.html')
 if __name__ == '__main__':
     ORPHAN_COUNT = check_orphans_on_startup()
     app.run(debug=True)

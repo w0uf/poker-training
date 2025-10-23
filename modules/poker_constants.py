@@ -209,3 +209,50 @@ AVAILABLE_LABELS = {
     'DEFENSE': 'Defense',
     'UNKNOWN': 'Inconnu'
 }
+
+RANGE_STRUCTURE = {
+    'OPEN': {
+        'actions': [('initial', 'RAISE')],
+        'next_ranges': ['R4_VALUE', 'R4_BLUFF', 'R3_VALUE', 'R3_BLUFF']
+    },
+    'R3_VALUE': {
+        'actions': [('initial', 'RAISE')],
+        'next_ranges': ['R5_ALLIN', 'CALL']
+    },
+    'R3_BLUFF': {
+        'actions': [('initial', 'RAISE'), ('4bet', 'FOLD')],
+        'next_ranges': []
+    },
+    'R4_VALUE': {
+        'actions': [('3bet', 'RAISE'), ('all-in', 'CALL')],
+        'next_ranges': []
+    },
+    'R4_BLUFF': {
+        'actions': [('3bet', 'RAISE'), ('all-in', 'FOLD')],
+        'next_ranges': []
+    },
+    'R5_ALLIN': {
+        'actions': [('4bet', 'RAISE')],
+        'next_ranges': []
+    },
+    'CALL': {
+        'actions': [('3bet', 'CALL')],
+        'next_ranges': []
+    },
+    'DEFENSE': {
+        'actions': [('open', 'RAISE')],
+        'next_ranges': ['R4_VALUE', 'R4_BLUFF', 'R3_VALUE', 'R3_BLUFF']
+    },
+    'SQUEEZE': {
+        'actions': [('call', 'RAISE')],
+        'next_ranges': ['R4_VALUE', 'R4_BLUFF']
+    },
+    'ISO_VALUE': {
+        'actions': [('limp', 'RAISE')],
+        'next_ranges': []
+    },
+    'ISO_BLUFF': {
+        'actions': [('limp', 'RAISE'), ('3bet', 'FOLD')],
+        'next_ranges': []
+    }
+}

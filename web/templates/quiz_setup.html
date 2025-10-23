@@ -278,6 +278,234 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            max-width: 700px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-header {
+            background: #fff3cd;
+            border-bottom: 2px solid #ffc107;
+            padding: 20px;
+            border-radius: 12px 12px 0 0;
+        }
+
+        .modal-header h2 {
+            color: #856404;
+            margin: 0;
+            font-size: 1.5rem;
+        }
+
+        .modal-body {
+            padding: 24px;
+            color: #333;
+        }
+
+        .modal-footer {
+            padding: 16px 24px;
+            border-top: 1px solid #dee2e6;
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+
+        .btn {
+            padding: 10px 24px;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .btn-primary {
+            background: #2a5298;
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: #1e3c72;
+        }
+
+        .btn-primary:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .conflict-group {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .conflict-header {
+            font-weight: 600;
+            color: #1e3c72;
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+
+        .conflict-contexts {
+            color: #666;
+            margin-bottom: 10px;
+            font-size: 0.95rem;
+        }
+
+        .conflict-details {
+            background: white;
+            border-radius: 4px;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+
+        .conflict-hand {
+            padding: 5px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .conflict-hand:last-child {
+            border-bottom: none;
+        }
+
+        .variant-section {
+            margin-top: 20px;
+            padding: 15px;
+            background: #e3f2fd;
+            border-radius: 8px;
+            border: 1px solid #2a5298;
+        }
+
+        .variant-section h3 {
+            color: #1e3c72;
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+        }
+
+        .variant-input-group {
+            margin-bottom: 12px;
+        }
+
+        .variant-label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 5px;
+            color: #555;
+        }
+
+        .variant-input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #dee2e6;
+            border-radius: 6px;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+
+        .variant-input:focus {
+            outline: none;
+            border-color: #2a5298;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover:not(:disabled) {
+            background: #218838;
+        }
+
+        .btn-success:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .resolution-options {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .resolution-option {
+            flex: 1;
+            padding: 15px;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .resolution-option:hover {
+            border-color: #2a5298;
+            background: #f0f7ff;
+        }
+
+        .resolution-option.selected {
+            border-color: #2a5298;
+            background: #e3f2fd;
+        }
+
+        .resolution-option input[type="radio"] {
+            margin-right: 8px;
+        }
+
+        .resolution-title {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .resolution-desc {
+            font-size: 0.9rem;
+            color: #666;
+        }
     </style>
 </head>
 <body>
@@ -329,7 +557,7 @@
 
             <div class="card">
                 <div class="launch-section">
-                    <button class="launch-btn" id="launchBtn" onclick="launchQuiz()" disabled>
+                    <button class="launch-btn" id="launchBtn" onclick="startQuiz()" disabled>
                         🚀 Lancer le Quiz
                     </button>
                 </div>
@@ -337,11 +565,47 @@
         </div>
     </div>
 
+    <!-- Modal de conflits -->
+    <div id="conflictModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>⚠️ Conflits détectés</h2>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 15px;">
+                    Les contextes sélectionnés contiennent des réponses contradictoires pour certaines mains.
+                </p>
+                <div id="conflictsList"></div>
+
+                <!-- Options de résolution -->
+                <div class="variant-section" id="variantSection" style="display: none;">
+                    <h3>💡 Résoudre les conflits</h3>
+                    <p style="margin-bottom: 15px; color: #555;">
+                        Donnez un nom distinctif à chaque contexte pour les différencier dans les questions :
+                    </p>
+                    <div id="variantInputs"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeConflictModal()">
+                    Annuler
+                </button>
+                <button class="btn btn-success" id="resolveWithVariantsBtn" onclick="resolveWithVariants()" style="display: none;">
+                    ✓ Résoudre avec variantes
+                </button>
+                <button class="btn btn-danger" onclick="continueWithConflicts()">
+                    Continuer quand même
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script>
         let contexts = [];
         let selectedContexts = new Set();
+        let detectedConflicts = null;
 
-        // Chargement des contextes au démarrage
+        // Chargement des contextes
         async function loadContexts() {
             try {
                 const response = await fetch('/api/quiz/available-contexts');
@@ -355,7 +619,7 @@
                 contexts = data.contexts;
 
                 if (contexts.length === 0) {
-                    showError('Aucun contexte validé disponible. Veuillez valider des contextes avant de commencer le quiz.');
+                    showError('Aucun contexte validé disponible.');
                     return;
                 }
 
@@ -363,7 +627,7 @@
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('content').style.display = 'block';
             } catch (error) {
-                showError('Erreur lors du chargement des contextes : ' + error.message);
+                showError('Erreur lors du chargement : ' + error.message);
             }
         }
 
@@ -388,15 +652,12 @@
                 </div>
             `).join('');
 
-            // Ajouter les event listeners après le rendu
             attachContextListeners();
         }
 
         function attachContextListeners() {
-            // Event sur les divs
             document.querySelectorAll('.context-item').forEach(item => {
                 item.addEventListener('click', function(e) {
-                    // Ne pas trigger si on clique directement sur le checkbox
                     if (e.target.type !== 'checkbox') {
                         const contextId = parseInt(this.dataset.contextId);
                         const checkbox = this.querySelector('.context-checkbox');
@@ -406,7 +667,6 @@
                 });
             });
 
-            // Event sur les checkboxes
             document.querySelectorAll('.context-checkbox').forEach(checkbox => {
                 checkbox.addEventListener('change', function() {
                     const contextId = parseInt(this.dataset.contextId);
@@ -421,7 +681,6 @@
             } else {
                 selectedContexts.delete(contextId);
             }
-
             updateUI();
         }
 
@@ -429,14 +688,12 @@
             const allSelected = selectedContexts.size === contexts.length;
 
             if (allSelected) {
-                // Tout désélectionner
                 selectedContexts.clear();
                 contexts.forEach(ctx => {
                     const checkbox = document.getElementById(`ctx-${ctx.id}`);
                     if (checkbox) checkbox.checked = false;
                 });
             } else {
-                // Tout sélectionner
                 contexts.forEach(ctx => {
                     selectedContexts.add(ctx.id);
                     const checkbox = document.getElementById(`ctx-${ctx.id}`);
@@ -451,11 +708,9 @@
             const count = selectedContexts.size;
             const total = contexts.length;
 
-            // Update selection info
             document.getElementById('selectionInfo').innerHTML =
                 `<strong>${count}</strong> contexte(s) sélectionné(s) sur ${total}`;
 
-            // Update select all button
             const selectAllBtn = document.getElementById('selectAllText');
             if (count === total && total > 0) {
                 selectAllBtn.textContent = '✗ Tout désélectionner';
@@ -463,7 +718,6 @@
                 selectAllBtn.textContent = '✓ Tout sélectionner';
             }
 
-            // Update selected items style
             document.querySelectorAll('.context-item').forEach(item => {
                 const contextId = parseInt(item.dataset.contextId);
                 if (selectedContexts.has(contextId)) {
@@ -473,12 +727,11 @@
                 }
             });
 
-            // Enable/disable launch button
             const launchBtn = document.getElementById('launchBtn');
             launchBtn.disabled = count === 0;
         }
 
-        // Slider pour le nombre de questions
+        // Slider
         document.addEventListener('DOMContentLoaded', () => {
             const slider = document.getElementById('questionsSlider');
             const display = document.getElementById('questionCount');
@@ -488,23 +741,233 @@
             });
         });
 
-        async function launchQuiz() {
+        // ===== DÉTECTION DE CONFLITS =====
+        async function detectConflicts(contextIds) {
+            console.log('[CONFLICTS] Détection des conflits pour:', contextIds);
+
+            try {
+                const response = await fetch('/api/quiz/detect-conflicts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ context_ids: contextIds })
+                });
+
+                if (!response.ok) {
+                    console.error('[CONFLICTS] Erreur HTTP:', response.status);
+                    return null;
+                }
+
+                const data = await response.json();
+                console.log('[CONFLICTS] Résultat:', data);
+
+                // Le backend retourne {has_conflicts: bool, conflicts: {...}}
+                // On retourne seulement la partie conflicts
+                return data.conflicts || null;
+            } catch (error) {
+                console.error('[CONFLICTS] Erreur:', error);
+                return null;
+            }
+        }
+
+        function showConflictModal(conflicts) {
+            const modal = document.getElementById('conflictModal');
+            const conflictsList = document.getElementById('conflictsList');
+            const variantSection = document.getElementById('variantSection');
+            const variantInputs = document.getElementById('variantInputs');
+            const resolveBtn = document.getElementById('resolveWithVariantsBtn');
+
+            let html = '';
+            let totalConflicts = 0;
+            let allContextsInConflict = new Map(); // Map<context_id, context_name>
+
+            for (const [metadataKey, conflictData] of Object.entries(conflicts)) {
+                totalConflicts += conflictData.total_conflicts;
+
+                // Collecter tous les contextes en conflit
+                conflictData.contexts.forEach(ctx => {
+                    allContextsInConflict.set(ctx.id, ctx.name);
+                });
+
+                html += `
+                    <div class="conflict-group">
+                        <div class="conflict-header">
+                            Groupe: ${metadataKey}
+                        </div>
+                        <div class="conflict-contexts">
+                            Contextes: ${conflictData.contexts.map(c => c.name).join(' ↔ ')}
+                        </div>
+                        <div class="conflict-details">
+                            <strong>${conflictData.total_conflicts} main(s) en conflit</strong>
+                            <br><br>
+                            Exemples:
+                `;
+
+                // Afficher max 5 exemples par groupe
+                let shown = 0;
+                for (const [level, handsDict] of Object.entries(conflictData.conflicts_by_level)) {
+                    for (const [hand, actions] of Object.entries(handsDict)) {
+                        if (shown < 5) {
+                            const actionsStr = Object.entries(actions)
+                                .map(([ctxId, action]) => `Ctx${ctxId}→${action}`)
+                                .join(', ');
+                            html += `<div class="conflict-hand">${hand}: ${actionsStr}</div>`;
+                            shown++;
+                        }
+                    }
+                }
+
+                if (conflictData.total_conflicts > 5) {
+                    html += `<div class="conflict-hand">... et ${conflictData.total_conflicts - 5} autres mains</div>`;
+                }
+
+                html += `
+                        </div>
+                    </div>
+                `;
+            }
+
+            conflictsList.innerHTML = html;
+
+            // Générer les champs de saisie pour les variantes
+            let variantHtml = '';
+            allContextsInConflict.forEach((contextName, contextId) => {
+                variantHtml += `
+                    <div class="variant-input-group">
+                        <label class="variant-label" for="variant-${contextId}">
+                            ${contextName}
+                        </label>
+                        <input
+                            type="text"
+                            id="variant-${contextId}"
+                            class="variant-input"
+                            placeholder="Ex: Range agressive, Range tight, Début de session..."
+                            data-context-id="${contextId}"
+                        >
+                    </div>
+                `;
+            });
+
+            variantInputs.innerHTML = variantHtml;
+            variantSection.style.display = 'block';
+            resolveBtn.style.display = 'inline-block';
+
+            modal.classList.add('show');
+        }
+
+        function closeConflictModal() {
+            const modal = document.getElementById('conflictModal');
+            modal.classList.remove('show');
+            detectedConflicts = null;
+        }
+
+        async function resolveWithVariants() {
+            console.log('[VARIANTS] Résolution avec variantes');
+
+            // Collecter toutes les variantes saisies
+            const variantInputs = document.querySelectorAll('.variant-input');
+            const variants = {};
+            let allFilled = true;
+
+            variantInputs.forEach(input => {
+                const contextId = input.dataset.contextId;
+                const variantText = input.value.trim();
+
+                if (variantText) {
+                    variants[contextId] = variantText;
+                } else {
+                    allFilled = false;
+                }
+            });
+
+            // Vérifier que toutes les variantes sont remplies
+            if (!allFilled) {
+                alert('⚠️ Veuillez remplir un nom pour chaque contexte en conflit.');
+                return;
+            }
+
+            console.log('[VARIANTS] Variantes collectées:', variants);
+
+            // Fermer le modal et lancer le quiz avec variantes
+            closeConflictModal();
+            await launchQuiz(variants);
+        }
+
+        async function continueWithConflicts() {
+            console.log('[CONFLICTS] Utilisateur continue malgré les conflits');
+            closeConflictModal();
+            await launchQuiz();
+        }
+
+        // ===== LANCEMENT DU QUIZ =====
+        async function startQuiz() {
+            console.log('[START] Début startQuiz()');
+            console.log('[START] Contextes sélectionnés:', Array.from(selectedContexts));
+
             if (selectedContexts.size === 0) {
                 showError('Veuillez sélectionner au moins un contexte');
                 return;
             }
 
-            const questionCount = document.getElementById('questionsSlider').value;
             const contextIds = Array.from(selectedContexts);
 
-            // Redirection vers le quiz avec les paramètres
-            const params = new URLSearchParams({
-                contexts: contextIds.join(','),
-                count: questionCount
-            });
+            // Détection de conflits si 2+ contextes
+            if (contextIds.length >= 2) {
+                console.log('[START] Détection de conflits...');
+                detectedConflicts = await detectConflicts(contextIds);
 
-            console.log('Lancement du quiz avec:', { contextIds, questionCount }); // Debug
-            window.location.href = `/quiz?${params.toString()}`;
+                if (detectedConflicts && Object.keys(detectedConflicts).length > 0) {
+                    console.log('[START] Conflits détectés, affichage du modal');
+                    showConflictModal(detectedConflicts);
+                    return; // Arrêter ici, l'utilisateur doit choisir
+                } else {
+                    console.log('[START] Aucun conflit détecté');
+                }
+            }
+
+            // Pas de conflits, lancer directement
+            await launchQuiz();
+        }
+
+        async function launchQuiz(variants = {}) {
+            const contextIds = Array.from(selectedContexts);
+            const questionCount = parseInt(document.getElementById('questionsSlider').value);
+
+            console.log('[LAUNCH] Génération du quiz avec:', { contextIds, questionCount, variants });
+
+            try {
+                const response = await fetch('/api/quiz/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        context_ids: contextIds,
+                        question_count: questionCount,
+                        variants: variants
+                    })
+                });
+
+                console.log('[LAUNCH] Response status:', response.status);
+
+                if (!response.ok) {
+                    throw new Error('HTTP ' + response.status);
+                }
+
+                const data = await response.json();
+                console.log('[LAUNCH] Data reçu:', data);
+
+                if (!data.questions || data.questions.length === 0) {
+                    throw new Error('Aucune question générée');
+                }
+
+                console.log('[LAUNCH] Stockage sessionStorage...');
+                sessionStorage.setItem('quizQuestions', JSON.stringify(data.questions));
+
+                console.log('[LAUNCH] Redirection...');
+                window.location.href = '/quiz';
+
+            } catch (error) {
+                console.error('[LAUNCH] Erreur:', error);
+                alert('Erreur : ' + error.message);
+            }
         }
 
         function showError(message) {

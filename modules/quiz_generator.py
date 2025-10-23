@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Générateur de questions de quiz avec support multiway (squeeze, vs_limpers)
-Utilise action_sequence pour les situations complexes
+🆕 Intégration des questions à tiroirs (drill_down)
 """
 
 import sqlite3
@@ -15,6 +15,7 @@ from poker_constants import (
     ALL_POKER_HANDS, sort_actions, normalize_action, translate_action
 )
 from hand_selector import smart_hand_choice, get_all_hands_not_in_ranges
+from drill_down_generator import DrillDownGenerator  # 🆕
 
 
 class QuizGenerator:
@@ -27,7 +28,10 @@ class QuizGenerator:
             db_path = module_dir / "data" / "poker_trainer.db"
         self.db_path = Path(db_path)
 
-        # 🆕 Positions par format
+        # 🆕 Générateur de questions à tiroirs
+        self.drill_down_gen = DrillDownGenerator()
+
+        # Positions par format
         self.POSITIONS_BY_FORMAT = {
             '5max': ['UTG', 'CO', 'BTN', 'SB', 'BB'],
             '6max': ['UTG', 'MP', 'CO', 'BTN', 'SB', 'BB'],
@@ -44,7 +48,7 @@ class QuizGenerator:
     def generate_question(self, context_id: int) -> Optional[Dict]:
         """
         Génère une question pour un contexte donné.
-        Point d'entrée principal.
+        🆕 Décide entre question simple ou drill_down.
 
         Args:
             context_id: ID du contexte
@@ -72,7 +76,7 @@ class QuizGenerator:
 
             context = dict(context_row)
 
-            # 🆕 Log du contexte pour debug
+            # Log du contexte pour debug
             print(f"\n[QUIZ CONTEXT] ID={context['id']}")
             print(f"  📋 Name: {context['display_name']}")
             print(f"  🎯 Action: {context['primary_action']}")
@@ -116,17 +120,51 @@ class QuizGenerator:
                 return None
 
             print(f"  📊 {len(ranges)} ranges trouvées:")
-            for r in ranges[:5]:  # Afficher max 5 premières
+            for r in ranges[:5]:
                 hands_count = len(r['hands']) if r['hands'] else 0
                 print(f"    - Range {r['range_key']}: {r['name']} (label={r['label_canon']}, {hands_count} mains)")
             if len(ranges) > 5:
                 print(f"    ... et {len(ranges) - 5} autres ranges")
 
-            # Générer la question (simple uniquement pour l'instant)
+            # 🆕 DÉCISION : drill_down ou simple ?
+            can_drill = self.drill_down_gen.can_generate_drill_down(ranges)
+
+            if can_drill:
+                # 50% de chances de faire un drill_down
+                use_drill_down = random.random() >= 0.5
+                print(f"  🎲 Type de question: {'DRILL_DOWN' if use_drill_down else 'SIMPLE'}")
+
+                if use_drill_down:
+                    # Préparer les mains pour drill_down
+                    main_range = self._get_main_range(ranges)
+                    if main_range and main_range['hands']:
+                        in_range_hands = set(main_range['hands'])
+                        out_of_range_hands = get_all_hands_not_in_ranges(in_range_hands)
+
+                        # Tenter de générer drill_down
+                        drill_question = self.drill_down_gen.generate_drill_down_question(
+                            context, ranges, in_range_hands, out_of_range_hands
+                        )
+
+                        if drill_question:
+                            # Ajouter la main au contexte pour _format_level_question
+                            context['hand'] = drill_question['hand']
+                            return drill_question
+                        else:
+                            print("  ⚠️  Drill_down échoué, fallback sur simple")
+
+            # Fallback : générer question simple
             return self._generate_simple_question(context, ranges)
 
         finally:
             conn.close()
+
+    def _get_main_range(self, ranges: List[Dict]) -> Optional[Dict]:
+        """Retourne la range principale (range_key='1')"""
+        for r in ranges:
+            if r['range_key'] == '1':
+                return r
+        return None
 
     def _generate_simple_question(self, context: Dict, ranges: List[Dict]) -> Optional[Dict]:
         """
@@ -140,11 +178,7 @@ class QuizGenerator:
             Question dict ou None
         """
         # Trouver la range principale
-        main_range = None
-        for r in ranges:
-            if r['range_key'] == '1':
-                main_range = r
-                break
+        main_range = self._get_main_range(ranges)
 
         if not main_range or not main_range['hands']:
             print(f"[QUIZ] SKIP: Pas de range principale pour context_id={context['id']}")
@@ -183,9 +217,16 @@ class QuizGenerator:
                 # 🎯 CONVERSION CONTEXTUELLE : 3BET → RAISE pour l'affichage en DEFENSE
                 if correct_answer == '3BET':
                     correct_answer = 'RAISE'
-
             else:
-                correct_answer = normalized_action
+                # 🆕 CONVERSION : OPEN → RAISE pour l'UI
+                if normalized_action == 'OPEN':
+                    correct_answer = 'RAISE'
+                else:
+                    # Conversion : OPEN → RAISE pour l'UI
+                    if normalized_action == 'OPEN':
+                        correct_answer = 'RAISE'
+                    else:
+                        correct_answer = normalized_action
 
             print(f"[QUIZ] ✅ Question IN-RANGE: {hand} → {correct_answer}")
             print(
@@ -281,10 +322,16 @@ class QuizGenerator:
         if correct_answer:
             options.append(correct_answer)
 
-        # 2. 🎯 NE JAMAIS AJOUTER 'DEFENSE' - ce n'est pas une action jouable
-        # Les autres actions principales peuvent être ajoutées comme alternatives
-        if main_range_action and main_range_action not in options and main_range_action != 'DEFENSE':
-            options.append(main_range_action)
+        # 2. 🎯 NE JAMAIS AJOUTER 'DEFENSE' ou 'OPEN' - ce ne sont pas des actions jouables
+        # Convertir OPEN → RAISE si nécessaire
+        if main_range_action and main_range_action not in options:
+            if main_range_action == 'DEFENSE':
+                pass  # Ne pas ajouter DEFENSE
+            elif main_range_action == 'OPEN':
+                if 'RAISE' not in options:
+                    options.append('RAISE')
+            else:
+                options.append(main_range_action)
 
         # 3. FOLD si pas déjà présent
         primary = context.get('primary_action', '').lower()
@@ -299,7 +346,7 @@ class QuizGenerator:
             if 'FOLD' not in options:
                 options.append('FOLD')
 
-        # 4. ❌ NE PAS utiliser les sous-ranges pour les questions simples
+        # 4. ✗ NE PAS utiliser les sous-ranges pour les questions simples
 
         # 5. Si on a moins de 3 options, ajouter des distracteurs contextuels
         if len(options) < 3:
@@ -312,7 +359,6 @@ class QuizGenerator:
 
         # Trier dans un ordre fixe
         return sort_actions(options)
-
     def _get_contextual_distractors(self, primary_action: str) -> List[str]:
         """
         Retourne des distracteurs pertinents selon le contexte.
@@ -338,7 +384,7 @@ class QuizGenerator:
         else:
             return ['CALL']  # générique
 
-    # 🆕 FONCTIONS HELPER POUR POSITIONS DYNAMIQUES
+    # FONCTIONS HELPER POUR POSITIONS DYNAMIQUES
 
     def _get_positions(self, table_format: str) -> List[str]:
         """Retourne les positions pour un format donné"""
