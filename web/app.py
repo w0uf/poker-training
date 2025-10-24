@@ -1654,6 +1654,10 @@ def generate_quiz_with_variants():
 @app.route('/test-quiz')
 def test_quiz():
     return render_template('test-quiz.html')
+
+@app.route('/quiz-result')
+def quiz_result():
+    return render_template('quiz-result.html')
 if __name__ == '__main__':
     ORPHAN_COUNT = check_orphans_on_startup()
     app.run(debug=True)

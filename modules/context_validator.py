@@ -59,6 +59,14 @@ SR_LABELS = {
     "UNKNOWN": "Autre / À classifier"
 }
 
+# 🆕 Labels valides pour les RANGES PRINCIPALES (range_key='1')
+VALID_MAIN_RANGE_LABELS = {
+    "OPEN": "Open",
+    "DEFENSE": "Defense",
+    "SQUEEZE": "Squeeze",
+    "VS_LIMPERS": "Vs Limpers"
+}
+
 # Cohérence : sous-ranges attendues par contexte principal
 # ❌ FOLD retiré partout (implicite = 100% - somme des autres)
 EXPECTED_SUBRANGES = {
@@ -575,6 +583,9 @@ class ContextValidator:
         # Mapping label_canon → nom lisible
         LABEL_TO_NAME = {
             "OPEN": "open",
+            "DEFENSE": "defense",
+            "SQUEEZE": "squeeze",
+            "VS_LIMPERS": "vs_limpers",
             "CALL": "call",
             "R3_VALUE": "3bet_value",
             "R3_BLUFF": "3bet_bluff",
@@ -606,8 +617,28 @@ class ContextValidator:
 
             # Mettre à jour chaque range (label ET nom)
             for range_id, label_canon in range_labels.items():
-                if label_canon not in SR_LABELS:
-                    return False, f"Label invalide: {label_canon}"
+                # 🆕 Récupérer le range_key pour savoir si c'est la range principale
+                cursor.execute("""
+                    SELECT range_key 
+                    FROM ranges 
+                    WHERE id = ?
+                """, (range_id,))
+
+                result = cursor.fetchone()
+                if not result:
+                    return False, f"Range ID {range_id} introuvable"
+
+                range_key = result[0]
+
+                # 🆕 Validation selon le type de range
+                if range_key == '1':
+                    # Range principale : valider contre VALID_MAIN_RANGE_LABELS
+                    if label_canon not in VALID_MAIN_RANGE_LABELS:
+                        return False, f"Label principal invalide: {label_canon}"
+                else:
+                    # Sous-range : valider contre SR_LABELS
+                    if label_canon not in SR_LABELS:
+                        return False, f"Label sous-range invalide: {label_canon}"
 
                 # Générer le nouveau nom
                 new_name = LABEL_TO_NAME.get(label_canon, label_canon.lower())

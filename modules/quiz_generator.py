@@ -287,7 +287,8 @@ class QuizGenerator:
                 if label and label != 'None' and label != '':
                     normalized = normalize_action(label)
                     if normalized:
-                        print(f"  [SUBRANGE] {hand} trouvé dans '{r['name']}' → {normalized}")
+                        print(
+                            f"  [SUBRANGE] {hand} trouvé dans '{r['name']}' (range_key={r['range_key']}, label={label}) → {normalized}")
                         return normalized
 
         print(f"  [SUBRANGE] ⚠️ {hand} pas trouvé dans sous-ranges")

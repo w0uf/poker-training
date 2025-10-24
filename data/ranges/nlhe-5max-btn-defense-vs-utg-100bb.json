@@ -9,8 +9,9 @@
   "data": {
     "ranges": {
       "1": {
-        "name": "défense MP vs open utg",
-        "color": "#d4af37"
+        "name": "defense",
+        "color": "#d4af37",
+        "label_canon": "DEFENSE"
       },
       "2": {
         "name": "3bet_value",
@@ -23,9 +24,9 @@
         "label_canon": "CALL"
       },
       "4": {
-        "name": "3bet_value",
+        "name": "3bet_bluff",
         "color": "#ff6a00",
-        "label_canon": "R3_VALUE"
+        "label_canon": "R3_BLUFF"
       }
     },
     "values": {
