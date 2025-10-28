@@ -1,6 +1,6 @@
 # Poker Training - Système d'entraînement de ranges
 
-Interface web locale pour l'entraînement de ranges de poker avec pipeline intégré, validation intelligente et **système de quiz interactif avancé**.
+Interface web locale pour l'entraînement de ranges de poker avec pipeline intégré, validation intelligente et **système de quiz interactif avancé avec drill-down multi-étapes**.
 
 ## 🎯 Vue d'ensemble
 
@@ -29,6 +29,8 @@ Interface web locale pour l'entraînement de ranges de poker avec pipeline inté
 - **Construction automatique d'action_sequence** : Détection depuis le nom du contexte
 
 ### Système de Quiz Interactif Intelligent ✨
+
+#### Questions Simples
 - **Configuration flexible** : sélection des contextes et nombre de questions
 - **Questions contextuelles** : adaptation du texte selon le type de situation
   - Open : "Vous avez XX en UTG, que faites-vous ?"
@@ -39,7 +41,7 @@ Interface web locale pour l'entraînement de ranges de poker avec pipeline inté
 - **Sélection intelligente des mains** :
   - Détection automatique des mains borderline (à la frontière de la range)
   - Pondération vers les décisions difficiles pour un entraînement ciblé
-  - Équilibrage 50/50 entre mains IN et OUT of range
+  - Équilibrage 80/20 entre mains IN et OUT of range
 - **Questions defense** : Utilise les sous-ranges pour trouver l'action correcte
 - **Boutons dynamiques contextuels** :
   - Defense : `[FOLD] [CALL] [RAISE]` (3BET → RAISE pour l'UI)
@@ -47,6 +49,35 @@ Interface web locale pour l'entraînement de ranges de poker avec pipeline inté
   - BB check (action gratuite) : `[CHECK] [RAISE]` (pas de FOLD)
   - Open : `[FOLD] [CALL] [RAISE]`
   - Squeeze : `[FOLD] [CALL] [RAISE]`
+
+#### Questions Drill-Down (Multi-étapes) 🎯
+- **Séquences d'actions réalistes** : Simule les décisions successives d'une main
+  - Exemple : Open → Face à 3bet → Face à 5bet
+  - Génération basée sur les `action_sequence` des sous-ranges
+- **Probabilités réalistes** :
+  - 50% de questions simples (1 décision)
+  - 25% de questions à 2 étapes
+  - 12.5% de questions à 3 étapes
+  - Jamais plus de 3 étapes pour éviter les scénarios trop complexes
+- **Gestion automatique des FOLD implicites** :
+  - Si une main est dans la range principale mais pas dans les sous-ranges → FOLD implicite
+  - Force minimum 2 étapes pour les FOLD implicites (pédagogie)
+- **Affichage progressif de l'historique** :
+  - Niveau 1 : Pas d'historique (première décision)
+  - Niveau 2 : Affiche `RAISE →` (décision du niveau 1)
+  - Niveau 3 : Affiche `RAISE → RAISE →` (décisions des niveaux 1 et 2)
+- **Badges visuels colorés** :
+  - RAISE (orange), CALL (vert), FOLD (rouge), CHECK (bleu)
+  - Séparés par des flèches `→` pour visualiser la séquence
+- **Compteur de progression adaptatif** :
+  - Compte les questions principales (pas chaque sous-étape)
+  - Score calculé sur les bonnes réponses finales
+- **Conditions d'arrêt intelligentes** :
+  - Arrêt immédiat en cas de mauvaise réponse (erreur = fin de la séquence)
+  - Arrêt à la dernière étape de la séquence prévue
+  - Affichage du feedback approprié à chaque niveau
+
+#### Interface et Feedback
 - **Interface immersive** : table de poker virtuelle avec affichage des cartes
 - **Feedback immédiat** : indication correcte/incorrecte avec explications
 - **Statistiques en temps réel** : score, progression, distribution des questions par contexte
@@ -58,7 +89,10 @@ Interface web locale pour l'entraînement de ranges de poker avec pipeline inté
   - **Pour SQUEEZE** : Contient TOUTES les mains à squeeze
   - **Pour VS_LIMPERS** : Contient TOUTES les mains jouables (overlimper + iso raise)
 - **Sous-ranges (range_key > '1')** : Actions spécifiques (réponses aux réactions adverses)
+  - Chaque sous-range possède un `action_sequence` (ex: "RAISE→RAISE" pour 4bet)
+  - Les mains absentes des sous-ranges génèrent automatiquement un FOLD implicite
 - **Labels canoniques** : Classification standardisée pour le quiz
+  - OPEN, CALL, R3_VALUE, R3_BLUFF, R4_VALUE, R4_BLUFF, R5_ALLIN, etc.
 
 ### Interface web moderne
 - Dashboard temps réel avec statistiques
@@ -129,14 +163,15 @@ poker-training/
 │       ├── dashboard.html        # Dashboard principal
 │       ├── validate_context.html # Interface de validation
 │       ├── quiz_setup.html       # Configuration du quiz
-│       └── quiz.html             # Interface du quiz
+│       └── quiz.html             # Interface du quiz (avec drill-down)
 ├── modules/
 │   ├── json_parser.py            # Parsing des fichiers JSON
 │   ├── name_standardizer.py      # Standardisation des noms
 │   ├── metadata_enricher.py      # Enrichissement automatique
 │   ├── database_manager.py       # Gestion base de données + action_sequence
 │   ├── context_validator.py      # Validation des contextes
-│   ├── quiz_generator.py         # Génération des questions
+│   ├── quiz_generator.py         # Génération des questions (simple + drill-down)
+│   ├── drill_down_generator.py   # Générateur de questions multi-étapes
 │   ├── hand_selector.py          # Sélection intelligente des mains
 │   ├── poker_constants.py        # Constantes et mappings
 │   ├── pipeline_runner.py        # Orchestrateur principal
@@ -158,6 +193,7 @@ poker-training/
   - `range_key` : Position dans le fichier (1=principale, 2+=sous-ranges)
   - `label_canon` : Label standardisé (OPEN, CALL, DEFENSE, SQUEEZE, ISO, etc.)
   - `name` : Nom lisible pour affichage
+  - **`action_sequence`** (TEXT) : Séquence d'actions pour cette range (ex: "RAISE→RAISE→FOLD")
 - **range_hands** : Mains avec fréquences
 
 #### Index optimisés
@@ -170,18 +206,19 @@ idx_ranges_label_canon          -- Filtrage par label
 idx_ranges_context_label        -- Quiz queries (context + label)
 ```
 
-### Colonne action_sequence (JSON)
+### Colonne action_sequence
 
-Pour gérer les situations multiway complexes, la colonne `action_sequence` stocke les informations sous forme JSON :
+#### Dans `range_contexts` (JSON)
+Pour gérer les situations multiway complexes :
 
-#### Format DEFENSE
+**Format DEFENSE**
 ```json
 {
   "opener": "UTG"
 }
 ```
 
-#### Format SQUEEZE
+**Format SQUEEZE**
 ```json
 {
   "opener": "UTG",
@@ -189,258 +226,138 @@ Pour gérer les situations multiway complexes, la colonne `action_sequence` stoc
 }
 ```
 
-#### Format VS_LIMPERS
+**Format VS_LIMPERS**
 ```json
 {
   "limpers": ["UTG", "CO"]
 }
 ```
 
+#### Dans `ranges` (TEXT)
+Pour gérer les séquences drill-down :
+
+**Format simple** : `"RAISE→RAISE→FOLD"`
+- Représente une séquence de 3 actions : Open → 4bet → Fold au 5bet
+- Parsé par `drill_down_generator.py` pour créer les questions multi-étapes
+- Affiché progressivement dans le quiz avec des badges colorés
+
 **Fonctions utilitaires** (dans `database_manager.py`) :
-- `build_action_sequence()` : Construit le dictionnaire
-- `serialize_action_sequence()` : Convertit en JSON pour la DB
-- `parse_action_sequence()` : Parse le JSON depuis la DB
-- `format_action_sequence_display()` : Format pour affichage ("vs UTG open + CO call")
-- `detect_action_sequence_from_name()` : Détection automatique depuis le nom du contexte
+- `build_action_sequence()` : Construit le dictionnaire JSON pour les contextes
+- `format_action_sequence_display()` : Génère l'affichage lisible (ex: "UTG open → CO call")
+- `parse_action_sequence()` : Extrait opener/callers/limpers du JSON
 
-## 🎲 Structure des ranges
+### Architecture du système Drill-Down
 
-### Architecture hiérarchique
-
-#### Exemple 1 : Range d'OPEN
+#### Flux de génération d'une question drill-down
 
 ```
-Fichier JSON : "nlhe-5max-utg-open-100bb.json"
-├── Range 1 (principale) : label_canon='OPEN'
-│   ├── AA, KK, QQ, JJ, TT, 99, AKs, AQs, ...
-│   └── Action : OPEN (première de parole)
-├── Range 2 (sous-range) : label_canon='CALL'
-│   ├── QQ, JJ, TT (call si 3bet)
-│   └── Action conditionnelle : vs 3BET après notre OPEN
-├── Range 3 (sous-range) : label_canon='R4_VALUE'
-│   ├── AA, KK (4bet value)
-│   └── Action conditionnelle : vs 3BET après notre OPEN
-└── Range 4 (sous-range) : label_canon='R4_BLUFF'
-    ├── A5s (4bet bluff)
-    └── Action conditionnelle : vs 3BET après notre OPEN
+quiz_generator.py (generate_question)
+    ↓
+    Décide : drill_down ou simple ? (50% de probabilité)
+    ↓
+drill_down_generator.py (generate_drill_down_question)
+    ↓
+    1. Vérifie qu'il y a des sous-ranges (sinon impossible)
+    2. Choisit une main (80% in-range, 20% out-range)
+    3. Cherche dans quelle sous-range est la main
+       ├─ Si trouvée → Utilise l'action_sequence de la sous-range
+       └─ Sinon → Génère FOLD implicite (ex: "RAISE→FOLD")
+    4. Parse la séquence (split sur "→")
+    5. Décide combien d'étapes montrer (probabilité 50% par étape)
+       ├─ Exception : FOLD implicites = toujours 2 étapes minimum
+       └─ Maximum : 3 étapes pour éviter les scénarios trop longs
+    6. Génère les niveaux (levels) avec questions et options
+    7. Retourne la structure complète au quiz
 ```
 
-**Quiz** : "UTG avec AKs → OPEN ?" 
-- Question simple (niveau 1)
-- Options : `[FOLD, CALL, OPEN]`
-- Sous-ranges = réponses futures SI 3bet
+#### Structure de données d'une question drill-down
 
----
-
-#### Exemple 2 : Range de DEFENSE
-
-```
-Fichier JSON : "nlhe-5max-bb-defense-vs-utg-100bb.json"
-├── Range 1 (principale) : label_canon='DEFENSE'
-│   ├── Union de TOUTES les mains jouables
-│   ├── AA, KK, ..., 66, AQs, KQs, ...
-│   └── Action : Variable selon la main (CALL ou 3BET)
-├── Range 2 (sous-range) : label_canon='CALL'
-│   ├── 99, 88, 77, AQs, KQs, QJs, ...
-│   └── Action : CALL face à l'open UTG
-└── Range 3 (sous-range) : label_canon='3BET'
-    ├── AA, KK, QQ, JJ, TT, AKs, ...
-    └── Action : 3BET face à l'open UTG
-```
-
-**Quiz** : "UTG ouvre, BB avec KQs → ?" 
-- Question de decision (niveau 1)
-- Système cherche dans les sous-ranges :
-  - KQs dans Range 2 (CALL) → Réponse = CALL
-- Options : `[FOLD, CALL, RAISE]` (pas de DEFENSE comme option)
-
----
-
-#### Exemple 3 : Range de SQUEEZE
-
-```
-Fichier JSON : "nlhe-5max-bb-squeeze-vs-utg-co-100bb.json"
-└── Metadata JSON :
+```javascript
+{
+  type: "drill_down",
+  hand: "KK",
+  context_id: 3,
+  context_info: { /* métadonnées du contexte */ },
+  sequence: [
+    { action: "RAISE", text: "Action: RAISE", type: "single" },
+    { action: "RAISE", text: "Action: RAISE", type: "single" },
+    { action: "CALL", text: "Action: CALL", type: "single" }
+  ],
+  levels: [
     {
-      "primary_action": "squeeze",
-      "opener": "UTG",
-      "callers": ["CO"]
-    }
-├── Range 1 (principale) : label_canon='SQUEEZE'
-│   ├── AA, KK, QQ, JJ, AKs, AQs, ...
-│   └── Action : SQUEEZE face à UTG open + CO call
-└── action_sequence (DB) :
+      question: "Vous avez KK en UTG, que faites-vous ?",
+      options: ["FOLD", "RAISE", "CALL"],
+      correct_answer: "RAISE"
+    },
     {
-      "opener": "UTG",
-      "callers": ["CO"]
-    }
-```
-
-**Quiz** : "UTG ouvre, CO call, BB avec AQs → ?" 
-- Question squeeze (niveau 1)
-- Options : `[FOLD, CALL, RAISE]`
-- Texte généré depuis action_sequence
-
----
-
-#### Exemple 4 : Range VS_LIMPERS
-
-```
-Fichier JSON : "nlhe-5max-bb-vs-limpers-utg-mp-100bb.json"
-└── Metadata JSON :
+      question: "CO vous 3bet. Que faites-vous ?",
+      options: ["FOLD", "RAISE", "CALL"],
+      correct_answer: "RAISE"
+    },
     {
-      "primary_action": "vs_limpers",
-      "limpers": ["UTG", "MP"]
+      question: "CO 5bet all-in. Que faites-vous ?",
+      options: ["FOLD", "CALL"],
+      correct_answer: "CALL"
     }
-├── Range 1 (principale) : label_canon='ISO'
-│   ├── AA, KK, QQ, AKs, AQs, ...
-│   └── Action : ISO RAISE
-├── Range 2 (sous-range) : label_canon='CALL'
-│   ├── 77, 66, 55, ATs, KJs, ...
-│   └── Action : OVERLIMPER
-└── action_sequence (DB) :
-    {
-      "limpers": ["UTG", "MP"]
-    }
+  ],
+  total_steps: 3,
+  current_step: 1
+}
 ```
 
-**Quiz** : "UTG limp, MP limp, BB avec 88 → ?" 
-- Question vs_limpers (niveau 1)
-- Options : `[FOLD, CALL, ISO]`
-- Texte généré depuis action_sequence
+#### Affichage dans quiz.html
 
-## 🎮 Fonctionnement du Quiz
+Le fichier `quiz.html` utilise la fonction `displayDrillDownSequence(currentLevel)` pour afficher progressivement l'historique :
 
-### Phase 1 : Setup
-1. Utilisateur sélectionne les contextes (OPEN, DEFENSE, SQUEEZE, etc.)
-2. Choisit le nombre de questions
-3. Lance le quiz
-
-### Phase 2 : Génération des questions
-1. Pour chaque question :
-   - Sélection aléatoire d'un contexte parmi ceux choisis
-   - Détection automatique des mains borderline (seuil) dans ce contexte
-   - Choix intelligent : 50% IN-range / 50% OUT-range
-   - Pondération vers les mains difficiles (borderline)
-2. Génération du texte contextuel adapté
-3. Construction des options de réponse appropriées
-4. Comptage de la distribution des questions par contexte
-
-### Phase 3 : Questions
-1. Affichage de la question avec :
-   - Contexte visuel (table de poker)
-   - Cartes de la main
-   - Texte adapté à la situation
-   - Boutons d'action contextuels
-2. Validation de la réponse
-3. Feedback immédiat avec explication
-4. Progression vers la question suivante
-
-### Phase 4 : Résultats (en cours de développement 🚧)
-1. **Écran de résultats détaillés** (workflow futur) :
-   - Score global et par contexte
-   - Analyse pointue des erreurs
-   - Identification des patterns de faiblesse
-   - Suggestions d'amélioration personnalisées
-   - Graphiques de progression
-   - Export des résultats
-
-### Gestion des contextes spéciaux
-
-#### Contexte DEFENSE
-- La range principale contient **toutes** les mains jouables
-- Le système interroge les sous-ranges pour déterminer CALL vs 3BET
-- Fonction `_find_subrange_action()` dédiée
-
-#### Contexte SQUEEZE
-- Texte adapté : "X ouvre, Y call, vous avez Z..."
-- Action_sequence utilisé pour générer le texte
-- Options : `[FOLD, CALL, RAISE]` (pas de SQUEEZE comme option)
-
-#### Contexte VS_LIMPERS
-- Texte adapté : "X limp, Y limp, vous avez Z..."
-- Options : `[FOLD, CALL, ISO]` (ISO = ISO_VALUE/BLUFF normalisé)
-
-#### BB Check
-- Pas d'option FOLD (action gratuite)
-- Options : `[CHECK, RAISE]` uniquement
-
-## 📊 Diagnostic et Debug
-
-### Vérifier le mapping des ranges principales
-
-```python
-import sqlite3
-conn = sqlite3.connect('data/poker_trainer.db')
-cursor = conn.cursor()
-
-# Afficher toutes les ranges principales avec leur label_canon
-cursor.execute("""
-    SELECT rc.display_name, rc.primary_action, r.name, r.label_canon
-    FROM ranges r
-    JOIN range_contexts rc ON r.context_id = rc.id
-    WHERE r.range_key = '1'
-""")
-for row in cursor.fetchall():
-    print(f"{row[0]} | {row[1]} | {row[2]} → {row[3]}")
-
-# Vérifier les contextes prêts pour le quiz
-cursor.execute("""
-    SELECT id, display_name, quiz_ready, needs_validation
-    FROM range_contexts
-    WHERE quiz_ready = 1
-""")
-print(cursor.fetchall())
-
-# Vérifier les action_sequence
-cursor.execute("""
-    SELECT display_name, primary_action, action_sequence
-    FROM range_contexts
-    WHERE action_sequence IS NOT NULL
-""")
-for row in cursor.fetchall():
-    print(f"{row[0]} | {row[1]} | {row[2]}")
+```javascript
+// Niveau 0 (première question) : Pas d'historique
+// Niveau 1 (deuxième question) : Affiche "RAISE →"
+// Niveau 2 (troisième question) : Affiche "RAISE → RAISE →"
 ```
 
-## 📈 Workflow complet
+Les badges sont stylisés avec des classes CSS :
+- `.quiz-action-raise` (orange)
+- `.quiz-action-call` (vert)
+- `.quiz-action-fold` (rouge)
+- `.quiz-action-check` (bleu)
+
+## 📚 Utilisation détaillée
+
+### Workflow complet : de l'import au quiz
 
 ```
-1. Créer ranges dans l'éditeur web
+1. Créer vos ranges dans l'éditeur
+   - https://site2wouf.fr/poker-range-editor.php
+   - Définir range principale + sous-ranges (4bet, call, etc.)
+   - Exporter en JSON
    ↓
-2. Exporter JSON → data/ranges/
-   (Inclure les label_canon dans le JSON pour éviter la validation manuelle)
-   (Inclure les metadata pour un mapping optimal)
-   (Pour squeeze : inclure opener/callers dans metadata)
-   (Pour vs_limpers : inclure limpers="UTG,CO" dans metadata)
+2. Placer les fichiers JSON dans data/ranges/
    ↓
-3. Lancer Import Pipeline
+3. Lancer le pipeline d'import
+   - Dashboard → "Import Pipeline"
+   - Le système parse, standardise et enrichit automatiquement
    ↓
-4. Vérification automatique stricte :
-   - Métadonnées valides ? (table_format, hero_position, primary_action)
-   - Range principale a un label_canon ?
-   - Toutes les sous-ranges ont des labels ?
-   - Mapping contextuel correct ? (squeeze → SQUEEZE, vs_limpers → RAISE/ISO)
-   - Action_sequence construite automatiquement si détectable
-   - Si NON → needs_validation=1
+4. Valider les contextes ambigus (si needs_validation=1)
+   - Dashboard → cliquer sur contexte à valider
+   - Vérifier/corriger les métadonnées (format, positions, actions)
+   - Classifier les sous-ranges avec labels canoniques
+   - action_sequence construit automatiquement si possible
    ↓
-5. Si needs_validation=1, valider les contextes:
-   - Corriger métadonnées si nécessaire
-   - Ajouter opener/callers/limpers si manquant
-   - Le label_canon de la range principale est automatiquement mis à jour
-   - Classifier tous les sous-ranges
-   - Action_sequence est construite automatiquement
-   - Renommer fichier selon slug
-   - Mettre à jour JSON source
+5. Vérifier quiz_ready=1
+   - Le contexte devient disponible pour le quiz
+   - Les sous-ranges avec action_sequence permettent le drill-down
    ↓
-6. Contextes prêts (quiz_ready=1)
+6. Configurer le quiz
+   - Sélectionner les contextes à inclure
+   - Définir le nombre de questions (10-50 recommandé)
+   - Le système équilibre automatiquement simple/drill-down
    ↓
-7. Lancer le quiz !
-   - Sélectionner contextes (open, defense, squeeze, vs_limpers, etc.)
-   - Choisir nombre de questions
-   - Questions intelligentes avec mains borderline
-   - Texte adapté au contexte (utilise action_sequence pour squeeze/vs_limpers)
+7. S'entraîner avec le quiz interactif
+   - Questions adaptées au contexte
+   - Drill-down pour approfondir les séquences
+   - Affichage progressif de l'historique des actions
    - Boutons adaptés (RAISE au lieu de 3BET, ISO au lieu de ISO_VALUE, etc.)
-   - S'entraîner avec feedback immédiat
+   - Feedback immédiat avec explications
    ↓
 8. Consulter l'analyse des résultats (🚧 en développement)
    - Score global et détaillé par contexte
@@ -450,7 +367,7 @@ for row in cursor.fetchall():
 
 ## 🎯 État du développement
 
-### ✅ Fonctionnalités opérationnelles (v4.0)
+### ✅ Fonctionnalités opérationnelles (v4.2)
 
 #### Pipeline et Base de données
 - ✅ Pipeline d'import automatique
@@ -460,6 +377,7 @@ for row in cursor.fetchall():
 - ✅ **Support complet du contexte SQUEEZE**
 - ✅ **Support complet du contexte VS_LIMPERS** 🎉
 - ✅ **Colonne action_sequence JSON** (gestion des situations multiway)
+- ✅ **Colonne action_sequence TEXT dans ranges** (séquences drill-down)
 - ✅ Validation stricte des métadonnées avant quiz_ready=1
 
 #### Validation
@@ -472,7 +390,7 @@ for row in cursor.fetchall():
 - ✅ Mise à jour automatique du label_canon de la range principale
 - ✅ Construction automatique d'action_sequence depuis le nom ou metadata
 
-#### Quiz
+#### Quiz - Questions Simples
 - ✅ **Système de quiz interactif complet**
 - ✅ **Questions simples et conditionnelles**
 - ✅ **Interface immersive type table de poker**
@@ -490,30 +408,57 @@ for row in cursor.fetchall():
 - ✅ **Évitement de questions redondantes** : Limitation des options à 3 max
 - ✅ **Compteur de progression** avec feedback immédiat
 
+#### Quiz - Questions Drill-Down 🎯
+- ✅ **Système de drill-down multi-étapes opérationnel**
+- ✅ **Génération automatique de séquences** :
+  - ✅ Utilisation des action_sequence des sous-ranges (ex: "RAISE→RAISE")
+  - ✅ Génération de FOLD implicites pour mains hors sous-ranges
+  - ✅ Chargement correct des mains et action_sequence depuis la DB
+- ✅ **Probabilités réalistes** :
+  - ✅ 50% questions simples, 25% à 2 étapes, 12.5% à 3 étapes
+  - ✅ Force minimum 2 étapes pour FOLD implicites (pédagogie)
+  - ✅ Maximum 3 étapes pour éviter la complexité excessive
+- ✅ **Affichage progressif de l'historique** :
+  - ✅ Badges colorés (RAISE/CALL/FOLD/CHECK)
+  - ✅ Flèches de séparation (→)
+  - ✅ Affichage uniquement des actions déjà effectuées
+- ✅ **Logique de progression** :
+  - ✅ Arrêt en cas de mauvaise réponse
+  - ✅ Compteur de questions principales (pas sous-étapes)
+  - ✅ Feedback approprié à chaque niveau
+- ✅ **Gestion des erreurs** :
+  - ✅ Vérification de l'existence des sous-ranges
+  - ✅ Fallback sur questions simples si drill-down impossible
+  - ✅ Logs détaillés pour le debugging
+
 #### Interface web
 - ✅ Dashboard temps réel avec statistiques
 - ✅ Interface de validation interactive
 - ✅ Interface web responsive
 - ✅ API REST complète
 
-### 🚧 Améliorations prioritaires (v4.1)
+### 🚧 Améliorations prioritaires (v4.3)
 
 #### Écran post-quiz - Analyse pointue des résultats 🎯
 - 🔄 **Écran de résultats détaillés** après le quiz
   - Score global avec pourcentage de réussite
   - Score par contexte (OPEN, DEFENSE, SQUEEZE, etc.)
+  - Score par type de question (simple vs drill-down)
   - Liste des erreurs avec la bonne réponse
   - **Analyse des patterns d'erreurs** :
     - Identification des faiblesses par contexte
     - Détection des types de mains problématiques (borderline, out-of-range, etc.)
+    - Analyse des erreurs en drill-down (à quelle étape ?)
     - Tendances (trop tight, trop loose, confusion call/raise, etc.)
   - **Graphiques visuels** :
     - Répartition du score par contexte (camembert/barres)
+    - Performance simple vs drill-down
     - Évolution de la performance au cours du quiz
     - Comparaison avec les performances précédentes
   - **Recommandations personnalisées** :
     - Suggestions d'entraînement ciblé
     - Contextes à revoir en priorité
+    - Séquences drill-down problématiques
     - Conseils stratégiques basés sur les erreurs
   - **Export des résultats** :
     - Export CSV/JSON pour analyse externe
@@ -536,11 +481,13 @@ for row in cursor.fetchall():
   - Proposition de renommer le fichier JSON source
   - Historique des modifications
 
-#### Quiz
+#### Quiz - Améliorations
 - 🔄 **Éviter les doublons** : Ne pas poser deux fois la même main dans un quiz
-- 🎯 **Questions à tiroirs** : Décomposer les questions conditionnelles en 2 étapes
 - ⚠️ **Validation de compatibilité** : Empêcher la sélection de contextes incompatibles
-- 📊 **Statistiques par contexte** : Taux de réussite par type de situation (intégré dans l'écran post-quiz)
+- 🔄 **Mode d'entraînement configurable** :
+  - Option pour désactiver temporairement le drill-down
+  - Réglage du ratio simple/drill-down (actuellement 50/50)
+  - Choix du nombre max d'étapes (actuellement 3)
 
 #### Fonctionnalités générales
 - 📊 Système de progression avec historique
@@ -558,6 +505,7 @@ for row in cursor.fetchall():
 - **Contextes 3-way et 4-way** (plusieurs callers, plusieurs limpers)
 - **Mode entraînement vs mode examen** avec timer
 - **Système de révision intelligente** (spaced repetition basé sur les erreurs)
+- **Drill-down avancé** : Séquences incluant le post-flop
 
 **Long terme**
 - Analytics avancées avec graphiques de progression historique
@@ -565,6 +513,7 @@ for row in cursor.fetchall():
 - Intégration avec trackers de poker (PT4, HM3)
 - **Coach virtuel** : suggestions d'entraînement personnalisées basées sur l'historique
 - **Leaderboards** : compétition entre utilisateurs
+- **Drill-down complet** : Pre-flop → Flop → Turn → River
 
 ## 🤝 Contribution
 
@@ -589,10 +538,64 @@ Projet sous licence libre - voir [LICENSE](LICENSE) pour plus de détails.
 
 ## 🐛 Problèmes connus et solutions
 
+### Drill-down générait toujours FOLD implicite ❌ → ✅ Corrigé (v4.2)
+**Problème** : Même pour les mains présentes dans les sous-ranges (ex: KK dans R4_VALUE), le système générait systématiquement "RAISE→FOLD" au lieu de la bonne séquence "RAISE→RAISE"
+
+**Cause** :
+1. `quiz_generator.py` ne chargeait pas `action_sequence` dans la requête SQL des ranges
+2. Les dictionnaires des sous-ranges n'avaient donc jamais leur `action_sequence` renseignée
+3. Le code vérifiait `if subrange_with_hand and subrange_with_hand.get('action_sequence'):`
+4. Comme `action_sequence` était toujours `None`, ça générait un FOLD implicite pour TOUTES les mains
+
+**Solution** :
+1. Ajout de `r.action_sequence` dans le SELECT de `quiz_generator.py` ligne 95-104
+2. Ajout de `'action_sequence': action_seq` dans le dictionnaire des ranges
+3. Suppression du code inutile qui tentait d'ouvrir une nouvelle connexion SQLite dans `drill_down_generator.py`
+4. Les mains sont maintenant correctement détectées dans leurs sous-ranges avec leur séquence
+
+**Logs avant correction** :
+```
+[DRILL] Main choisie IN-RANGE: KK
+[DRILL] FOLD implicite généré: RAISE→FOLD
+```
+
+**Logs après correction** :
+```
+[DRILL] Main choisie IN-RANGE: KK
+[DRILL] ✅ Main KK trouvée dans sous-range: 4bet_value (R4_VALUE)
+[DRILL] Séquence trouvée dans 4bet_value: RAISE→RAISE
+```
+
+### Drill-down affichait les mauvaises séquences ❌ → ✅ Corrigé (v4.2)
+**Problème** : L'historique des actions affichait des séquences théoriques inventées (basées sur `getQuizActionSequence()`) au lieu des vraies actions du joueur
+
+**Cause** :
+1. `quiz.html` utilisait une fonction `getQuizActionSequence(labelCanon, primaryAction, rangeKey)` qui inventait des séquences basées sur des patterns génériques
+2. Pour R4_BLUFF par exemple, elle générait `RAISE → RAISE → FOLD` même si la vraie séquence était différente
+3. Cette fonction était copiée de `validate_context.html` où elle sert à afficher les séquences théoriques d'une range, pas l'historique réel du quiz
+
+**Solution** :
+1. Suppression complète de `getQuizActionSequence()` dans `quiz.html`
+2. Création de `displayDrillDownSequence(currentLevel)` qui utilise `currentQuestion.sequence`
+3. Affichage progressif : seulement les actions **déjà effectuées** (0 à currentLevel-1)
+4. Simplification du CSS (suppression des groupes, slashes, etc.)
+
+**Données maintenant utilisées** :
+```javascript
+currentQuestion.sequence = [
+  { action: "RAISE", text: "Action: RAISE", type: "single" },
+  { action: "FOLD", text: "Action: FOLD", type: "single" }
+]
+```
+
+**Affichage** :
+- Niveau 0 : Rien (première question)
+- Niveau 1 : `RAISE →` (action du niveau 0)
+
 ### SQUEEZE affichait 'DEFENSE' comme option ❌ → ✅ Corrigé (v3.6)
 **Problème** : Le contexte squeeze générait `['FOLD', 'CALL', 'DEFENSE']` au lieu de `['FOLD', 'CALL', 'RAISE']`
 
-**Cause** : 
+**Cause** :
 1. `label_canon='None'` pour la range principale du squeeze
 2. `map_name_to_label_canon()` ne gérait pas correctement le cas squeeze
 3. L'action 'DEFENSE' s'ajoutait comme option
@@ -633,9 +636,60 @@ Projet sous licence libre - voir [LICENSE](LICENSE) pour plus de détails.
 2. Logs détaillés de la distribution : `[QUIZ] 📊 Distribution des questions: Contexte 1: 8, Contexte 2: 7`
 3. Permet d'identifier les contextes qui échouent systématiquement
 
+## 💡 Notes pour les développeurs futurs
+
+### Architecture Drill-Down : Points d'attention
+
+1. **Chargement des données** : `quiz_generator.py` DOIT charger `action_sequence` dans la requête SQL. Sans cela, tout le système drill-down tombera en panne et générera uniquement des FOLD implicites.
+
+2. **Séquences vs Labels** : Ne pas confondre :
+   - `action_sequence` dans `ranges` (TEXT) : séquence réelle type "RAISE→RAISE→FOLD"
+   - `label_canon` : classification de la range (R4_BLUFF, R4_VALUE, etc.)
+   - Les séquences théoriques de `validate_context.html` ne sont PAS pour le quiz
+
+3. **Affichage progressif** : Dans `quiz.html`, utiliser `currentQuestion.sequence` et non une fonction qui invente des séquences. L'historique doit montrer ce que le joueur a VRAIMENT fait.
+
+4. **Probabilités** : Le système 50% par étape est dans `drill_down_generator.py` ligne 290+. Modifier avec précaution car cela impacte l'équilibre pédagogique.
+
+5. **Mains et sous-ranges** : Si une main est dans la range principale mais pas dans les sous-ranges, c'est un FOLD implicite. C'est intentionnel (si le joueur n'a pas créé de sous-range, il ne veut pas pratiquer ce scénario).
+
+### Debugging Tips
+
+**Si le drill-down ne fonctionne pas :**
+1. Vérifier les logs : `[DRILL] Main choisie IN-RANGE:` → doit être suivi de `✅ Main trouvée dans sous-range` OU `⚠️ FOLD implicite`
+2. Vérifier que `quiz_generator.py` charge bien `action_sequence` (ligne ~97)
+3. Vérifier que les sous-ranges ont bien un `action_sequence` dans la DB
+4. Vérifier les logs de `drill_down_generator.py` : ils sont très verbeux exprès
+
+**Si l'affichage de l'historique est incorrect :**
+1. Console navigateur : `console.log('sequence:', currentQuestion.sequence)`
+2. Vérifier que `displayDrillDownSequence()` utilise bien `.slice(0, currentLevel)`
+3. Vérifier que les badges CSS sont bien définis (`.quiz-action-raise`, etc.)
+
+### Structure des modules
+
+**quiz_generator.py** :
+- Décide entre simple et drill-down (ligne ~133)
+- Charge les ranges avec `action_sequence` (ligne ~95-117)
+- Appelle `drill_down_generator.py` si drill-down choisi
+
+**drill_down_generator.py** :
+- Vérifie l'existence de sous-ranges (ligne ~232)
+- Sélectionne une main (ligne ~239-247)
+- Cherche dans quelle sous-range est la main (ligne ~250-254)
+- Génère la séquence ou FOLD implicite (ligne ~257-264)
+- Calcule le nombre d'étapes (ligne ~280-297)
+- Construit les niveaux (levels) pour le quiz (ligne ~299+)
+
+**quiz.html** :
+- Affiche progressivement l'historique avec `displayDrillDownSequence()` (ligne ~900+)
+- Utilise `currentQuestion.sequence` fourni par le backend
+- Badges colorés avec CSS (ligne ~260-290)
+- Gère la progression niveau par niveau
+
 ---
 
-**Dernière mise à jour** : 23/10/2025  
-**Version** : 4.1-dev - Préparation écran post-quiz avec analyse pointue des résultats
+**Dernière mise à jour** : 28/10/2025  
+**Version** : 4.2 - Drill-down multi-étapes opérationnel avec corrections majeures
 
 Créé avec ❤️ pour la communauté poker
