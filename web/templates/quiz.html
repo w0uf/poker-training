@@ -863,6 +863,7 @@
         }
 
         // 🆕 AFFICHAGE DE LA SÉQUENCE D'ACTIONS DÉJÀ EFFECTUÉES (drill-down)
+        // 🔧 v4.3.6 : Construction narrative au lieu d'un bandeau séparé
         function displayDrillDownSequence(currentLevel) {
             const sequenceDiv = document.getElementById('actionSequence');
             
@@ -872,38 +873,63 @@
                 return;
             }
             
-            // Afficher les actions déjà effectuées (de 0 à currentLevel-1)
-            const actionsToShow = currentQuestion.sequence.slice(0, currentLevel);
+            // Construire le texte narratif de l'historique
+            const hand = currentQuestion.hand;
+            const villainPos = currentQuestion.villain_position || currentQuestion.context_info?.villain_position || "Vilain";
+            const primaryAction = currentQuestion.context_info?.primary_action || 'open';
             
-            if (!actionsToShow || actionsToShow.length === 0) {
-                sequenceDiv.style.display = 'none';
-                return;
+            let narrative = [];
+            
+            // Étape 1 : Action initiale du héros
+            const firstAction = currentQuestion.sequence[0].action;
+            if (primaryAction === 'open') {
+                narrative.push(`Vous avez ouvert avec ${hand}`);
+            } else if (primaryAction === 'defense') {
+                if (firstAction === 'CALL') {
+                    narrative.push(`Vous avez callé l'open de ${villainPos} avec ${hand}`);
+                } else if (firstAction === 'RAISE' || firstAction === '3BET') {
+                    narrative.push(`Vous avez 3bet ${villainPos} avec ${hand}`);
+                }
+            } else if (primaryAction === 'squeeze') {
+                narrative.push(`Vous avez squeezé avec ${hand}`);
             }
             
-            // Créer le HTML
-            sequenceDiv.innerHTML = '<div style="font-size: 0.9rem; color: #FFC107; margin-bottom: 8px; font-weight: 600;">📋 Vos actions précédentes :</div>';
-            
-            const actionsContainer = document.createElement('div');
-            actionsContainer.style.display = 'flex';
-            actionsContainer.style.alignItems = 'center';
-            actionsContainer.style.gap = '8px';
-            actionsContainer.style.flexWrap = 'wrap';
-            
-            actionsToShow.forEach((item, index) => {
-                // Badge d'action
-                const badge = document.createElement('span');
-                badge.className = `quiz-action-badge quiz-action-${item.action.toLowerCase()}`;
-                badge.textContent = item.action;
-                actionsContainer.appendChild(badge);
+            // Étapes suivantes : alterner Vilain/Héros
+            for (let i = 1; i < currentLevel; i++) {
+                const level = drillDownLevels[i];
+                const villainReaction = level.villain_reaction;
+                const heroAction = currentQuestion.sequence[i].action;
                 
-                // Ajouter une flèche après chaque action
-                const arrow = document.createElement('span');
-                arrow.className = 'quiz-action-arrow';
-                arrow.textContent = '→';
-                actionsContainer.appendChild(arrow);
-            });
+                // Réaction du Vilain
+                if (villainReaction) {
+                    if (villainReaction.action === 'RAISE') {
+                        if (villainReaction.sizing === '3bet') {
+                            narrative.push(`${villainPos} 3bet`);
+                        } else if (villainReaction.sizing === '5bet') {
+                            narrative.push(`${villainPos} 5bet`);
+                        } else {
+                            narrative.push(`${villainPos} relance`);
+                        }
+                    } else if (villainReaction.action === 'ALL_IN') {
+                        narrative.push(`${villainPos} all-in`);
+                    }
+                }
+                
+                // Action du Héros
+                if (heroAction === 'RAISE') {
+                    narrative.push(`vous sur-relancez`);
+                } else if (heroAction === 'CALL') {
+                    narrative.push(`vous callez`);
+                } else if (heroAction === 'FOLD') {
+                    narrative.push(`vous foldez`);
+                }
+            }
             
-            sequenceDiv.appendChild(actionsContainer);
+            // Afficher le texte narratif
+            const narrativeText = narrative.join(', ') + '.';
+            sequenceDiv.innerHTML = `<div style="font-size: 0.95rem; color: #E0E7FF; margin-bottom: 12px; line-height: 1.5;">
+                ${narrativeText}
+            </div>`;
             sequenceDiv.style.display = 'block';
         }
 
@@ -967,7 +993,7 @@
             updateScoreDisplay();
 
             const totalSubQuestions = parseInt(document.getElementById('totalQuestions').textContent);
-            const reachedLimit = currentQuestionNum >= totalSubQuestions;
+            const reachedLimit = currentQuestionNum > totalSubQuestions;
 
             if (!isCorrect || currentLevel === drillDownLevels.length - 1 || reachedLimit) {
                 showFeedback(isCorrect, selectedAction, level.correct_answer, true);
@@ -1004,7 +1030,7 @@
                         feedback.style.display = 'none';
 
                         const totalSubQuestions = parseInt(document.getElementById('totalQuestions').textContent);
-                        if (currentQuestionNum >= totalSubQuestions) {
+                        if (currentQuestionNum > totalSubQuestions) {
                             showResults();
                         } else {
                             displayDrillDownLevel(currentLevel);
@@ -1030,7 +1056,7 @@
         function nextQuestion() {
             const totalSubQuestions = parseInt(document.getElementById('totalQuestions').textContent);
 
-            if (currentQuestionNum >= totalSubQuestions) {
+            if (currentQuestionNum > totalSubQuestions) {
                 showResults();
                 return;
             }

@@ -45,17 +45,21 @@ class QuizGenerator:
         conn.row_factory = sqlite3.Row
         return conn
 
-    def generate_question(self, context_id: int) -> Optional[Dict]:
+    def generate_question(self, context_id: int, used_hands: set = None) -> Optional[Dict]:
         """
         Génère une question pour un contexte donné.
         🆕 Décide entre question simple ou drill_down.
+        🆕 v4.3.7 : Évite de réutiliser les mêmes mains abstraites
 
         Args:
             context_id: ID du contexte
+            used_hands: Set des mains abstraites déjà utilisées dans le quiz
 
         Returns:
             Question dict ou None
         """
+        if used_hands is None:
+            used_hands = set()
         conn = self.get_connection()
 
         try:
@@ -144,9 +148,9 @@ class QuizGenerator:
                         in_range_hands = set(main_range['hands'])
                         out_of_range_hands = get_all_hands_not_in_ranges(in_range_hands)
 
-                        # Tenter de générer drill_down
+                        # Tenter de générer drill_down avec évitement des mains utilisées
                         drill_question = self.drill_down_gen.generate_drill_down_question(
-                            context, ranges, in_range_hands, out_of_range_hands
+                            context, ranges, in_range_hands, out_of_range_hands, used_hands
                         )
 
                         if drill_question:
@@ -156,8 +160,8 @@ class QuizGenerator:
                         else:
                             print("  ⚠️  Drill_down échoué, fallback sur simple")
 
-            # Fallback : générer question simple
-            return self._generate_simple_question(context, ranges)
+            # Fallback : générer question simple avec évitement des mains utilisées
+            return self._generate_simple_question(context, ranges, used_hands)
 
         finally:
             conn.close()
@@ -169,17 +173,22 @@ class QuizGenerator:
                 return r
         return None
 
-    def _generate_simple_question(self, context: Dict, ranges: List[Dict]) -> Optional[Dict]:
+    def _generate_simple_question(self, context: Dict, ranges: List[Dict], used_hands: set = None) -> Optional[Dict]:
         """
         Génère une question simple sur l'action principale.
+        🆕 v4.3.7 : Évite de réutiliser les mêmes mains abstraites
 
         Args:
             context: Dictionnaire du contexte
             ranges: Liste des ranges
+            used_hands: Set des mains abstraites déjà utilisées
 
         Returns:
             Question dict ou None
         """
+        if used_hands is None:
+            used_hands = set()
+
         # Trouver la range principale
         main_range = self._get_main_range(ranges)
 
@@ -203,12 +212,30 @@ class QuizGenerator:
         in_range_hands = set(main_range['hands'])
         out_of_range_hands = get_all_hands_not_in_ranges(in_range_hands)
 
-        # 50% de chances in/out avec choix intelligent
-        is_in_range = random.random() >= 0.5
+        # 🆕 v4.3.7 : Filtrer les mains déjà utilisées
+        available_in_range = in_range_hands - used_hands
+        available_out_range = out_of_range_hands - used_hands
+
+        # Si on a fait le tour de TOUTES les mains, réinitialiser
+        if not available_in_range and not available_out_range:
+            print(f"[QUIZ] ♻️  Toutes les mains utilisées, réinitialisation du pool")
+            available_in_range = in_range_hands
+            available_out_range = out_of_range_hands
+        # Si seulement in_range est vide, forcer out_range
+        elif not available_in_range:
+            print(f"[QUIZ] ⚠️  Plus de mains in-range disponibles, force out-range")
+            is_in_range = False
+        # Si seulement out_range est vide, forcer in_range
+        elif not available_out_range:
+            print(f"[QUIZ] ⚠️  Plus de mains out-range disponibles, force in-range")
+            is_in_range = True
+        else:
+            # 50% de chances in/out avec choix intelligent
+            is_in_range = random.random() >= 0.5
 
         if is_in_range:
-            # Main DANS la range
-            hand = smart_hand_choice(in_range_hands, out_of_range_hands, is_in_range=True)
+            # Main DANS la range (utiliser le pool filtré)
+            hand = smart_hand_choice(available_in_range, available_out_range, is_in_range=True)
 
             # Si c'est un contexte DEFENSE, trouver l'action dans les sous-ranges
             if normalized_action == 'DEFENSE':
@@ -235,8 +262,8 @@ class QuizGenerator:
             print(
                 f"       Context: '{context['display_name']}' (ID={context['id']}, action={context['primary_action']})")
         else:
-            # Main HORS de la range
-            hand = smart_hand_choice(in_range_hands, out_of_range_hands, is_in_range=False)
+            # Main HORS de la range (utiliser le pool filtré)
+            hand = smart_hand_choice(available_in_range, available_out_range, is_in_range=False)
             correct_answer = 'FOLD'
             print(f"[QUIZ] ✅ Question OUT-OF-RANGE: {hand} → FOLD")
             print(
@@ -363,6 +390,7 @@ class QuizGenerator:
 
         # Trier dans un ordre fixe
         return sort_actions(options)
+
     def _get_contextual_distractors(self, primary_action: str) -> List[str]:
         """
         Retourne des distracteurs pertinents selon le contexte.

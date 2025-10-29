@@ -243,24 +243,35 @@ class DrillDownGenerator:
             context: Dict,
             ranges: List[Dict],
             in_range_hands: Set[str],
-            out_of_range_hands: Set[str]
+            out_of_range_hands: Set[str],
+            used_hands: set = None
     ) -> Optional[Dict]:
         """
         Génère une question de drill down pour le système de quiz
+        🆕 v4.3.7 : Évite de réutiliser les mêmes mains abstraites
 
         Args:
             context: Dict du contexte avec id, display_name, etc.
             ranges: Liste des ranges
             in_range_hands: Set des mains dans la range principale
             out_of_range_hands: Set des mains hors range
+            used_hands: Set des mains abstraites déjà utilisées
 
         Returns:
             Dict avec la question drill down complète, ou None si impossible
         """
         from hand_selector import smart_hand_choice
 
+        if used_hands is None:
+            used_hands = set()
+
         context_id = context['id']
         primary_action = context.get('primary_action', 'open')
+
+        # 🔧 BUGFIX v4.3.6 : Générer la position du Vilain UNE SEULE FOIS pour tout le drill-down
+        villain_position = self._generate_fixed_villain_position(context)
+        context['villain_position_fixed'] = villain_position  # Stocker pour réutilisation
+        print(f"[DRILL] 🎯 Position du Vilain fixée pour toute la séquence: {villain_position}")
 
         # 1. Vérifier qu'il y a des sous-ranges
         subranges = [r for r in ranges if r.get('range_key') != '1']
@@ -268,15 +279,31 @@ class DrillDownGenerator:
             print(f"[DRILL] Pas de sous-ranges pour contexte {context_id} → pas de drill down")
             return None
 
+        # 🆕 v4.3.7 : Filtrer les mains déjà utilisées
+        available_in_range = in_range_hands - used_hands
+        available_out_range = out_of_range_hands - used_hands
+        
+        # Si on a fait le tour, réinitialiser
+        if not available_in_range and not available_out_range:
+            print(f"[DRILL] ♻️  Toutes les mains utilisées, réinitialisation")
+            available_in_range = in_range_hands
+            available_out_range = out_of_range_hands
+        elif not available_in_range:
+            print(f"[DRILL] ⚠️  Plus de mains in-range disponibles")
+            available_in_range = set()  # Vide, forcera out-range
+        elif not available_out_range:
+            print(f"[DRILL] ⚠️  Plus de mains out-range disponibles")
+            available_out_range = set()  # Vide, forcera in-range
+
         # 2. Choisir une main dans la range principale
         # 80% in-range, 20% out-range pour drill down
-        is_in_range = random.random() >= 0.2
+        is_in_range = random.random() >= 0.2 and len(available_in_range) > 0
 
-        if is_in_range and in_range_hands:
-            hand = smart_hand_choice(in_range_hands, out_of_range_hands, is_in_range=True)
+        if is_in_range and available_in_range:
+            hand = smart_hand_choice(available_in_range, available_out_range, is_in_range=True)
             print(f"[DRILL] Main choisie IN-RANGE: {hand}")
         else:
-            hand = smart_hand_choice(out_of_range_hands, in_range_hands, is_in_range=False)
+            hand = smart_hand_choice(available_out_range, available_in_range, is_in_range=False)
             print(f"[DRILL] Main choisie OUT-RANGE: {hand}")
             is_in_range = False
 
@@ -451,12 +478,14 @@ class DrillDownGenerator:
             "total_steps": num_steps_to_use,
             "sequence": sequence,
             "levels": levels,
+            "villain_position": villain_position,  # 🆕 v4.3.6 : Position fixe du Vilain
             "context_info": {
                 "table_format": context.get('table_format', '6max'),
                 "hero_position": context.get('hero_position', 'BTN'),
                 "stack_depth": context.get('stack_depth', '100bb'),
                 "primary_action": context.get('primary_action', 'open'),
-                "display_name": context.get('display_name', '')  # ← Ajout pour le JS
+                "display_name": context.get('display_name', ''),  # ← Ajout pour le JS
+                "villain_position": villain_position  # 🆕 v4.3.6 : Position fixe du Vilain
             },
             "question": question_text
         }
@@ -554,6 +583,50 @@ class DrillDownGenerator:
         # Fallback
         return None
 
+    def _generate_fixed_villain_position(self, context: Dict) -> str:
+        """
+        🆕 v4.3.6 : Génère la position du Vilain UNE SEULE FOIS pour toute la séquence drill-down.
+        
+        Args:
+            context: Contexte avec primary_action, hero_position, etc.
+            
+        Returns:
+            Position du Vilain (ex: "CO", "BB", "UTG")
+        """
+        primary_action = context.get('primary_action', '')
+        action_seq = context.get('action_sequence')
+        vs_position = context.get('vs_position')  # Depuis la BDD
+        
+        # 1️⃣ Pour OPEN : Générer une position cohérente (après le héros)
+        if primary_action == 'open':
+            if vs_position:
+                return vs_position
+            else:
+                hero_pos = context.get('hero_position', 'UTG')
+                table_format = context.get('table_format', '6max')
+                return self._generate_villain_position(hero_pos, table_format)
+        
+        # 2️⃣ Pour defense/squeeze : utiliser l'opener
+        elif primary_action in ['defense', 'squeeze']:
+            if vs_position:
+                return vs_position
+            elif action_seq and isinstance(action_seq, dict) and action_seq.get('opener'):
+                return action_seq['opener']
+            elif primary_action == 'defense':
+                # Fallback basé sur le nom du contexte
+                display_name = context.get('display_name', '')
+                if 'vs UTG' in display_name or 'UTG' in display_name:
+                    return 'UTG'
+                elif 'vs CO' in display_name or 'CO' in display_name:
+                    return 'CO'
+                elif 'vs MP' in display_name or 'MP' in display_name:
+                    return 'MP'
+                elif 'vs BTN' in display_name or 'BTN' in display_name:
+                    return 'BTN'
+        
+        # Fallback générique
+        return "Vilain"
+
     def _get_villain_reaction_at_level(self, level: int, hero_last_action: str, context: Dict = None) -> Optional[Dict]:
         """
         🆕 Génère la réaction du Vilain de manière réaliste selon le niveau.
@@ -571,42 +644,15 @@ class DrillDownGenerator:
         Returns:
             Dict avec action du Vilain, ou None
         """
-        # Déterminer la position du Vilain
+        # 🔧 BUGFIX v4.3.6 : Utiliser la position fixe générée une seule fois
         villain_position = "Vilain"  # Fallback
-
-        if context:
-            primary_action = context.get('primary_action', '')
-            action_seq = context.get('action_sequence')
-            vs_position = context.get('vs_position')  # 🆕 Depuis la BDD
-
-            # 1️⃣ Pour OPEN : Générer une position cohérente
-            if primary_action == 'open':
-                if vs_position:
-                    # Utiliser vs_position si disponible dans la BDD
-                    villain_position = vs_position
-                else:
-                    # Générer une position cohérente (après le héros)
-                    hero_pos = context.get('hero_position', 'UTG')
-                    table_format = context.get('table_format', '6max')
-                    villain_position = self._generate_villain_position(hero_pos, table_format)
-
-            # 2️⃣ Pour defense/squeeze : utiliser l'opener
-            elif primary_action in ['defense', 'squeeze']:
-                if vs_position:
-                    villain_position = vs_position
-                elif action_seq and isinstance(action_seq, dict) and action_seq.get('opener'):
-                    villain_position = action_seq['opener']
-                elif primary_action == 'defense':
-                    # Fallback basé sur le nom du contexte si disponible
-                    display_name = context.get('display_name', '')
-                    if 'vs UTG' in display_name or 'UTG' in display_name:
-                        villain_position = 'UTG'
-                    elif 'vs CO' in display_name or 'CO' in display_name:
-                        villain_position = 'CO'
-                    elif 'vs MP' in display_name or 'MP' in display_name:
-                        villain_position = 'MP'
-                    elif 'vs BTN' in display_name or 'BTN' in display_name:
-                        villain_position = 'BTN'
+        
+        if context and 'villain_position_fixed' in context:
+            # Utiliser la position fixe générée au début du drill-down
+            villain_position = context['villain_position_fixed']
+        elif context:
+            # Fallback si la position fixe n'existe pas (ancien code)
+            villain_position = "Vilain"
 
         # Niveau 1 : Vilain 3bet après notre open/squeeze
         if level == 1:

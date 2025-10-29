@@ -1598,6 +1598,7 @@ def generate_quiz_with_variants():
         generator = QuizGenerator()
         questions = []
         total_subquestions = 0  # 🆕 Compteur de sous-questions
+        used_hands_by_context = {}  # 🔧 v4.3.7 : Tracker les mains PAR CONTEXTE
         max_attempts = question_count * 10  # Éviter boucle infinie
         attempts = 0
 
@@ -1607,11 +1608,38 @@ def generate_quiz_with_variants():
 
             # Choisir un contexte aléatoire
             context_id = random.choice(context_ids)
+            
+            # 🔧 v4.3.7 : Initialiser le set pour ce contexte si nécessaire
+            if context_id not in used_hands_by_context:
+                used_hands_by_context[context_id] = set()
 
-            # Générer la question
-            question = generator.generate_question(context_id)
+            # 🔧 BUGFIX v4.3.5 : Forcer les questions simples quand il reste peu de place
+            # Si on est proche de la limite, temporairement désactiver le drill_down
+            # Les questions drill-down font généralement 2-3 étapes minimum
+            remaining_slots = question_count - total_subquestions
+            force_simple = False
+            
+            if remaining_slots <= 2:
+                # Moins de 3 places : forcer question simple pour être sûr de remplir exactement
+                force_simple = True
+                original_can_drill = generator.drill_down_gen.can_generate_drill_down
+                generator.drill_down_gen.can_generate_drill_down = lambda ranges: False
+                print(f"[QUIZ GEN] 🎯 Reste {remaining_slots} place(s) → force question SIMPLE")
+            
+            # 🆕 v4.3.7 : Passer les mains déjà utilisées POUR CE CONTEXTE
+            question = generator.generate_question(context_id, used_hands=used_hands_by_context[context_id])
+            
+            # Restaurer la fonction d'origine si modifiée
+            if force_simple:
+                generator.drill_down_gen.can_generate_drill_down = original_can_drill
 
             if question:
+                # 🆕 v4.3.7 : Ajouter la main au tracker DU CONTEXTE
+                if 'hand' in question:
+                    used_hands_by_context[context_id].add(question['hand'])
+                    total_used = sum(len(hands) for hands in used_hands_by_context.values())
+                    print(f"[QUIZ GEN] 🎲 Main utilisée: {question['hand']} dans contexte {context_id} (total global: {total_used} mains)")
+                
                 # 🆕 Calculer combien de sous-questions cette question ajoute
                 if question['type'] == 'drill_down':
                     subq_count = len(question['levels'])
@@ -1630,8 +1658,8 @@ def generate_quiz_with_variants():
                     print(
                         f"[QUIZ GEN] Question ajoutée ({question['type']}), sous-questions: {total_subquestions}/{question_count}")
                 else:
-                    # Pas assez de place pour cette question
-                    # Si c'est un drill-down trop long, réessayer avec une autre question
+                    # Pas assez de place pour cette question drill-down
+                    # Réessayer (normalement ne devrait plus arriver avec le fix)
                     print(
                         f"[QUIZ GEN] Question ignorée (trop longue), sous-questions actuelles: {total_subquestions}/{question_count}")
                     continue
