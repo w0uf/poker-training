@@ -187,6 +187,7 @@ class MetadataEnricher:
             confidence_factors.append(0.3)
 
         return min(sum(confidence_factors) / len(confidence_factors), 1.0)
+
     def _generate_display_names(self, metadata: EnrichedMetadata) -> tuple[str, str]:
         """Génère les noms d'affichage longs et courts"""
         parts = []
@@ -250,6 +251,73 @@ class MetadataEnricher:
         print(f"[ENRICHER] Confiance enrichie: {metadata.confidence:.1%}")
         print(f"[ENRICHER] Statut contexte: {metadata.context_status.value}")
         print(f"[ENRICHER] Question-friendly: {'Oui' if metadata.question_friendly else 'Non'}")
+
+    @staticmethod
+    def generate_complementary_ranges(primary_action: Optional[Action], existing_ranges: list) -> list:
+        """
+        Génère les ranges complémentaires nécessaires pour les questions drill-down.
+
+        Pour DEFENSE avec R3_VALUE/R3_BLUFF, crée automatiquement :
+        - R5_ALLIN (5bet/shove face au 4bet) - vide par défaut = fold implicite
+        - CALL_4BET (call le 4bet) - vide par défaut
+
+        Args:
+            primary_action: Action principale du contexte
+            existing_ranges: Liste des ranges déjà présentes
+
+        Returns:
+            Liste de dictionnaires de ranges à créer
+        """
+        if not primary_action:
+            return []
+
+        # Extraire les labels canoniques existants
+        existing_labels = {r.get('label_canon') for r in existing_ranges if r.get('label_canon')}
+
+        complementary = []
+
+        # Pour DEFENSE avec R3_VALUE : ajouter ranges de niveau 2
+        if primary_action == Action.DEFENSE or primary_action.value == 'defense':
+            has_r3 = 'R3_VALUE' in existing_labels or 'R3_BLUFF' in existing_labels
+
+            if has_r3:
+                # Trouver le prochain range_key disponible
+                max_key = max([int(r.get('range_key', 0)) for r in existing_ranges], default=0)
+                next_key = max_key + 1
+
+                # Range R5_ALLIN (shove vs 4bet) - VIDE = fold implicite
+                if 'R5_ALLIN' not in existing_labels:
+                    complementary.append({
+                        'range_key': str(next_key),
+                        'name': '5bet_allin',
+                        'label_canon': 'R5_ALLIN',
+                        'hands': [],  # Vide = fold implicite pour toutes les mains R3_VALUE
+                        'color': '#ff00ff',
+                        'auto_generated': True,
+                        'description': 'Mains pour shove face au 4bet (vide = fold implicite)'
+                    })
+                    next_key += 1
+                    print(f"[ENRICHER] 🆕 Range complémentaire créée: R5_ALLIN (vide = fold implicite)")
+
+                # Range CALL_4BET (call le 4bet) - VIDE par défaut
+                if 'CALL_4BET' not in existing_labels:
+                    complementary.append({
+                        'range_key': str(next_key),
+                        'name': 'call_4bet',
+                        'label_canon': 'CALL_4BET',
+                        'hands': [],  # Vide = on ne call jamais le 4bet par défaut
+                        'color': '#00ffff',
+                        'auto_generated': True,
+                        'description': 'Mains pour call le 4bet (rare en 100bb)'
+                    })
+                    print(f"[ENRICHER] 🆕 Range complémentaire créée: CALL_4BET (vide par défaut)")
+
+        # TODO: Ajouter d'autres contextes si nécessaire (SQUEEZE, etc.)
+
+        if complementary:
+            print(f"[ENRICHER] ✅ {len(complementary)} range(s) complémentaire(s) à créer pour drill-down")
+
+        return complementary
 
 
 def create_auto_enricher(game_format: str = "cash", variant: str = "nlhe") -> MetadataEnricher:

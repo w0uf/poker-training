@@ -272,6 +272,85 @@
             width: 200px;
         }
 
+        .quiz-action-cell {
+            width: 220px;
+            padding-left: 15px !important;
+        }
+
+        .quiz-action-sequence {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .quiz-action-group {
+            display: flex;
+            align-items: center;
+            gap: 0;
+            background: rgba(0,0,0,0.05);
+            padding: 2px;
+            border-radius: 6px;
+        }
+
+        .quiz-action-group .quiz-action-badge {
+            border-radius: 4px;
+        }
+
+        .quiz-action-group .quiz-action-slash {
+            margin: 0 4px;
+        }
+
+        .quiz-action-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-weight: 700;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            white-space: nowrap;
+        }
+
+        .quiz-action-raise {
+            background: linear-gradient(135deg, #ffa726 0%, #ff9800 100%);
+            color: white;
+        }
+
+        .quiz-action-call {
+            background: linear-gradient(135deg, #66bb6a 0%, #4caf50 100%);
+            color: white;
+        }
+
+        .quiz-action-fold {
+            background: linear-gradient(135deg, #ef5350 0%, #e53935 100%);
+            color: white;
+        }
+
+        .quiz-action-check {
+            background: linear-gradient(135deg, #42a5f5 0%, #1e88e5 100%);
+            color: white;
+        }
+
+        .quiz-action-none {
+            background: #e0e0e0;
+            color: #666;
+            font-style: italic;
+        }
+
+        .quiz-action-arrow {
+            color: #999;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .quiz-action-slash {
+            color: #666;
+            font-weight: bold;
+            font-size: 14px;
+            margin: 0 4px;
+        }
+
         .range-label-select {
             width: 100%;
             padding: 8px;
@@ -595,6 +674,7 @@
                                 <th></th>
                                 <th>Nom du range</th>
                                 <th>Mains</th>
+                                <th>Séquence d'actions quiz</th>
                                 <th>Classification</th>
                             </tr>
                         </thead>
@@ -646,6 +726,141 @@
         let selectedCallers = [];
         let selectedLimpers = [];
         let currentTableFormat = '6max';
+
+        // 🎮 Fonction qui génère la séquence d'actions de quiz
+        function getQuizActionSequence(labelCanon, primaryAction, rangeKey) {
+            if (!labelCanon || labelCanon === 'UNKNOWN' || labelCanon === 'None') {
+                return [{ action: 'none', text: '—' }];
+            }
+
+            // Range principale (key = '1') : généralement pas de quiz direct si sous-ranges existent
+            if (rangeKey === '1') {
+                return [{ action: 'none', text: '—' }];
+            }
+
+            // Logique selon le contexte
+            switch (primaryAction) {
+                case 'open':
+                    // Sous-ranges face à un 3bet (on a déjà open avant)
+                    switch (labelCanon) {
+                        case 'CALL':
+                            // On open, puis face au 3bet : call
+                            return [
+                                { action: 'raise', text: 'RAISE' },
+                                { arrow: true },
+                                { action: 'call', text: 'CALL' }
+                            ];
+                        case 'R4_VALUE':
+                            // On open, puis face au 3bet : 4bet, puis face au 5bet : RAISE/CALL
+                            return [
+                                { action: 'raise', text: 'RAISE' },
+                                { arrow: true },
+                                { action: 'raise', text: 'RAISE' },
+                                { arrow: true },
+                                { action: 'raise', text: 'RAISE', grouped: true },
+                                { slash: true },
+                                { action: 'call', text: 'CALL', grouped: true }
+                            ];
+                        case 'R4_BLUFF':
+                            // On open, puis 4bet, puis fold au 5bet
+                            return [
+                                { action: 'raise', text: 'RAISE' },
+                                { arrow: true },
+                                { action: 'raise', text: 'RAISE' },
+                                { arrow: true },
+                                { action: 'fold', text: 'FOLD' }
+                            ];
+                        case 'FOLD':
+                            // On open, puis fold au 3bet
+                            return [
+                                { action: 'raise', text: 'RAISE' },
+                                { arrow: true },
+                                { action: 'fold', text: 'FOLD' }
+                            ];
+                        default:
+                            return [{ action: 'none', text: '—' }];
+                    }
+
+                case 'defense':
+                    // Sous-ranges en défense (face à une ouverture)
+                    switch (labelCanon) {
+                        case 'CALL':
+                            // Simple call de l'ouverture
+                            return [{ action: 'call', text: 'CALL' }];
+                        case 'R3_VALUE':
+                        case 'R4_VALUE':
+                            // On 3bet, puis face au 4bet : RAISE/CALL
+                            return [
+                                { action: 'raise', text: 'RAISE' },
+                                { arrow: true },
+                                { action: 'raise', text: 'RAISE', grouped: true },
+                                { slash: true },
+                                { action: 'call', text: 'CALL', grouped: true }
+                            ];
+                        case 'R3_BLUFF':
+                        case 'R4_BLUFF':
+                            // On 3bet, puis fold au 4bet
+                            return [
+                                { action: 'raise', text: 'RAISE' },
+                                { arrow: true },
+                                { action: 'fold', text: 'FOLD' }
+                            ];
+                        case 'FOLD':
+                            return [{ action: 'fold', text: 'FOLD' }];
+                        default:
+                            return [{ action: 'none', text: '—' }];
+                    }
+
+                case 'squeeze':
+                    // Squeeze : face à open + call(s)
+                    switch (labelCanon) {
+                        case 'CALL':
+                            // Simple call du 3bet
+                            return [{ action: 'call', text: 'CALL' }];
+                        case 'R4_VALUE':
+                            // On squeeze (3bet), puis face au 4bet : RAISE/CALL
+                            return [
+                                { action: 'raise', text: 'RAISE' },
+                                { arrow: true },
+                                { action: 'raise', text: 'RAISE', grouped: true },
+                                { slash: true },
+                                { action: 'call', text: 'CALL', grouped: true }
+                            ];
+                        case 'R4_BLUFF':
+                            // On squeeze, puis fold au 4bet
+                            return [
+                                { action: 'raise', text: 'RAISE' },
+                                { arrow: true },
+                                { action: 'fold', text: 'FOLD' }
+                            ];
+                        case 'FOLD':
+                            return [{ action: 'fold', text: 'FOLD' }];
+                        default:
+                            return [{ action: 'none', text: '—' }];
+                    }
+
+                case 'vs_limpers':
+                    // Face à limpers : iso raise
+                    switch (labelCanon) {
+                        case 'OPEN':
+                        case 'RAISE':
+                        case 'ISO_RAISE':
+                        case 'ISO_VALUE':
+                        case 'ISO_BLUFF':
+                            return [{ action: 'raise', text: 'RAISE' }];
+                        case 'CALL':
+                            return [{ action: 'call', text: 'CALL' }];
+                        case 'FOLD':
+                            return [{ action: 'fold', text: 'FOLD' }];
+                        default:
+                            return [{ action: 'none', text: '—' }];
+                    }
+
+                default:
+                    // Fallback pour primary_action non reconnu
+                    return [{ action: 'none', text: '—' }];
+            }
+        }
 
         // 🆕 VALIDATION DES POSITIONS PAR CONTEXTE (avec masquage dynamique)
 
@@ -1080,7 +1295,7 @@
             tbody.innerHTML = '';
 
             if (!ranges || ranges.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:20px; color:#999;">Aucun sous-range à classifier</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px; color:#999;">Aucun sous-range à classifier</td></tr>';
                 return;
             }
 
@@ -1099,6 +1314,78 @@
                 const handsCell = document.createElement('td');
                 handsCell.className = 'range-hands-cell';
                 handsCell.textContent = range.hand_count || 0;
+
+                // 🎮 Nouvelle colonne : Séquence d'actions de quiz
+                const quizActionCell = document.createElement('td');
+                quizActionCell.className = 'quiz-action-cell';
+                
+                // Récupérer le primary_action du contexte
+                const primaryAction = contextData?.primary_action || 'open';
+                const rangeKey = range.range_key || (range.name === contextData?.ranges?.[0]?.name ? '1' : '2');
+                
+                // Générer la séquence d'actions
+                const actionSequence = getQuizActionSequence(range.label_canon, primaryAction, rangeKey);
+                
+                // Créer le HTML de la séquence
+                const sequenceDiv = document.createElement('div');
+                sequenceDiv.className = 'quiz-action-sequence';
+                
+                let inGroup = false;
+                let groupDiv = null;
+                
+                actionSequence.forEach((item, index) => {
+                    if (item.grouped && !inGroup) {
+                        // Début d'un groupe
+                        inGroup = true;
+                        groupDiv = document.createElement('div');
+                        groupDiv.className = 'quiz-action-group';
+                    }
+                    
+                    if (item.arrow) {
+                        if (inGroup && groupDiv) {
+                            sequenceDiv.appendChild(groupDiv);
+                            inGroup = false;
+                            groupDiv = null;
+                        }
+                        const arrow = document.createElement('span');
+                        arrow.className = 'quiz-action-arrow';
+                        arrow.textContent = '→';
+                        sequenceDiv.appendChild(arrow);
+                    } else if (item.slash) {
+                        const slash = document.createElement('span');
+                        slash.className = 'quiz-action-slash';
+                        slash.textContent = '/';
+                        if (inGroup && groupDiv) {
+                            groupDiv.appendChild(slash);
+                        } else {
+                            sequenceDiv.appendChild(slash);
+                        }
+                    } else {
+                        const badge = document.createElement('span');
+                        badge.className = `quiz-action-badge quiz-action-${item.action}`;
+                        badge.textContent = item.text;
+                        
+                        if (inGroup && groupDiv) {
+                            groupDiv.appendChild(badge);
+                        } else {
+                            sequenceDiv.appendChild(badge);
+                        }
+                    }
+                    
+                    // Fin du groupe si c'est le dernier élément groupé
+                    if (item.grouped && index === actionSequence.length - 1 && groupDiv) {
+                        sequenceDiv.appendChild(groupDiv);
+                        inGroup = false;
+                        groupDiv = null;
+                    }
+                });
+                
+                // Cas où le groupe n'a pas été fermé
+                if (inGroup && groupDiv) {
+                    sequenceDiv.appendChild(groupDiv);
+                }
+                
+                quizActionCell.appendChild(sequenceDiv);
 
                 const labelCell = document.createElement('td');
                 labelCell.className = 'range-label-cell';
@@ -1131,6 +1418,65 @@
                         e.target.classList.remove('modified');
                     }
 
+                    // 🎮 Mettre à jour la séquence d'actions
+                    const newActionSequence = getQuizActionSequence(newLabel, primaryAction, rangeKey);
+                    sequenceDiv.innerHTML = '';
+                    
+                    let inGroup = false;
+                    let groupDiv = null;
+                    
+                    newActionSequence.forEach((item, index) => {
+                        if (item.grouped && !inGroup) {
+                            // Début d'un groupe
+                            inGroup = true;
+                            groupDiv = document.createElement('div');
+                            groupDiv.className = 'quiz-action-group';
+                        }
+                        
+                        if (item.arrow) {
+                            if (inGroup && groupDiv) {
+                                sequenceDiv.appendChild(groupDiv);
+                                inGroup = false;
+                                groupDiv = null;
+                            }
+                            const arrow = document.createElement('span');
+                            arrow.className = 'quiz-action-arrow';
+                            arrow.textContent = '→';
+                            sequenceDiv.appendChild(arrow);
+                        } else if (item.slash) {
+                            const slash = document.createElement('span');
+                            slash.className = 'quiz-action-slash';
+                            slash.textContent = '/';
+                            if (inGroup && groupDiv) {
+                                groupDiv.appendChild(slash);
+                            } else {
+                                sequenceDiv.appendChild(slash);
+                            }
+                        } else {
+                            const badge = document.createElement('span');
+                            badge.className = `quiz-action-badge quiz-action-${item.action}`;
+                            badge.textContent = item.text;
+                            
+                            if (inGroup && groupDiv) {
+                                groupDiv.appendChild(badge);
+                            } else {
+                                sequenceDiv.appendChild(badge);
+                            }
+                        }
+                        
+                        // Fin du groupe si c'est le dernier élément groupé
+                        if (item.grouped && index === newActionSequence.length - 1 && groupDiv) {
+                            sequenceDiv.appendChild(groupDiv);
+                            inGroup = false;
+                            groupDiv = null;
+                        }
+                    });
+                    
+                    // Cas où le groupe n'a pas été fermé
+                    if (inGroup && groupDiv) {
+                        sequenceDiv.appendChild(groupDiv);
+                    }
+
                     updateModifiedCount();
                 });
 
@@ -1139,6 +1485,7 @@
                 tr.appendChild(colorCell);
                 tr.appendChild(nameCell);
                 tr.appendChild(handsCell);
+                tr.appendChild(quizActionCell); // 🎮 Colonne séquence
                 tr.appendChild(labelCell);
 
                 tbody.appendChild(tr);

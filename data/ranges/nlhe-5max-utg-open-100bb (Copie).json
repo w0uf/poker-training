@@ -9,8 +9,9 @@
   "data": {
     "ranges": {
       "1": {
-        "name": "open_utg",
-        "color": "#1eff00"
+        "name": "open",
+        "color": "#1eff00",
+        "label_canon": "OPEN"
       },
       "2": {
         "name": "call",
@@ -253,5 +254,18 @@
       "32o": []
     },
     "maxIndex": 4
+  },
+  "metadata": {
+    "table_format": "5max",
+    "hero_position": "UTG",
+    "vs_position": null,
+    "primary_action": "open",
+    "game_type": "Cash Game",
+    "variant": "NLHE",
+    "stack_depth": "100bb",
+    "stakes": "NL2",
+    "sizing": "",
+    "validated": true,
+    "validated_by_user": true
   }
 }

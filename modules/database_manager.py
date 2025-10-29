@@ -114,6 +114,71 @@ def map_name_to_label_canon(name: str, range_key: str, primary_action: str = Non
         return None
 
 
+def generate_action_sequence(label_canon: str, primary_action: str, range_key: str) -> str:
+    """
+    Génère la séquence d'actions pour le quiz à partir du label_canon et du contexte.
+
+    Args:
+        label_canon: Label canonique (OPEN, CALL, R4_VALUE, etc.)
+        primary_action: Action principale du contexte (open, defense, squeeze, vs_limpers)
+        range_key: Clé de la range ('1' pour principale, autre pour sous-ranges)
+
+    Returns:
+        Séquence d'actions sous forme de string (ex: "RAISE→CALL", "RAISE→RAISE→RAISE/CALL")
+    """
+    if not label_canon or label_canon == 'UNKNOWN' or label_canon == 'None':
+        return None
+
+    # Range principale : généralement pas de quiz direct
+    if range_key == '1':
+        return None
+
+    # Logique selon le contexte
+    if primary_action == 'open':
+        # Sous-ranges face à un 3bet (on a déjà open avant)
+        if label_canon == 'CALL':
+            return 'RAISE→CALL'
+        elif label_canon == 'R4_VALUE':
+            return 'RAISE→RAISE→RAISE/CALL'
+        elif label_canon == 'R4_BLUFF':
+            return 'RAISE→RAISE→FOLD'
+        elif label_canon == 'FOLD':
+            return 'RAISE→FOLD'
+
+    elif primary_action == 'defense':
+        # Sous-ranges en défense (face à une ouverture)
+        if label_canon == 'CALL':
+            return 'CALL'
+        elif label_canon in ('R3_VALUE', 'R4_VALUE'):
+            return 'RAISE→RAISE/CALL'
+        elif label_canon in ('R3_BLUFF', 'R4_BLUFF'):
+            return 'RAISE→FOLD'
+        elif label_canon == 'FOLD':
+            return 'FOLD'
+
+    elif primary_action == 'squeeze':
+        # Squeeze : face à open + call(s)
+        if label_canon == 'CALL':
+            return 'CALL'
+        elif label_canon == 'R4_VALUE':
+            return 'RAISE→RAISE/CALL'
+        elif label_canon == 'R4_BLUFF':
+            return 'RAISE→FOLD'
+        elif label_canon == 'FOLD':
+            return 'FOLD'
+
+    elif primary_action == 'vs_limpers':
+        # Face à limpers
+        if label_canon in ('OPEN', 'RAISE', 'ISO_RAISE', 'ISO_VALUE', 'ISO_BLUFF', 'ISO'):
+            return 'RAISE'
+        elif label_canon == 'CALL':
+            return 'CALL'
+        elif label_canon == 'FOLD':
+            return 'FOLD'
+
+    return None
+
+
 class DatabaseManager:
     """Gestionnaire de base de données pour les ranges de poker"""
 
@@ -189,6 +254,7 @@ class DatabaseManager:
                         name TEXT NOT NULL,
                         action TEXT,
                         label_canon TEXT,
+                        action_sequence TEXT,
                         color TEXT,
                         quiz_action TEXT,  
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -212,6 +278,7 @@ class DatabaseManager:
                     CREATE INDEX IF NOT EXISTS idx_contexts_quiz_ready ON range_contexts(quiz_ready);
                     CREATE INDEX IF NOT EXISTS idx_ranges_label_canon ON ranges(label_canon);
                     CREATE INDEX IF NOT EXISTS idx_ranges_context_label ON ranges(context_id, label_canon);
+                    CREATE INDEX IF NOT EXISTS idx_ranges_action_sequence ON ranges(action_sequence);
                 """)
 
                 # Vérifier et appliquer migrations si nécessaire
@@ -240,6 +307,24 @@ class DatabaseManager:
                 ADD COLUMN action_sequence TEXT
             """)
             migrations_applied.append("action_sequence ajouté à range_contexts")
+
+        # 🆕 Migration : Ajouter action_sequence dans ranges si absente
+        cursor.execute("PRAGMA table_info(ranges)")
+        ranges_columns = {row[1] for row in cursor.fetchall()}
+
+        if 'action_sequence' not in ranges_columns:
+            cursor.execute("""
+                ALTER TABLE ranges 
+                ADD COLUMN action_sequence TEXT
+            """)
+            migrations_applied.append("action_sequence ajouté à ranges")
+
+            # Créer l'index si la colonne vient d'être ajoutée
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_ranges_action_sequence 
+                ON ranges(action_sequence)
+            """)
+            migrations_applied.append("index action_sequence créé sur ranges")
 
         if migrations_applied:
             conn.commit()
@@ -757,13 +842,24 @@ class DatabaseManager:
                     # Détecter l'action quiz (pour compatibilité)
                     quiz_action = QuizActionMapper.detect(range_data.name)
 
+                    # 🎮 Générer la séquence d'actions pour le drill down
+                    action_sequence = generate_action_sequence(label_canon, primary_action_value, range_key)
+                    print("=" * 80)
+                    print(f"🔥🔥🔥 APPEL generate_action_sequence")
+                    print(f"   label_canon={label_canon}")
+                    print(f"   primary_action={primary_action_value}")
+                    print(f"   range_key={range_key}")
+                    action_sequence = generate_action_sequence(label_canon, primary_action_value, range_key)
+                    print(f"   RÉSULTAT action_sequence={action_sequence}")
+                    print("=" * 80)
+
                     print(
-                        f"[DB] Range {range_key}: name='{range_data.name}', primary_action='{primary_action_value}' → label_canon='{label_canon}'")
+                        f"[DB] Range {range_key}: name='{range_data.name}', primary_action='{primary_action_value}' → label_canon='{label_canon}', action_sequence='{action_sequence}'")
 
                     cursor.execute("""
                         INSERT INTO ranges
-                        (context_id, range_key, name, action, color, quiz_action, label_canon)
-                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                        (context_id, range_key, name, action, color, quiz_action, label_canon, action_sequence)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                     """, (
                         context_id,
                         range_key,
@@ -771,7 +867,8 @@ class DatabaseManager:
                         range_data.name,
                         range_data.color,
                         quiz_action,
-                        label_canon
+                        label_canon,
+                        action_sequence
                     ))
                     range_id = cursor.lastrowid
 

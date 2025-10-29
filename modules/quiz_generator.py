@@ -95,6 +95,7 @@ class QuizGenerator:
             cursor.execute("""
                 SELECT 
                     r.id, r.range_key, r.name, r.label_canon,
+                    r.action_sequence,
                     GROUP_CONCAT(DISTINCT rh.hand) as hands
                 FROM ranges r
                 LEFT JOIN range_hands rh ON r.id = rh.range_id
@@ -105,13 +106,15 @@ class QuizGenerator:
 
             ranges = []
             for row in cursor.fetchall():
-                hands_str = row[4]
+                action_seq = row[4]
+                hands_str = row[5]
                 if hands_str:
                     ranges.append({
                         'id': row[0],
                         'range_key': row[1],
                         'name': row[2],
                         'label_canon': row[3],
+                        'action_sequence': action_seq,
                         'hands': hands_str.split(',')
                     })
 
@@ -130,8 +133,8 @@ class QuizGenerator:
             can_drill = self.drill_down_gen.can_generate_drill_down(ranges)
 
             if can_drill:
-                # 50% de chances de faire un drill_down
-                use_drill_down = random.random() >= 0.5
+                # 🧪 TEST: 100% de drill_down (normalement 50% : random.random() >= 0.5)
+                use_drill_down = True  # Force à 100% pour tests
                 print(f"  🎲 Type de question: {'DRILL_DOWN' if use_drill_down else 'SIMPLE'}")
 
                 if use_drill_down:
@@ -394,16 +397,20 @@ class QuizGenerator:
     def _get_random_opener_for_defense(self, hero_pos: str, table_format: str, action_seq: Dict) -> str:
         """
         Retourne l'opener pour une situation de defense.
-        Utilise action_sequence si présent, sinon choisit aléatoirement.
+        🔧 CLARIFICATION : Utilise action_sequence si présent (opener réel), 
+        sinon choisit aléatoirement de manière logique.
         """
-        # Option 1 : Opener spécifique dans action_sequence
+        # Option 1 : Opener spécifique dans action_sequence (RÉEL)
         if action_seq and action_seq.get('opener'):
-            return action_seq['opener']
+            opener = action_seq['opener']
+            print(f"  ✅ Opener RÉEL depuis action_sequence: {opener}")
+            return opener
 
-        # Option 2 : Range générique → choisir aléatoirement
+        # Option 2 : Range générique → choisir aléatoirement (INVENTÉ)
         positions = self._get_positions(table_format)
 
         if hero_pos not in positions:
+            print(f"  ⚠️ Hero position invalide, opener par défaut: UTG")
             return "UTG"  # Fallback
 
         hero_idx = positions.index(hero_pos)
@@ -413,15 +420,17 @@ class QuizGenerator:
 
         if valid_openers:
             opener = random.choice(valid_openers)
-            print(f"  🎲 Opener aléatoire choisi: {opener} (parmi {valid_openers})")
+            print(f"  🎲 Opener INVENTÉ logiquement: {opener} (parmi {valid_openers})")
             return opener
 
+        print(f"  ⚠️ Pas de positions avant hero, fallback: UTG")
         return "UTG"  # Fallback
 
     def _get_squeeze_scenario(self, hero_pos: str, table_format: str, action_seq: Dict) -> tuple:
         """
         Retourne le scénario complet pour squeeze (opener, callers_text).
-        Utilise action_sequence si présent, sinon génère aléatoirement.
+        🔧 CLARIFICATION : Utilise action_sequence si présent (positions réelles), 
+        sinon génère aléatoirement de manière logique.
         """
         positions = self._get_positions(table_format)
 
@@ -433,15 +442,17 @@ class QuizGenerator:
         # OPENER
         if action_seq and action_seq.get('opener'):
             opener = action_seq['opener']
+            print(f"  ✅ Squeeze opener RÉEL: {opener}")
         else:
             # Choisir un opener au moins 2 positions avant héros
             valid_openers = positions[:max(0, hero_idx - 2)]
             opener = random.choice(valid_openers) if valid_openers else "UTG"
-            print(f"  🎲 Squeeze opener aléatoire: {opener}")
+            print(f"  🎲 Squeeze opener INVENTÉ: {opener}")
 
         # CALLERS
         if action_seq and action_seq.get('callers'):
             callers = action_seq['callers']
+            print(f"  ✅ Callers RÉELS: {callers}")
             if len(callers) == 1:
                 callers_text = f"{callers[0]} call"
             else:
@@ -449,6 +460,7 @@ class QuizGenerator:
         elif action_seq and action_seq.get('callers_count'):
             count = action_seq['callers_count']
             callers_text = f"{count} joueur(s) callent"
+            print(f"  ✅ Nombre de callers RÉEL: {count}")
         else:
             # Générique : 1 caller aléatoire entre opener et héros
             if opener in positions:
@@ -457,18 +469,21 @@ class QuizGenerator:
                 if valid_callers:
                     caller = random.choice(valid_callers)
                     callers_text = f"{caller} call"
-                    print(f"  🎲 Squeeze caller aléatoire: {caller}")
+                    print(f"  🎲 Caller INVENTÉ: {caller}")
                 else:
                     callers_text = "un joueur call"
+                    print(f"  🎲 Caller GÉNÉRIQUE (pas de positions entre opener et hero)")
             else:
                 callers_text = "un joueur call"
+                print(f"  🎲 Caller GÉNÉRIQUE (opener invalide)")
 
         return opener, callers_text
 
     def _get_limpers_scenario(self, hero_pos: str, table_format: str, action_seq: Dict) -> str:
         """
         Retourne le scénario pour vs_limpers.
-        Utilise action_sequence si présent, sinon génère aléatoirement.
+        🔧 CLARIFICATION : Utilise action_sequence si présent (positions réelles), 
+        sinon génère aléatoirement de manière logique.
         """
         positions = self._get_positions(table_format)
 
@@ -479,6 +494,7 @@ class QuizGenerator:
 
         if action_seq and action_seq.get('limpers'):
             limpers = action_seq['limpers']
+            print(f"  ✅ Limpers RÉELS: {limpers}")
             if len(limpers) == 1:
                 return f"{limpers[0]} limp"
             else:
@@ -486,6 +502,7 @@ class QuizGenerator:
 
         elif action_seq and action_seq.get('limpers_count'):
             count = action_seq['limpers_count']
+            print(f"  ✅ Nombre de limpers RÉEL: {count}")
             return f"{count} joueur(s) limpent"
 
         else:
@@ -494,7 +511,7 @@ class QuizGenerator:
             num_limpers = random.randint(1, min(2, len(valid_limpers)))
             limpers = random.sample(valid_limpers, num_limpers)
 
-            print(f"  🎲 Limpers aléatoires: {limpers}")
+            print(f"  🎲 Limpers INVENTÉS: {limpers}")
 
             if len(limpers) == 1:
                 return f"{limpers[0]} limp"

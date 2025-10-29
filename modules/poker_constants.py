@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
 Constantes liées au poker : mains, forces, mappings
+🔧 CORRECTION : Ordre immuable FOLD → CALL → RAISE
 """
 
 # Liste complète des 169 mains de poker
@@ -90,19 +91,41 @@ HAND_STRENGTH = {
     '32o': 17
 }
 
-# Ordre fixe des actions pour l'affichage
-ACTION_ORDER = {
-    'FOLD': 1,
-    'CHECK': 2,
-    'CALL': 3,
-    'RAISE': 4,
-    'OPEN': 5,
-    'ISO': 6,
-    '3BET': 7,
-    'SQUEEZE': 7,  # Même ordre que 3BET
-    '4BET': 8,
-    'ALLIN': 9
-}
+# 🆕 ORDRE IMMUABLE DES BOUTONS : FOLD → CALL/CHECK → RAISE
+# CHECK remplace CALL quand l'action est gratuite (BB check par exemple)
+# ISO remplace RAISE pour le contexte vs_limpers
+IMMUTABLE_BUTTON_ORDER = ['FOLD', 'CALL', 'CHECK', 'RAISE', 'ISO', 'OPEN']
+
+def sort_actions(actions):
+    """
+    🔧 CORRECTION : Trie les actions dans l'ordre IMMUABLE.
+    
+    Ordre strict : FOLD → CALL/CHECK → RAISE/ISO/OPEN
+    
+    Args:
+        actions: Liste d'actions à trier
+        
+    Returns:
+        Liste triée selon l'ordre immuable
+    """
+    if not actions:
+        return []
+    
+    # Mapping de priorité : plus petit = plus à gauche
+    order_map = {
+        'FOLD': 1,
+        'CHECK': 2,  # Remplace CALL quand action gratuite
+        'CALL': 2,   # Même position que CHECK
+        'RAISE': 3,
+        'ISO': 3,    # Remplace RAISE pour vs_limpers
+        'OPEN': 3,   # Remplace RAISE pour open
+        '3BET': 3,   # Considéré comme RAISE
+        '4BET': 3,   # Considéré comme RAISE
+        'SQUEEZE': 3,  # Considéré comme RAISE
+        'ALLIN': 3   # Considéré comme RAISE
+    }
+    
+    return sorted(actions, key=lambda x: order_map.get(x, 999))
 
 # Normalisation des actions (fusionner value/bluff)
 ACTION_NORMALIZATION = {
@@ -115,6 +138,7 @@ ACTION_NORMALIZATION = {
     'ISO_BLUFF': 'ISO',
     'ISO_RAISE': 'ISO',
     'SQUEEZE': 'RAISE',
+    'CALL_4BET': 'CALL',   # flat vs 4bet
 }
 
 # Traductions françaises des actions
@@ -130,72 +154,28 @@ ACTION_TRANSLATIONS = {
     'vs_limpers': 'face aux limpers avec'
 }
 
-
-def sort_actions(actions):
-    """
-    Trie les actions dans un ordre logique et constant.
-
-    Args:
-        actions: Liste d'actions à trier
-
-    Returns:
-        Liste triée selon ACTION_ORDER
-    """
-    if not actions:
-        return []
-
-    return sorted(actions, key=lambda x: ACTION_ORDER.get(x, 999))
-
-
 def normalize_action(action):
     """
     Normalise une action en fusionnant value/bluff.
-
-    Args:
-        action: Action à normaliser (ex: 'R3_VALUE', '3BET', 'ISO_BLUFF')
-
-    Returns:
-        Action normalisée (ex: '3BET', 'ISO') ou None si invalide
+    Retourne l'action canonique (ex: '3BET', '4BET', 'CALL', 'RAISE', 'FOLD', 'ALLIN').
     """
-    # Gérer les valeurs nulles/invalides
-    if not action or action == 'None' or action == 'null' or action == '':
+    if not action or action in ('None', 'null', ''):
         return None
-
-    # Retourner la normalisation ou l'action elle-même
     return ACTION_NORMALIZATION.get(action, action)
 
-
 def translate_action(action):
-    """
-    Traduit une action en français pour les questions.
-
-    Args:
-        action: Action en anglais
-
-    Returns:
-        Traduction française
-    """
+    """Traduit une action en français pour les questions."""
     if not action:
         return 'jouez avec'
-
     return ACTION_TRANSLATIONS.get(action.lower(), action)
 
-
 def get_hand_strength(hand):
-    """
-    Récupère la force d'une main.
-
-    Args:
-        hand: Main de poker (ex: 'AA', 'KQs')
-
-    Returns:
-        Force de la main (0-100) ou 50 par défaut
-    """
+    """Récupère la force d'une main (0-100, default 50)."""
     return HAND_STRENGTH.get(hand, 50)
 
 AVAILABLE_LABELS = {
     'OPEN': 'Open',
-    'CALL': 'Call',
+    'CALL': 'Call',             # flat open
     'FOLD': 'Fold',
     'RAISE': 'Raise',
     'R3_VALUE': '3bet Value',
@@ -207,50 +187,81 @@ AVAILABLE_LABELS = {
     'ISO_BLUFF': 'Iso Bluff',
     'CHECK': 'Check',
     'DEFENSE': 'Defense',
-    'UNKNOWN': 'Inconnu'
+    'UNKNOWN': 'Inconnu',
+    'CALL_4BET': 'Call 4bet'    # flat vs 4bet
 }
 
+# --- Arbre des paliers (logique de cascade) ---
 RANGE_STRUCTURE = {
     'OPEN': {
         'actions': [('initial', 'RAISE')],
-        'next_ranges': ['R4_VALUE', 'R4_BLUFF', 'R3_VALUE', 'R3_BLUFF']
+        # Après un open, on traite les branches de 3bet
+        'next_ranges': ['R3_VALUE', 'R3_BLUFF']
     },
+
+    # Sur 3bet (défense) : 3 branches explicites + FOLD implicite
     'R3_VALUE': {
-        'actions': [('initial', 'RAISE')],
-        'next_ranges': ['R5_ALLIN', 'CALL']
+        # Standard : Villain 4bet → on peut 5bet value ou CALL le 4bet (range dédiée)
+        'actions': [
+            ('4bet', 'RAISE'),   # 5bet (value): continuera vers R4_VALUE/R4_BLUFF selon appartenance
+            ('4bet', 'CALL')     # call 4bet: branche CALL_4BET (fin de préflop)
+        ],
+        # La main doit appartenir à l'un de ces ranges, sinon FOLD implicite (géré côté générateur)
+        'next_ranges': ['R5_ALLIN', 'CALL_4BET']  # Corrigé
     },
+
     'R3_BLUFF': {
-        'actions': [('initial', 'RAISE'), ('4bet', 'FOLD')],
+        # Nos bluffs 3bet : fold face au 4bet
+        'actions': [('4bet', 'FOLD')],
         'next_ranges': []
     },
+
+    # Après NOTRE 4bet
     'R4_VALUE': {
-        'actions': [('3bet', 'RAISE'), ('all-in', 'CALL')],
+        # Villain shove → nous CALL (value)
+        'actions': [('all-in', 'CALL')],
         'next_ranges': []
     },
     'R4_BLUFF': {
-        'actions': [('3bet', 'RAISE'), ('all-in', 'FOLD')],
+        # Villain shove → nous FOLD (bluff)
+        'actions': [('all-in', 'FOLD')],
         'next_ranges': []
     },
+
+    # Optionnel : palier terminal s'il est encore utilisé ailleurs
     'R5_ALLIN': {
-        'actions': [('4bet', 'RAISE')],
+        'actions': [],
         'next_ranges': []
     },
+
+    # Flat vs 4bet (distinct de CALL "flat open") : fin de préflop
+    'CALL_4BET': {
+        'actions': [],
+        'next_ranges': []
+    },
+
+    # (Facultatif) Flat open : si tu veux générer des tiroirs après un flat qui subit 3bet derrière
     'CALL': {
-        'actions': [('3bet', 'CALL')],
+        'actions': [('3bet', 'CALL'), ('3bet', 'FOLD')],
         'next_ranges': []
     },
+
+    # Défense (choix d'UX; la cascade démarre en pratique sur CALL ou R3_*)
     'DEFENSE': {
         'actions': [('open', 'RAISE')],
-        'next_ranges': ['R4_VALUE', 'R4_BLUFF', 'R3_VALUE', 'R3_BLUFF']
+        'next_ranges': ['R3_VALUE', 'R3_BLUFF']
     },
+
     'SQUEEZE': {
         'actions': [('call', 'RAISE')],
         'next_ranges': ['R4_VALUE', 'R4_BLUFF']
     },
+
     'ISO_VALUE': {
         'actions': [('limp', 'RAISE')],
         'next_ranges': []
     },
+
     'ISO_BLUFF': {
         'actions': [('limp', 'RAISE'), ('3bet', 'FOLD')],
         'next_ranges': []

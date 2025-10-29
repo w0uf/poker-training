@@ -258,6 +258,53 @@
             margin-bottom: 10px;
         }
 
+        /* 🆕 Action Sequence Display (drill-down) */
+        .quiz-action-sequence {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: rgba(255, 193, 7, 0.1);
+            border-radius: 8px;
+            border-left: 4px solid #FFC107;
+        }
+
+        .quiz-action-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-weight: 700;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+
+        .quiz-action-raise {
+            background: linear-gradient(135deg, #ffa726 0%, #ff9800 100%);
+            color: white;
+        }
+
+        .quiz-action-call {
+            background: linear-gradient(135deg, #66bb6a 0%, #4caf50 100%);
+            color: white;
+        }
+
+        .quiz-action-fold {
+            background: linear-gradient(135deg, #ef5350 0%, #e53935 100%);
+            color: white;
+        }
+
+        .quiz-action-check {
+            background: linear-gradient(135deg, #42a5f5 0%, #1e88e5 100%);
+            color: white;
+        }
+
+        .quiz-action-arrow {
+            color: #fff;
+            font-weight: bold;
+            font-size: 16px;
+            opacity: 0.7;
+        }
+
         .next-btn {
             margin-top: 20px;
             padding: 15px 40px;
@@ -586,14 +633,11 @@
     <div class="container">
         <!-- Header avec progression -->
         <div class="quiz-header">
-            <div class="score">
-                <span id="correctCount">0</span> / <span id="answeredCount">0</span> ✓
-            </div>
             <div class="progress-bar">
                 <div class="progress-fill" id="progressBar"></div>
             </div>
             <div class="progress-text">
-                Question <span id="currentQuestion">0</span>/<span id="totalQuestions">0</span>
+                Question <span id="currentQuestion">0</span>/<span id="totalQuestions">0</span> : <span id="correctCount">0</span> point(s)
             </div>
         </div>
 
@@ -615,6 +659,9 @@
                 <div class="question-zone">
                     <!-- Variante -->
                     <div id="questionVariant" class="question-variant" style="display: none;"></div>
+
+                    <!-- 🆕 Séquence d'actions (drill-down) -->
+                    <div id="actionSequence" class="quiz-action-sequence" style="display: none;"></div>
 
                     <div class="situation-text" id="situationText"></div>
 
@@ -642,7 +689,7 @@
         // ============================================
         let questions = [];
         let currentQuestionIndex = 0;
-        let currentQuestionNum = 0;
+        let currentQuestionNum = 1;  // 🔧 Commencer à 1 au lieu de 0
         let correctAnswers = 0;
         let currentQuestion = null;
 
@@ -653,6 +700,7 @@
         let isDrillDown = false;
         let currentLevel = 0;
         let drillDownLevels = [];
+        let drillDownAllCorrect = true;  // 🆕 Track si toute la séquence drill-down est correcte
 
         // ============================================
         // INITIALISATION
@@ -719,6 +767,7 @@
             if (isDrillDown) {
                 drillDownLevels = currentQuestion.levels;
                 currentLevel = 0;
+                drillDownAllCorrect = true;  // 🆕 Réinitialiser pour la nouvelle question
             }
 
             displayQuestion(currentQuestion);
@@ -750,6 +799,8 @@
             if (isDrillDown) {
                 displayDrillDownLevel(currentLevel);
             } else {
+                // Cacher la séquence d'actions pour les questions simples
+                document.getElementById('actionSequence').style.display = 'none';
                 document.getElementById('situationText').innerHTML = question.question;
                 displayActionButtons(question.options);
             }
@@ -757,6 +808,10 @@
 
         function displayDrillDownLevel(levelIndex) {
             const level = drillDownLevels[levelIndex];
+            
+            // Afficher la séquence d'actions déjà effectuées
+            displayDrillDownSequence(levelIndex);
+            
             document.getElementById('situationText').innerHTML = level.question;
             displayActionButtons(level.options);
         }
@@ -805,6 +860,51 @@
                 '4BET': 'Raise'
             };
             return translations[action] || action;
+        }
+
+        // 🆕 AFFICHAGE DE LA SÉQUENCE D'ACTIONS DÉJÀ EFFECTUÉES (drill-down)
+        function displayDrillDownSequence(currentLevel) {
+            const sequenceDiv = document.getElementById('actionSequence');
+            
+            // Si on est au premier niveau, ne rien afficher
+            if (currentLevel === 0) {
+                sequenceDiv.style.display = 'none';
+                return;
+            }
+            
+            // Afficher les actions déjà effectuées (de 0 à currentLevel-1)
+            const actionsToShow = currentQuestion.sequence.slice(0, currentLevel);
+            
+            if (!actionsToShow || actionsToShow.length === 0) {
+                sequenceDiv.style.display = 'none';
+                return;
+            }
+            
+            // Créer le HTML
+            sequenceDiv.innerHTML = '<div style="font-size: 0.9rem; color: #FFC107; margin-bottom: 8px; font-weight: 600;">📋 Vos actions précédentes :</div>';
+            
+            const actionsContainer = document.createElement('div');
+            actionsContainer.style.display = 'flex';
+            actionsContainer.style.alignItems = 'center';
+            actionsContainer.style.gap = '8px';
+            actionsContainer.style.flexWrap = 'wrap';
+            
+            actionsToShow.forEach((item, index) => {
+                // Badge d'action
+                const badge = document.createElement('span');
+                badge.className = `quiz-action-badge quiz-action-${item.action.toLowerCase()}`;
+                badge.textContent = item.action;
+                actionsContainer.appendChild(badge);
+                
+                // Ajouter une flèche après chaque action
+                const arrow = document.createElement('span');
+                arrow.className = 'quiz-action-arrow';
+                arrow.textContent = '→';
+                actionsContainer.appendChild(arrow);
+            });
+            
+            sequenceDiv.appendChild(actionsContainer);
+            sequenceDiv.style.display = 'block';
         }
 
         // ============================================
@@ -859,12 +959,8 @@
                 level: currentLevel
             });
 
-            // ✅ CORRECTION : n'incrémenter qu'au dernier niveau ou en cas d'erreur (fin de la question principale)
-            const isFinalLevel = !isCorrect || currentLevel === drillDownLevels.length - 1;
-            
-            if (isFinalLevel) {
-                currentQuestionNum++;
-            }
+            // 🔧 Incrémenter à chaque étape du drill-down (chaque étape = 1 question)
+            currentQuestionNum++;
             
             if (isCorrect) correctAnswers++;
 
@@ -882,7 +978,6 @@
 
         function updateScoreDisplay() {
             document.getElementById('currentQuestion').textContent = currentQuestionNum;
-            document.getElementById('answeredCount').textContent = currentQuestionNum;
             document.getElementById('correctCount').textContent = correctAnswers;
 
             const totalSubQuestions = parseInt(document.getElementById('totalQuestions').textContent);
