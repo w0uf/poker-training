@@ -2,6 +2,7 @@
 """
 Générateur de questions de quiz avec support multiway (squeeze, vs_limpers)
 🆕 Intégration des questions à tiroirs (drill_down)
+🎚️ Support de l'agressivité de la table (low/medium/high)
 """
 
 import sqlite3
@@ -16,20 +17,33 @@ from poker_constants import (
 )
 from hand_selector import smart_hand_choice, get_all_hands_not_in_ranges
 from drill_down_generator import DrillDownGenerator  # 🆕
+from aggression_settings import get_aggression_settings  # 🎚️
 
 
 class QuizGenerator:
     """Génère des questions de quiz depuis les contextes validés"""
 
-    def __init__(self, db_path: str = None):
+    def __init__(self, db_path: str = None, aggression_level: str = 'medium'):
+        """
+        Initialise le générateur de quiz
+        
+        Args:
+            db_path: Chemin vers la base de données
+            aggression_level: Niveau d'agressivité ('low', 'medium', 'high')
+        """
         if db_path is None:
             # Chemin absolu depuis le module
             module_dir = Path(__file__).parent.parent
             db_path = module_dir / "data" / "poker_trainer.db"
         self.db_path = Path(db_path)
 
-        # 🆕 Générateur de questions à tiroirs
-        self.drill_down_gen = DrillDownGenerator()
+        # 🎚️ Paramètres d'agressivité
+        self.aggression_level = aggression_level
+        self.aggression = get_aggression_settings(aggression_level)
+        print(f"[QUIZ GEN] 🎚️ Agressivité: {aggression_level.upper()} - {self.aggression.get('description', '')}")
+
+        # 🆕 Générateur de questions à tiroirs (avec agressivité)
+        self.drill_down_gen = DrillDownGenerator(aggression_settings=self.aggression)
 
         # Positions par format
         self.POSITIONS_BY_FORMAT = {
@@ -137,9 +151,10 @@ class QuizGenerator:
             can_drill = self.drill_down_gen.can_generate_drill_down(ranges)
 
             if can_drill:
-                # 🧪 TEST: 100% de drill_down (normalement 50% : random.random() >= 0.5)
-                use_drill_down = True  # Force à 100% pour tests
-                print(f"  🎲 Type de question: {'DRILL_DOWN' if use_drill_down else 'SIMPLE'}")
+                # 🎚️ Probabilité de drill-down selon l'agressivité
+                use_drill_down_prob = self.aggression['use_drill_down_prob']
+                use_drill_down = random.random() < use_drill_down_prob
+                print(f"  🎲 Type de question: {'DRILL_DOWN' if use_drill_down else 'SIMPLE'} (prob={use_drill_down_prob*100:.0f}%)")
 
                 if use_drill_down:
                     # Préparer les mains pour drill_down
@@ -188,7 +203,7 @@ class QuizGenerator:
         """
         if used_hands is None:
             used_hands = set()
-
+        
         # Trouver la range principale
         main_range = self._get_main_range(ranges)
 
@@ -211,11 +226,11 @@ class QuizGenerator:
         # Préparer les mains IN et OUT
         in_range_hands = set(main_range['hands'])
         out_of_range_hands = get_all_hands_not_in_ranges(in_range_hands)
-
+        
         # 🆕 v4.3.7 : Filtrer les mains déjà utilisées
         available_in_range = in_range_hands - used_hands
         available_out_range = out_of_range_hands - used_hands
-
+        
         # Si on a fait le tour de TOUTES les mains, réinitialiser
         if not available_in_range and not available_out_range:
             print(f"[QUIZ] ♻️  Toutes les mains utilisées, réinitialisation du pool")
@@ -390,7 +405,6 @@ class QuizGenerator:
 
         # Trier dans un ordre fixe
         return sort_actions(options)
-
     def _get_contextual_distractors(self, primary_action: str) -> List[str]:
         """
         Retourne des distracteurs pertinents selon le contexte.

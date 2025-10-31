@@ -13,8 +13,22 @@ from poker_constants import RANGE_STRUCTURE
 class DrillDownGenerator:
     """Gestionnaire de drill down utilisant action_sequence"""
 
-    def __init__(self, db_path: str = "data/poker_trainer.db"):
+    def __init__(self, db_path: str = "data/poker_trainer.db", aggression_settings: dict = None):
+        """
+        Initialise le générateur de drill-down
+
+        Args:
+            db_path: Chemin vers la base de données
+            aggression_settings: Dict des paramètres d'agressivité (ou None pour medium)
+        """
         self.db_path = db_path
+
+        # 🎚️ Paramètres d'agressivité
+        if aggression_settings is None:
+            from aggression_settings import get_aggression_settings
+            aggression_settings = get_aggression_settings('medium')
+        self.aggression = aggression_settings
+
         # Positions par format de table
         self.POSITIONS_BY_FORMAT = {
             '5max': ['UTG', 'CO', 'BTN', 'SB', 'BB'],
@@ -26,26 +40,26 @@ class DrillDownGenerator:
     def _generate_villain_position(self, hero_position: str, table_format: str) -> str:
         """
         🆕 Génère une position cohérente pour le Vilain (position après le héros).
-        
+
         Args:
             hero_position: Position du héros (ex: "UTG", "CO")
             table_format: Format de table (ex: "5max", "6max")
-            
+
         Returns:
             Position du Vilain choisie aléatoirement après le héros
         """
         positions = self.POSITIONS_BY_FORMAT.get(table_format, self.POSITIONS_BY_FORMAT['6max'])
-        
+
         try:
             hero_idx = positions.index(hero_position)
             # Prendre une position après le héros (pas avant, car il ne peut pas 3bet)
             possible_positions = positions[hero_idx + 1:]
-            
+
             if possible_positions:
                 return random.choice(possible_positions)
         except (ValueError, IndexError):
             pass
-        
+
         # Fallback : retourner une position aléatoire
         return random.choice(['CO', 'BTN', 'SB', 'BB'])
 
@@ -282,7 +296,7 @@ class DrillDownGenerator:
         # 🆕 v4.3.7 : Filtrer les mains déjà utilisées
         available_in_range = in_range_hands - used_hands
         available_out_range = out_of_range_hands - used_hands
-        
+
         # Si on a fait le tour, réinitialiser
         if not available_in_range and not available_out_range:
             print(f"[DRILL] ♻️  Toutes les mains utilisées, réinitialisation")
@@ -342,7 +356,8 @@ class DrillDownGenerator:
 
         total_steps = len(full_sequence)
 
-        # 6. 🎲 Décider combien d'étapes on va faire (50% de continuer à chaque fois)
+        # 6. 🎲 Décider combien d'étapes on va faire
+        # 🎚️ Probabilité selon l'agressivité (30% LOW, 60% MEDIUM, 100% HIGH)
         # ⚠️ EXCEPTION : Pour les FOLD implicites, forcer 2 étapes minimum (sinon pas pédagogique)
         is_implicit_fold = (subrange_with_hand is None) and ("FOLD" in sequence_str)
 
@@ -351,15 +366,17 @@ class DrillDownGenerator:
             num_steps_to_use = min(2, total_steps)
             print(f"[DRILL] FOLD implicite détecté → forcer 2 étapes minimum")
         else:
-            # Séquence normale : tirage probabiliste
+            # Séquence normale : tirage probabiliste selon l'agressivité
+            continue_prob = self.aggression['drill_depth_continue_prob']
             num_steps_to_use = 1  # Au minimum 1 étape
             for step_num in range(2, total_steps + 1):
-                if random.random() < 1.0:  # 🧪 TEST: 100% de chance de continuer (normalement 0.5)
+                if random.random() < continue_prob:
                     num_steps_to_use = step_num
                 else:
                     break  # On s'arrête là
 
-        print(f"[DRILL] Séquence complète: {total_steps} étapes → on en fait: {num_steps_to_use}")
+        print(
+            f"[DRILL] Séquence complète: {total_steps} étapes → on en fait: {num_steps_to_use} (prob_continue={self.aggression['drill_depth_continue_prob'] * 100:.0f}%)")
 
         # Tronquer la séquence
         sequence = full_sequence[:num_steps_to_use]
@@ -387,8 +404,14 @@ class DrillDownGenerator:
             level_num = i + 1
 
             # 🔧 CORRECTION v2 : Un seul appel à _get_villain_reaction_at_level pour éviter double random
-            villain_reaction = self._get_villain_reaction_at_level(i, sequence[i - 1]["action"], 
+            villain_reaction = self._get_villain_reaction_at_level(i, sequence[i - 1]["action"],
                                                                    context) if i > 0 else None
+
+            # 🆕 BUG #2 : DÉTECTER ALL-IN
+            is_allin = False
+            if villain_reaction and villain_reaction.get('action') == 'ALL_IN':
+                is_allin = True
+                print(f"[DRILL] ⚠️ ALL-IN détecté au niveau {level_num} → arrêt de la séquence")
 
             # Texte de la question
             if level_num == 1:
@@ -403,18 +426,17 @@ class DrillDownGenerator:
             if step["type"] == "single":
                 # 🆕 AMÉLIORATION : Gérer RAISE face à ALL-IN → convertir en CALL
                 correct_action = step["action"]
-                
+
                 # Si Vilain est ALL-IN et notre action prévue est RAISE, on doit CALL
-                if villain_reaction and not villain_reaction.get('allows_raise', True):
-                    if correct_action == "RAISE":
-                        correct_action = "CALL"
-                        print(f"  🔄 ALL-IN détecté: RAISE converti en CALL")
-                
+                if is_allin and correct_action == "RAISE":
+                    correct_action = "CALL"
+                    print(f"  🔄 ALL-IN détecté: RAISE converti en CALL")
+
                 # Options de base
                 base_options = [correct_action, "CALL", "FOLD"]
 
                 # 🆕 Ajouter RAISE seulement si le Vilain n'est pas all-in
-                if not villain_reaction or villain_reaction.get('allows_raise', True):
+                if not is_allin and (not villain_reaction or villain_reaction.get('allows_raise', True)):
                     base_options.append("RAISE")
 
                 step_options = list(set(base_options))
@@ -436,11 +458,11 @@ class DrillDownGenerator:
 
                 # 🆕 AMÉLIORATION : Gérer ALL-IN pour les choix multiples
                 correct_answer = original_actions[0]  # Par défaut, première action
-                
-                if villain_reaction and not villain_reaction.get('allows_raise', True):
+
+                if is_allin:
                     # Vilain est ALL-IN : retirer RAISE des options
                     step_options = [opt for opt in step_options if opt not in ['RAISE', '4BET', '5BET']]
-                    
+
                     # Si CALL est dans les actions originales, c'est la bonne réponse
                     if "CALL" in original_actions:
                         correct_answer = "CALL"
@@ -461,6 +483,13 @@ class DrillDownGenerator:
                 }
 
             levels.append(level_data)
+
+            # 🆕 BUG #2 : ARRÊTER LA BOUCLE SI ALL-IN
+            if is_allin:
+                # Ajuster le nombre total d'étapes
+                num_steps_to_use = level_num
+                print(f"[DRILL] 📝 Séquence arrêtée après niveau {num_steps_to_use} (all-in)")
+                break
 
         # 10. Construire la question complète
         question = {
@@ -586,17 +615,17 @@ class DrillDownGenerator:
     def _generate_fixed_villain_position(self, context: Dict) -> str:
         """
         🆕 v4.3.6 : Génère la position du Vilain UNE SEULE FOIS pour toute la séquence drill-down.
-        
+
         Args:
             context: Contexte avec primary_action, hero_position, etc.
-            
+
         Returns:
             Position du Vilain (ex: "CO", "BB", "UTG")
         """
         primary_action = context.get('primary_action', '')
         action_seq = context.get('action_sequence')
         vs_position = context.get('vs_position')  # Depuis la BDD
-        
+
         # 1️⃣ Pour OPEN : Générer une position cohérente (après le héros)
         if primary_action == 'open':
             if vs_position:
@@ -605,7 +634,7 @@ class DrillDownGenerator:
                 hero_pos = context.get('hero_position', 'UTG')
                 table_format = context.get('table_format', '6max')
                 return self._generate_villain_position(hero_pos, table_format)
-        
+
         # 2️⃣ Pour defense/squeeze : utiliser l'opener
         elif primary_action in ['defense', 'squeeze']:
             if vs_position:
@@ -623,18 +652,23 @@ class DrillDownGenerator:
                     return 'MP'
                 elif 'vs BTN' in display_name or 'BTN' in display_name:
                     return 'BTN'
-        
+
         # Fallback générique
         return "Vilain"
 
     def _get_villain_reaction_at_level(self, level: int, hero_last_action: str, context: Dict = None) -> Optional[Dict]:
         """
-        🆕 Génère la réaction du Vilain de manière réaliste selon le niveau.
-        🔧 CORRECTION v2 : Génère intelligemment la position du Vilain pour OPEN
+        🆕 v4.4 : Génère la réaction du Vilain de manière réaliste selon le niveau.
 
-        Workflow 5Bet/All-In :
-        - Niveau 1 (après notre open) : Vilain 3bet
-        - Niveau 2 (après notre 4bet) : 50% 5bet, 50% all-in
+        Supporte maintenant le skip all-in (niveau 1) selon villain_skip_allin_level1.
+
+        Workflow complet :
+        - Niveau 1 (après notre open) :
+          * villain_skip_allin_level1% : ALL-IN DIRECT (skip 3bet) 🔥
+          * Sinon : Vilain 3bet (standard)
+        - Niveau 2 (après notre 4bet) :
+          * villain_allin_prob_level2% : ALL-IN
+          * Sinon : 5BET
 
         Args:
             level: Niveau actuel (0, 1, 2...)
@@ -646,7 +680,7 @@ class DrillDownGenerator:
         """
         # 🔧 BUGFIX v4.3.6 : Utiliser la position fixe générée une seule fois
         villain_position = "Vilain"  # Fallback
-        
+
         if context and 'villain_position_fixed' in context:
             # Utiliser la position fixe générée au début du drill-down
             villain_position = context['villain_position_fixed']
@@ -654,8 +688,25 @@ class DrillDownGenerator:
             # Fallback si la position fixe n'existe pas (ancien code)
             villain_position = "Vilain"
 
-        # Niveau 1 : Vilain 3bet après notre open/squeeze
+        # ============================================
+        # NIVEAU 1 : 3BET OU ALL-IN DIRECT 🔥
+        # ============================================
         if level == 1:
+            # 🆕 v4.4 : Support du skip all-in (all-in direct, skip 3bet)
+            skip_allin_prob = self.aggression.get('villain_skip_allin_level1', 0.0)
+
+            # ⚠️ VÉRIFICATION : Si prob > 0, on peut avoir un all-in direct
+            if skip_allin_prob > 0 and random.random() < skip_allin_prob:
+                print(f"  🔥 Vilain reaction niveau 1: ALL-IN DIRECT (skip 3bet)")
+                return {
+                    'action': 'ALL_IN',
+                    'text': f'{villain_position} all-in',  # Skip le 3bet
+                    'sizing': 'all-in',
+                    'allows_raise': False  # On ne peut plus raise face à all-in
+                }
+
+            # Cas standard : 3bet normal
+            print(f"  ✅ Vilain reaction niveau 1: 3BET")
             return {
                 'action': 'RAISE',
                 'text': f'{villain_position} 3bet',
@@ -663,13 +714,16 @@ class DrillDownGenerator:
                 'allows_raise': True  # On peut 4bet
             }
 
-        # Niveau 2 : Workflow 5Bet/All-In (après notre 4bet)
+        # ============================================
+        # NIVEAU 2 : 5BET OU ALL-IN (après notre 4bet)
+        # ============================================
         elif level == 2 and hero_last_action == 'RAISE':
-            # 50% chance de 5bet, 50% chance de all-in
-            is_allin = random.random() < 0.5
+            # 🆕 v4.4 : Utilise villain_allin_prob_level2 (au lieu de 0.5 fixe)
+            allin_prob = self.aggression.get('villain_allin_prob_level2', 0.5)
+            is_allin = random.random() < allin_prob
 
             if is_allin:
-                print(f"  🎲 Vilain reaction niveau 2: ALL-IN")
+                print(f"  🎲 Vilain reaction niveau 2: ALL-IN (prob={allin_prob * 100:.0f}%)")
                 return {
                     'action': 'ALL_IN',
                     'text': f'{villain_position} all-in',
@@ -677,12 +731,35 @@ class DrillDownGenerator:
                     'allows_raise': False  # On ne peut plus raise face à all-in
                 }
             else:
-                print(f"  🎲 Vilain reaction niveau 2: 5BET")
+                print(f"  🎲 Vilain reaction niveau 2: 5BET (prob={(1 - allin_prob) * 100:.0f}%)")
                 return {
                     'action': 'RAISE',
                     'text': f'{villain_position} 5bet',
                     'sizing': '5bet',
                     'allows_raise': True  # On peut 6bet (rare mais possible)
+                }
+
+        # ============================================
+        # NIVEAU 3 : ALL-IN OU CALL (après notre 6bet) 🆕 v4.4.2
+        # ============================================
+        elif level == 3 and hero_last_action == 'RAISE':
+            allin_prob_level3 = self.aggression.get('villain_allin_prob_level3', 0.0)
+
+            if allin_prob_level3 > 0 and random.random() < allin_prob_level3:
+                print(f"  🔥 Vilain reaction niveau 3: ALL-IN (7bet, prob={allin_prob_level3 * 100:.0f}%)")
+                return {
+                    'action': 'ALL_IN',
+                    'text': f'{villain_position} all-in',
+                    'sizing': 'all-in',
+                    'allows_raise': False
+                }
+            else:
+                print(f"  ✅ Vilain reaction niveau 3: CALL (prob={(1 - allin_prob_level3) * 100:.0f}%)")
+                return {
+                    'action': 'CALL',
+                    'text': f'{villain_position} call',
+                    'sizing': 'call',
+                    'allows_raise': False  # Fin de la séquence preflop
                 }
 
         return None

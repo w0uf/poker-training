@@ -5,12 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Configuration du Quiz - Poker Training</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
             background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
@@ -18,28 +13,13 @@
             min-height: 100vh;
             padding: 20px;
         }
-
-        .container {
-            max-width: 900px;
-            margin: 0 auto;
-        }
-
-        .header {
-            text-align: center;
-            margin-bottom: 40px;
-        }
-
+        .container { max-width: 900px; margin: 0 auto; }
+        .header { text-align: center; margin-bottom: 40px; }
         .header h1 {
-            font-size: 2.5rem;
-            margin-bottom: 10px;
+            font-size: 2.5rem; margin-bottom: 10px;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
         }
-
-        .header p {
-            font-size: 1.1rem;
-            opacity: 0.9;
-        }
-
+        .header p { font-size: 1.1rem; opacity: 0.9; }
         .card {
             background: rgba(255, 255, 255, 0.95);
             border-radius: 16px;
@@ -48,7 +28,6 @@
             box-shadow: 0 8px 32px rgba(0,0,0,0.3);
             color: #333;
         }
-
         .section-title {
             font-size: 1.5rem;
             color: #1e3c72;
@@ -56,13 +35,7 @@
             padding-bottom: 10px;
             border-bottom: 2px solid #e0e0e0;
         }
-
-        .contexts-list {
-            display: grid;
-            gap: 12px;
-            margin-bottom: 20px;
-        }
-
+        .contexts-list { display: grid; gap: 12px; margin-bottom: 20px; }
         .context-item {
             background: #f8f9fa;
             border: 2px solid #dee2e6;
@@ -74,45 +47,29 @@
             align-items: center;
             gap: 15px;
         }
-
         .context-item:hover {
             border-color: #2a5298;
             background: #e3f2fd;
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(42, 82, 152, 0.2);
         }
-
         .context-item.selected {
             border-color: #2a5298;
             background: #e3f2fd;
         }
-
         .context-checkbox {
             width: 24px;
             height: 24px;
             cursor: pointer;
             accent-color: #2a5298;
         }
-
-        .context-info {
-            flex: 1;
-        }
-
+        .context-info { flex: 1; }
         .context-name {
-            font-weight: 600;
-            font-size: 1.1rem;
-            color: #1e3c72;
-            margin-bottom: 5px;
+            font-weight: 600; font-size: 1.1rem; color: #1e3c72; margin-bottom: 5px;
         }
-
         .context-details {
-            font-size: 0.9rem;
-            color: #666;
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
+            font-size: 0.9rem; color: #666; display: flex; gap: 15px; flex-wrap: wrap;
         }
-
         .context-badge {
             display: inline-block;
             padding: 4px 10px;
@@ -121,7 +78,6 @@
             font-size: 0.85rem;
             border: 1px solid #dee2e6;
         }
-
         .select-all-btn {
             background: transparent;
             border: 2px solid #2a5298;
@@ -134,377 +90,169 @@
             transition: all 0.2s;
             margin-bottom: 20px;
         }
+        .select-all-btn:hover { background: #2a5298; color: white; }
 
-        .select-all-btn:hover {
-            background: #2a5298;
-            color: white;
-        }
-
-        .questions-config {
-            margin: 30px 0;
-        }
-
-        .slider-container {
-            margin: 20px 0;
-        }
-
-        .slider-label {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 10px;
-            font-weight: 500;
-            color: #555;
-        }
-
-        .slider-value {
-            font-size: 1.5rem;
-            color: #2a5298;
-            font-weight: 700;
-        }
-
+        .questions-config { margin: 30px 0; }
+        .slider-container { margin: 20px 0; }
+        .slider-label { display: flex; justify-content: space-between; margin-bottom: 10px; font-weight: 500; color: #555; }
+        .slider-value { font-size: 1.5rem; color: #2a5298; font-weight: 700; }
         input[type="range"] {
-            width: 100%;
-            height: 8px;
-            border-radius: 5px;
-            background: #dee2e6;
-            outline: none;
-            appearance: none;
+            width: 100%; height: 8px; border-radius: 5px; background: #dee2e6; outline: none; appearance: none;
         }
-
         input[type="range"]::-webkit-slider-thumb {
-            appearance: none;
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            background: #2a5298;
-            cursor: pointer;
-            transition: all 0.2s;
+            appearance: none; width: 24px; height: 24px; border-radius: 50%; background: #2a5298;
+            cursor: pointer; transition: all 0.2s;
         }
-
         input[type="range"]::-webkit-slider-thumb:hover {
             transform: scale(1.2);
             box-shadow: 0 0 10px rgba(42, 82, 152, 0.5);
         }
-
         input[type="range"]::-moz-range-thumb {
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            background: #2a5298;
-            cursor: pointer;
-            border: none;
+            width: 24px; height: 24px; border-radius: 50%; background: #2a5298; cursor: pointer; border: none;
         }
-
-        .launch-section {
-            text-align: center;
-            padding-top: 20px;
-        }
-
+        .launch-section { text-align: center; padding-top: 20px; }
         .launch-btn {
             background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
-            color: white;
-            border: none;
-            padding: 18px 50px;
-            font-size: 1.3rem;
-            font-weight: 700;
-            border-radius: 12px;
-            cursor: pointer;
-            transition: all 0.3s;
-            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
-            text-transform: uppercase;
-            letter-spacing: 1px;
+            color: white; border: none; padding: 18px 50px; font-size: 1.3rem; font-weight: 700;
+            border-radius: 12px; cursor: pointer; transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4); text-transform: uppercase; letter-spacing: 1px;
         }
-
         .launch-btn:hover:not(:disabled) {
             transform: translateY(-3px);
             box-shadow: 0 6px 25px rgba(76, 175, 80, 0.6);
         }
-
-        .launch-btn:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-            box-shadow: none;
-        }
-
+        .launch-btn:disabled { background: #ccc; cursor: not-allowed; box-shadow: none; }
         .error-message {
-            background: #ff5252;
-            color: white;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            display: none;
+            background: #ff5252; color: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: none;
         }
-
         .info-box {
-            background: #fff3cd;
-            border-left: 4px solid #ffc107;
-            color: #856404;
-            padding: 15px;
-            border-radius: 4px;
-            margin-bottom: 20px;
+            background: #fff3cd; border-left: 4px solid #ffc107; color: #856404;
+            padding: 15px; border-radius: 4px; margin-bottom: 20px;
         }
-
         .back-link {
-            display: inline-block;
-            color: white;
-            text-decoration: none;
-            margin-bottom: 20px;
-            font-size: 1.1rem;
-            opacity: 0.9;
-            transition: opacity 0.2s;
+            display: inline-block; color: white; text-decoration: none; margin-bottom: 20px;
+            font-size: 1.1rem; opacity: 0.9; transition: opacity 0.2s;
         }
-
-        .back-link:hover {
-            opacity: 1;
-        }
-
-        .loading {
-            text-align: center;
-            padding: 40px;
-            font-size: 1.2rem;
-        }
-
+        .back-link:hover { opacity: 1; }
+        .loading { text-align: center; padding: 40px; font-size: 1.2rem; }
         .spinner {
             border: 4px solid rgba(255, 255, 255, 0.3);
             border-top: 4px solid white;
             border-radius: 50%;
-            width: 40px;
-            height: 40px;
+            width: 40px; height: 40px;
             animation: spin 1s linear infinite;
             margin: 20px auto;
         }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        /* Modal styles */
+        /* Modal */
         .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.7);
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-            padding: 20px;
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.7); align-items: center; justify-content: center;
+            z-index: 1000; padding: 20px;
         }
-
-        .modal.show {
-            display: flex;
-        }
-
+        .modal.show { display: flex; }
         .modal-content {
-            background: white;
-            border-radius: 12px;
-            max-width: 700px;
-            width: 100%;
-            max-height: 90vh;
-            overflow-y: auto;
+            background: white; border-radius: 12px; max-width: 700px; width: 100%; max-height: 90vh; overflow-y: auto;
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
         }
-
         .modal-header {
-            background: #fff3cd;
-            border-bottom: 2px solid #ffc107;
-            padding: 20px;
-            border-radius: 12px 12px 0 0;
+            background: #fff3cd; border-bottom: 2px solid #ffc107; padding: 20px; border-radius: 12px 12px 0 0;
         }
-
-        .modal-header h2 {
-            color: #856404;
-            margin: 0;
-            font-size: 1.5rem;
-        }
-
-        .modal-body {
-            padding: 24px;
-            color: #333;
-        }
-
-        .modal-footer {
-            padding: 16px 24px;
-            border-top: 1px solid #dee2e6;
-            display: flex;
-            justify-content: flex-end;
-            gap: 12px;
-        }
-
-        .btn {
-            padding: 10px 24px;
-            border-radius: 6px;
-            font-size: 1rem;
-            font-weight: 500;
-            cursor: pointer;
-            border: none;
-            transition: all 0.2s;
-        }
-
-        .btn-secondary {
-            background: #6c757d;
-            color: white;
-        }
-
-        .btn-secondary:hover {
-            background: #5a6268;
-        }
-
-        .btn-primary {
-            background: #2a5298;
-            color: white;
-        }
-
-        .btn-primary:hover:not(:disabled) {
-            background: #1e3c72;
-        }
-
-        .btn-primary:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-        }
-
-        .btn-danger {
-            background: #dc3545;
-            color: white;
-        }
-
-        .btn-danger:hover {
-            background: #c82333;
-        }
-
+        .modal-header h2 { color: #856404; margin: 0; font-size: 1.5rem; }
+        .modal-body { padding: 24px; color: #333; }
+        .modal-footer { padding: 16px 24px; border-top: 1px solid #dee2e6; display: flex; justify-content: flex-end; gap: 12px; }
+        .btn { padding: 10px 24px; border-radius: 6px; font-size: 1rem; font-weight: 500; cursor: pointer; border: none; transition: all 0.2s; }
+        .btn-secondary { background: #6c757d; color: white; }
+        .btn-secondary:hover { background: #5a6268; }
+        .btn-primary { background: #2a5298; color: white; }
+        .btn-primary:hover:not(:disabled) { background: #1e3c72; }
+        .btn-primary:disabled { background: #ccc; cursor: not-allowed; }
+        .btn-danger { background: #dc3545; color: white; }
+        .btn-danger:hover { background: #c82333; }
         .conflict-group {
-            background: #f8f9fa;
-            border: 1px solid #dee2e6;
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 15px;
+            background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 15px; margin-bottom: 15px;
         }
-
-        .conflict-header {
-            font-weight: 600;
-            color: #1e3c72;
-            margin-bottom: 10px;
-            font-size: 1.1rem;
-        }
-
-        .conflict-contexts {
-            color: #666;
-            margin-bottom: 10px;
-            font-size: 0.95rem;
-        }
-
-        .conflict-details {
-            background: white;
-            border-radius: 4px;
-            padding: 10px;
-            font-family: monospace;
-            font-size: 0.9rem;
-        }
-
-        .conflict-hand {
-            padding: 5px 0;
-            border-bottom: 1px solid #f0f0f0;
-        }
-
-        .conflict-hand:last-child {
-            border-bottom: none;
-        }
-
+        .conflict-header { font-weight: 600; color: #1e3c72; margin-bottom: 10px; font-size: 1.1rem; }
+        .conflict-contexts { color: #666; margin-bottom: 10px; font-size: 0.95rem; }
+        .conflict-details { background: white; border-radius: 4px; padding: 10px; font-family: monospace; font-size: 0.9rem; }
+        .conflict-hand { padding: 5px 0; border-bottom: 1px solid #f0f0f0; }
+        .conflict-hand:last-child { border-bottom: none; }
         .variant-section {
-            margin-top: 20px;
-            padding: 15px;
-            background: #e3f2fd;
-            border-radius: 8px;
-            border: 1px solid #2a5298;
+            margin-top: 20px; padding: 15px; background: #e3f2fd; border-radius: 8px; border: 1px solid #2a5298;
         }
-
-        .variant-section h3 {
-            color: #1e3c72;
-            font-size: 1.1rem;
-            margin-bottom: 15px;
-        }
-
-        .variant-input-group {
-            margin-bottom: 12px;
-        }
-
-        .variant-label {
-            display: block;
-            font-weight: 500;
-            margin-bottom: 5px;
-            color: #555;
-        }
-
+        .variant-section h3 { color: #1e3c72; font-size: 1.1rem; margin-bottom: 15px; }
+        .variant-input-group { margin-bottom: 12px; }
+        .variant-label { display: block; font-weight: 500; margin-bottom: 5px; color: #555; }
         .variant-input {
-            width: 100%;
-            padding: 10px;
-            border: 2px solid #dee2e6;
-            border-radius: 6px;
-            font-size: 1rem;
-            transition: border-color 0.2s;
+            width: 100%; padding: 10px; border: 2px solid #dee2e6; border-radius: 6px; font-size: 1rem; transition: border-color 0.2s;
         }
+        .variant-input:focus { outline: none; border-color: #2a5298; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-success:hover:not(:disabled) { background: #218838; }
+        .btn-success:disabled { background: #ccc; cursor: not-allowed; }
 
-        .variant-input:focus {
-            outline: none;
-            border-color: #2a5298;
+        /* ===== WIDGET AGRESSION ===== */
+        .aggression-selector {
+            margin: 25px 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border-radius: 12px;
+            border: 2px solid #e1e8ed;
         }
-
-        .btn-success {
-            background: #28a745;
-            color: white;
+        .setting-label {
+            display: flex; align-items: center; margin-bottom: 15px;
+            font-size: 18px; font-weight: 600; color: #2c3e50;
         }
-
-        .btn-success:hover:not(:disabled) {
-            background: #218838;
+        .label-icon { font-size: 24px; margin-right: 10px; }
+        .label-text { flex: 1; }
+        .aggression-buttons {
+            display: flex; gap: 15px; margin-bottom: 15px; flex-wrap: wrap;
         }
-
-        .btn-success:disabled {
-            background: #ccc;
-            cursor: not-allowed;
+        .btn-aggression {
+            flex: 1; min-width: 140px; padding: 15px 20px; background: white;
+            border: 3px solid #e1e8ed; border-radius: 10px; cursor: pointer;
+            transition: all 0.3s ease; font-size: 16px; font-weight: 500;
+            display: flex; flex-direction: column; align-items: center; gap: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
-
-        .resolution-options {
-            display: flex;
-            gap: 15px;
-            margin-top: 20px;
+        .btn-aggression:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            border-color: #3498db;
         }
-
-        .resolution-option {
-            flex: 1;
-            padding: 15px;
-            border: 2px solid #dee2e6;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.2s;
-            text-align: center;
+        .btn-aggression.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white; border-color: #667eea;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
         }
-
-        .resolution-option:hover {
-            border-color: #2a5298;
-            background: #f0f7ff;
+        .btn-aggression[data-aggression="low"].active {
+            background: linear-gradient(135deg, #56ab2f 0%, #a8e063 100%);
+            border-color: #56ab2f;
         }
-
-        .resolution-option.selected {
-            border-color: #2a5298;
-            background: #e3f2fd;
+        .btn-aggression[data-aggression="medium"].active {
+            background: linear-gradient(135deg, #f09819 0%, #edde5d 100%);
+            border-color: #f09819;
         }
-
-        .resolution-option input[type="radio"] {
-            margin-right: 8px;
+        .btn-aggression[data-aggression="high"].active {
+            background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+            border-color: #eb3349;
         }
-
-        .resolution-title {
-            font-weight: 600;
-            margin-bottom: 5px;
+        .aggression-icon { font-size: 28px; }
+        .aggression-name { font-size: 14px; font-weight: 600; }
+        .aggression-description {
+            margin: 10px 0; padding: 12px; background: rgba(255, 255, 255, 0.8);
+            border-radius: 8px; font-size: 14px; color: #555; text-align: center;
         }
-
-        .resolution-desc {
-            font-size: 0.9rem;
-            color: #666;
+        .aggression-details { margin-top: 15px; }
+        .detail-item {
+            padding: 12px; background: white; border-radius: 8px; font-size: 13px; color: #555;
+            line-height: 1.6; border-left: 4px solid #3498db;
+        }
+        .detail-item strong { display: block; margin-bottom: 5px; color: #2c3e50; }
+        @media (max-width: 768px) {
+            .aggression-buttons { flex-direction: column; }
+            .btn-aggression { min-width: 100%; }
         }
     </style>
 </head>
@@ -525,6 +273,7 @@
         </div>
 
         <div id="content" style="display: none;">
+            <!-- 1. Sélection des contextes -->
             <div class="card">
                 <h2 class="section-title">📚 Sélection des contextes</h2>
 
@@ -532,18 +281,64 @@
                     <span id="selectAllText">✓ Tout sélectionner</span>
                 </button>
 
-                <div id="contextsList" class="contexts-list">
-                    <!-- Contexts dynamically loaded here -->
-                </div>
+                <div id="contextsList" class="contexts-list"></div>
 
                 <div class="info-box" id="selectionInfo">
                     <strong>0</strong> contexte(s) sélectionné(s)
                 </div>
             </div>
 
+            <!-- 2. WIDGET AGRESSION -->
+            <div class="card">
+                <h2 class="section-title">🔥 Profondeur / agressivité de la table</h2>
+
+                <div class="aggression-selector">
+                    <label class="setting-label">
+                        <span class="label-icon">🔥</span>
+                        <span class="label-text">Agressivité de la table</span>
+                    </label>
+
+                    <div class="aggression-buttons">
+                        <button type="button" class="btn-aggression" data-aggression="low"
+                                title="Table passive - Séquences courtes, peu d'all-in">
+                            <span class="aggression-icon">🟢</span>
+                            <span class="aggression-name">Faible</span>
+                        </button>
+
+                        <button type="button" class="btn-aggression active" data-aggression="medium"
+                                title="Table standard - Mix équilibré">
+                            <span class="aggression-icon">🟡</span>
+                            <span class="aggression-name">Moyenne</span>
+                        </button>
+
+                        <button type="button" class="btn-aggression" data-aggression="high"
+                                title="Table ultra-agressive - Séquences longues, beaucoup d'all-in">
+                            <span class="aggression-icon">🔴</span>
+                            <span class="aggression-name">Élevée</span>
+                        </button>
+                    </div>
+
+                    <p class="aggression-description">
+                        Contrôle les actions du vilain (3bet, 5bet, all-in, profondeur des séquences)
+                    </p>
+
+                    <div class="aggression-details">
+                        <div class="detail-item" data-level="low" style="display: none;">
+                            <strong>🟢 Faible :</strong> Table passive, séquences courtes (1-2 étapes), peu d'all-in (20%), 50% drill-down
+                        </div>
+                        <div class="detail-item" data-level="medium" style="display: block;">
+                            <strong>🟡 Moyenne :</strong> Table standard, séquences moyennes (1-3 étapes), all-in modéré (50%), 70% drill-down
+                        </div>
+                        <div class="detail-item" data-level="high" style="display: none;">
+                            <strong>🔴 Élevée :</strong> Table ultra-agressive, séquences longues (3 étapes), beaucoup d'all-in (80%), 100% drill-down
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. Nombre de questions -->
             <div class="card">
                 <h2 class="section-title">🎲 Nombre de questions</h2>
-
                 <div class="questions-config">
                     <div class="slider-container">
                         <div class="slider-label">
@@ -555,6 +350,7 @@
                 </div>
             </div>
 
+            <!-- 4. Lancement -->
             <div class="card">
                 <div class="launch-section">
                     <button class="launch-btn" id="launchBtn" onclick="startQuiz()" disabled>
@@ -577,7 +373,6 @@
                 </p>
                 <div id="conflictsList"></div>
 
-                <!-- Options de résolution -->
                 <div class="variant-section" id="variantSection" style="display: none;">
                     <h3>💡 Résoudre les conflits</h3>
                     <p style="margin-bottom: 15px; color: #555;">
@@ -587,15 +382,11 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closeConflictModal()">
-                    Annuler
-                </button>
+                <button class="btn btn-secondary" onclick="closeConflictModal()">Annuler</button>
                 <button class="btn btn-success" id="resolveWithVariantsBtn" onclick="resolveWithVariants()" style="display: none;">
                     ✓ Résoudre avec variantes
                 </button>
-                <button class="btn btn-danger" onclick="continueWithConflicts()">
-                    Continuer quand même
-                </button>
+                <button class="btn btn-danger" onclick="continueWithConflicts()">Continuer quand même</button>
             </div>
         </div>
     </div>
@@ -604,6 +395,38 @@
         let contexts = [];
         let selectedContexts = new Set();
         let detectedConflicts = null;
+
+        // ===== AGRESSION =====
+        let selectedAggression = 'medium';
+        document.addEventListener('DOMContentLoaded', () => {
+            // slider
+            const slider = document.getElementById('questionsSlider');
+            const display = document.getElementById('questionCount');
+            slider.addEventListener('input', (e) => {
+                display.textContent = e.target.value;
+            });
+
+            // boutons d'agressivité
+            const aggressionButtons = document.querySelectorAll('.btn-aggression');
+            const detailItems = document.querySelectorAll('.detail-item');
+
+            aggressionButtons.forEach(button => {
+                button.addEventListener('click', function () {
+                    aggressionButtons.forEach(btn => btn.classList.remove('active'));
+                    this.classList.add('active');
+                    selectedAggression = this.dataset.aggression;
+                    detailItems.forEach(item => {
+                        item.style.display = (item.dataset.level === selectedAggression) ? 'block' : 'none';
+                    });
+                    console.log('[AGGRESSION] sélectionnée :', selectedAggression);
+                });
+            });
+
+            // exposer la fonction
+            window.getSelectedAggression = function () {
+                return selectedAggression;
+            };
+        });
 
         // Chargement des contextes
         async function loadContexts() {
@@ -651,7 +474,6 @@
                     </div>
                 </div>
             `).join('');
-
             attachContextListeners();
         }
 
@@ -686,7 +508,6 @@
 
         function toggleSelectAll() {
             const allSelected = selectedContexts.size === contexts.length;
-
             if (allSelected) {
                 selectedContexts.clear();
                 contexts.forEach(ctx => {
@@ -700,23 +521,18 @@
                     if (checkbox) checkbox.checked = true;
                 });
             }
-
             updateUI();
         }
 
         function updateUI() {
             const count = selectedContexts.size;
             const total = contexts.length;
-
             document.getElementById('selectionInfo').innerHTML =
                 `<strong>${count}</strong> contexte(s) sélectionné(s) sur ${total}`;
-
             const selectAllBtn = document.getElementById('selectAllText');
-            if (count === total && total > 0) {
-                selectAllBtn.textContent = '✗ Tout désélectionner';
-            } else {
-                selectAllBtn.textContent = '✓ Tout sélectionner';
-            }
+            selectAllBtn.textContent = (count === total && total > 0)
+                ? '✗ Tout désélectionner'
+                : '✓ Tout sélectionner';
 
             document.querySelectorAll('.context-item').forEach(item => {
                 const contextId = parseInt(item.dataset.contextId);
@@ -727,41 +543,19 @@
                 }
             });
 
-            const launchBtn = document.getElementById('launchBtn');
-            launchBtn.disabled = count === 0;
+            document.getElementById('launchBtn').disabled = (count === 0);
         }
-
-        // Slider
-        document.addEventListener('DOMContentLoaded', () => {
-            const slider = document.getElementById('questionsSlider');
-            const display = document.getElementById('questionCount');
-
-            slider.addEventListener('input', (e) => {
-                display.textContent = e.target.value;
-            });
-        });
 
         // ===== DÉTECTION DE CONFLITS =====
         async function detectConflicts(contextIds) {
-            console.log('[CONFLICTS] Détection des conflits pour:', contextIds);
-
             try {
                 const response = await fetch('/api/quiz/detect-conflicts', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ context_ids: contextIds })
                 });
-
-                if (!response.ok) {
-                    console.error('[CONFLICTS] Erreur HTTP:', response.status);
-                    return null;
-                }
-
+                if (!response.ok) return null;
                 const data = await response.json();
-                console.log('[CONFLICTS] Résultat:', data);
-
-                // Le backend retourne {has_conflicts: bool, conflicts: {...}}
-                // On retourne seulement la partie conflicts
                 return data.conflicts || null;
             } catch (error) {
                 console.error('[CONFLICTS] Erreur:', error);
@@ -777,17 +571,12 @@
             const resolveBtn = document.getElementById('resolveWithVariantsBtn');
 
             let html = '';
-            let totalConflicts = 0;
-            let allContextsInConflict = new Map(); // Map<context_id, context_name>
+            let allContextsInConflict = new Map();
 
             for (const [metadataKey, conflictData] of Object.entries(conflicts)) {
-                totalConflicts += conflictData.total_conflicts;
-
-                // Collecter tous les contextes en conflit
                 conflictData.contexts.forEach(ctx => {
                     allContextsInConflict.set(ctx.id, ctx.name);
                 });
-
                 html += `
                     <div class="conflict-group">
                         <div class="conflict-header">
@@ -797,30 +586,28 @@
                             Contextes: ${conflictData.contexts.map(c => c.name).join(' ↔ ')}
                         </div>
                         <div class="conflict-details">
-                            <strong>${conflictData.total_conflicts} main(s) en conflit</strong>
-                            <br><br>
-                            Exemples:
-                `;
-
-                // Afficher max 5 exemples par groupe
-                let shown = 0;
-                for (const [level, handsDict] of Object.entries(conflictData.conflicts_by_level)) {
-                    for (const [hand, actions] of Object.entries(handsDict)) {
-                        if (shown < 5) {
-                            const actionsStr = Object.entries(actions)
-                                .map(([ctxId, action]) => `Ctx${ctxId}→${action}`)
-                                .join(', ');
-                            html += `<div class="conflict-hand">${hand}: ${actionsStr}</div>`;
-                            shown++;
-                        }
-                    }
-                }
-
-                if (conflictData.total_conflicts > 5) {
-                    html += `<div class="conflict-hand">... et ${conflictData.total_conflicts - 5} autres mains</div>`;
-                }
-
-                html += `
+                            <strong>${conflictData.total_conflicts} main(s) en conflit</strong><br><br>
+                            ${
+                                (function() {
+                                    let shown = 0;
+                                    let rows = '';
+                                    for (const [level, handsDict] of Object.entries(conflictData.conflicts_by_level)) {
+                                        for (const [hand, actions] of Object.entries(handsDict)) {
+                                            if (shown < 5) {
+                                                const actionsStr = Object.entries(actions)
+                                                    .map(([ctxId, action]) => `Ctx${ctxId}→${action}`)
+                                                    .join(', ');
+                                                rows += `<div class="conflict-hand">${hand}: ${actionsStr}</div>`;
+                                                shown++;
+                                            }
+                                        }
+                                    }
+                                    if (conflictData.total_conflicts > 5) {
+                                        rows += `<div class="conflict-hand">... et ${conflictData.total_conflicts - 5} autres mains</div>`;
+                                    }
+                                    return rows;
+                                })()
+                            }
                         </div>
                     </div>
                 `;
@@ -828,7 +615,7 @@
 
             conflictsList.innerHTML = html;
 
-            // Générer les champs de saisie pour les variantes
+            // Générer les inputs
             let variantHtml = '';
             allContextsInConflict.forEach((contextName, contextId) => {
                 variantHtml += `
@@ -840,13 +627,12 @@
                             type="text"
                             id="variant-${contextId}"
                             class="variant-input"
-                            placeholder="Ex: Range agressive, Range tight, Début de session..."
+                            placeholder="Ex: Range agressive, Range tight..."
                             data-context-id="${contextId}"
                         >
                     </div>
                 `;
             });
-
             variantInputs.innerHTML = variantHtml;
             variantSection.style.display = 'block';
             resolveBtn.style.display = 'inline-block';
@@ -855,84 +641,59 @@
         }
 
         function closeConflictModal() {
-            const modal = document.getElementById('conflictModal');
-            modal.classList.remove('show');
+            document.getElementById('conflictModal').classList.remove('show');
             detectedConflicts = null;
         }
 
         async function resolveWithVariants() {
-            console.log('[VARIANTS] Résolution avec variantes');
-
-            // Collecter toutes les variantes saisies
             const variantInputs = document.querySelectorAll('.variant-input');
             const variants = {};
             let allFilled = true;
-
             variantInputs.forEach(input => {
                 const contextId = input.dataset.contextId;
                 const variantText = input.value.trim();
-
                 if (variantText) {
                     variants[contextId] = variantText;
                 } else {
                     allFilled = false;
                 }
             });
-
-            // Vérifier que toutes les variantes sont remplies
             if (!allFilled) {
                 alert('⚠️ Veuillez remplir un nom pour chaque contexte en conflit.');
                 return;
             }
-
-            console.log('[VARIANTS] Variantes collectées:', variants);
-
-            // Fermer le modal et lancer le quiz avec variantes
             closeConflictModal();
             await launchQuiz(variants);
         }
 
         async function continueWithConflicts() {
-            console.log('[CONFLICTS] Utilisateur continue malgré les conflits');
             closeConflictModal();
             await launchQuiz();
         }
 
         // ===== LANCEMENT DU QUIZ =====
         async function startQuiz() {
-            console.log('[START] Début startQuiz()');
-            console.log('[START] Contextes sélectionnés:', Array.from(selectedContexts));
-
             if (selectedContexts.size === 0) {
                 showError('Veuillez sélectionner au moins un contexte');
                 return;
             }
-
             const contextIds = Array.from(selectedContexts);
-
-            // Détection de conflits si 2+ contextes
             if (contextIds.length >= 2) {
-                console.log('[START] Détection de conflits...');
                 detectedConflicts = await detectConflicts(contextIds);
-
                 if (detectedConflicts && Object.keys(detectedConflicts).length > 0) {
-                    console.log('[START] Conflits détectés, affichage du modal');
                     showConflictModal(detectedConflicts);
-                    return; // Arrêter ici, l'utilisateur doit choisir
-                } else {
-                    console.log('[START] Aucun conflit détecté');
+                    return;
                 }
             }
-
-            // Pas de conflits, lancer directement
             await launchQuiz();
         }
 
         async function launchQuiz(variants = {}) {
             const contextIds = Array.from(selectedContexts);
             const questionCount = parseInt(document.getElementById('questionsSlider').value);
-
-            console.log('[LAUNCH] Génération du quiz avec:', { contextIds, questionCount, variants });
+            const aggression = (typeof window.getSelectedAggression === 'function')
+                ? window.getSelectedAggression()
+                : 'medium';
 
             try {
                 const response = await fetch('/api/quiz/generate', {
@@ -941,29 +702,25 @@
                     body: JSON.stringify({
                         context_ids: contextIds,
                         question_count: questionCount,
-                        variants: variants
+                        variants: variants,
+                        aggression: aggression   // 🆕 envoyé au backend
                     })
                 });
-
-                console.log('[LAUNCH] Response status:', response.status);
 
                 if (!response.ok) {
                     throw new Error('HTTP ' + response.status);
                 }
 
                 const data = await response.json();
-                console.log('[LAUNCH] Data reçu:', data);
-
                 if (!data.questions || data.questions.length === 0) {
                     throw new Error('Aucune question générée');
                 }
 
-                console.log('[LAUNCH] Stockage sessionStorage...');
+                // on stocke aussi l’agressivité pour l’écran de quiz (si tu veux l’afficher)
                 sessionStorage.setItem('quizQuestions', JSON.stringify(data.questions));
+                sessionStorage.setItem('quizAggression', aggression);
 
-                console.log('[LAUNCH] Redirection...');
                 window.location.href = '/quiz';
-
             } catch (error) {
                 console.error('[LAUNCH] Erreur:', error);
                 alert('Erreur : ' + error.message);
@@ -977,7 +734,7 @@
             document.getElementById('loading').style.display = 'none';
         }
 
-        // Initialisation
+        // init
         loadContexts();
     </script>
 </body>

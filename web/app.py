@@ -1450,6 +1450,7 @@ def get_next_quiz_question():
         data = request.get_json()
         context_ids = data.get('context_ids', [])
         excluded = data.get('excluded', [])
+        aggression = data.get('aggression', 'medium')  # 🎚️ Paramètre d'agressivité
 
         if not context_ids:
             return jsonify({'error': 'Aucun contexte fourni'}), 400
@@ -1461,7 +1462,7 @@ def get_next_quiz_question():
 
         # Essayer de générer une question unique
         max_attempts = 100
-        generator = QuizGenerator()
+        generator = QuizGenerator(aggression_level=aggression)  # 🎚️ Passer l'agressivité
 
         for attempt in range(max_attempts):
             context_id = random.choice(context_ids)
@@ -1591,11 +1592,15 @@ def generate_quiz_with_variants():
         context_ids = data.get('context_ids', [])
         question_count = data.get('question_count', 10)
         variants = data.get('variants', {})  # Dict {context_id: variant_text}
+        aggression = data.get('aggression', 'medium')  # 🎚️ Paramètre d'agressivité
 
         if not context_ids:
             return jsonify({'error': 'Aucun contexte sélectionné'}), 400
+        
+        # 🎚️ Log du niveau d'agressivité
+        print(f"[QUIZ GEN] 🎚️ Agressivité de la table: {aggression.upper()}")
 
-        generator = QuizGenerator()
+        generator = QuizGenerator(aggression_level=aggression)  # 🎚️ Passer l'agressivité
         questions = []
         total_subquestions = 0  # 🆕 Compteur de sous-questions
         used_hands_by_context = {}  # 🔧 v4.3.7 : Tracker les mains PAR CONTEXTE
