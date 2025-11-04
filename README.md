@@ -1,61 +1,40 @@
-# Poker Training - Système d'entraînement de ranges
+# 🃏 Poker Training - Entraînement de Ranges Preflop
 
-Interface web locale pour l'entraînement de ranges de poker avec système de quiz interactif avancé et questions drill-down multi-étapes.
+> **Version Beta 4.5.0** - Système d'entraînement interactif avec suivi de progression
 
-## 🎯 Vue d'ensemble
+Interface web locale pour s'entraîner sur les ranges de poker avec quiz intelligent, questions multi-étapes et analytics de progression.
 
-**poker-training** permet d'importer et d'utiliser des ranges de poker pour l'entraînement. Les ranges sont créées via l'[éditeur de ranges](https://site2wouf.fr/poker-range-editor.php) puis automatiquement analysées, validées et utilisées dans un quiz interactif intelligent.
+---
 
-## ✨ Fonctionnalités principales
+## ✨ Fonctionnalités
 
-### Pipeline d'import automatique
-- Import et parsing des fichiers JSON
-- Standardisation intelligente des noms et positions
-- Enrichissement automatique des métadonnées
-- Support complet des contextes : Open, Defense, Squeeze, VS_Limpers
-- Validation stricte avant activation pour le quiz
+### 🎯 Système de Quiz Intelligent
+- **Questions simples** : Test direct de vos ranges
+- **Questions drill-down** : Séquences réalistes (Open → 3bet → 4bet → 5bet)
+- **Agressivité configurable** : 3 niveaux (LOW/MEDIUM/HIGH)
+- **Feedback immédiat** avec statistiques temps réel
 
-### Système de Quiz Interactif ✨
+### 📊 Suivi de Progression
+- **Historique complet** : Toutes vos sessions sauvegardées
+- **Graphiques de progression** : Visualisez votre évolution
+- **Stats par contexte** : Identifiez vos points forts et faibles
+- **Recommandations personnalisées** : Conseils adaptés à vos résultats
+- **Calcul du streak** : Jours d'entraînement consécutifs
 
-#### Questions Simples
-- Configuration flexible : sélection des contextes et nombre de questions
-- Questions contextuelles adaptées à chaque situation
-- **🆕 v4.3.7 : Tracking intelligent par contexte** - Une main peut apparaître dans différents contextes (situations d'apprentissage différentes)
-- Sélection intelligente avec détection des mains borderline
-- Boutons dynamiques selon le contexte (RAISE au lieu de 3BET, ISO pour vs_limpers, etc.)
-- Feedback immédiat avec statistiques en temps réel
+### 🎚️ Paramètres d'Entraînement
+- **Choix des contextes** : Open, Defense, Squeeze, VS Limpers
+- **Nombre de questions** : Personnalisable
+- **Niveau d'agressivité** : Adapté à votre progression
 
-#### Questions Drill-Down (Multi-étapes) 🎯
-- **Séquences réalistes** : Simule les décisions successives (Open → 3bet → 4bet → 5bet/all-in)
-- **🆕 v4.3.6 : Position du Vilain cohérente** - Même adversaire sur toute la séquence
-- **🆕 v4.3.6 : Historique narratif fluide** - Texte naturel reprenant l'histoire de la main
-- **Gestion automatique des FOLD implicites** - Si une main n'est pas dans les sous-ranges, elle fold
-- **Affichage progressif** avec feedback adapté à chaque niveau
+### 📈 Analytics
+- Meilleur score, score moyen, total sessions
+- Graphiques d'évolution sur le temps
+- Filtres par date, score et contexte
+- Export CSV des résultats
 
-#### 🎚️ Paramètre d'agressivité de la table (✅ v4.4.0)
+---
 
-Contrôle l'agressivité des adversaires et la profondeur des séquences :
-
-| Niveau | Drill-down | Profondeur | All-in L2 | All-in L3 | 5bet | Usage |
-|--------|-----------|------------|-----------|-----------|------|-------|
-| 🟢 **LOW** | 50% | 30% | 20% | 0% | 30% | Débutants |
-| 🟡 **MEDIUM** | 70% | 60% | 50% | 10% | 50% | Standard |
-| 🔴 **HIGH** | 100% | 100% | 80% | 50% | 70% | Avancés |
-
-**Configuration** : Fichier `aggression_settings.py` avec paramètres centralisés
-
-**Résultat** :
-- **LOW** : Séquences courtes (1-2 étapes), peu d'all-in
-- **MEDIUM** : Équilibré, bon pour l'entraînement général
-- **HIGH** : Séquences longues (3 étapes), beaucoup d'all-in
-
-### Architecture des ranges
-- **Range principale** : Contient toutes les mains jouables dans le contexte
-- **Sous-ranges** : Actions spécifiques avec séquences (ex: "RAISE→RAISE" pour 4bet)
-- **FOLD implicites** : Mains absentes des sous-ranges foldent automatiquement
-- **Labels canoniques** : Classification standardisée (OPEN, CALL, R3_VALUE, R4_BLUFF, etc.)
-
-## 📦 Installation
+## 🚀 Installation
 
 ### Prérequis
 - Python 3.8+
@@ -64,38 +43,84 @@ Contrôle l'agressivité des adversaires et la profondeur des séquences :
 ### Installation rapide
 
 ```bash
-# Cloner le repository
+# 1. Cloner le repository
 git clone https://github.com/w0uf/poker-training.git
 cd poker-training
 
-# Créer environnement virtuel
+# 2. Créer environnement virtuel
 python3 -m venv mon_env
-source mon_env/bin/activate
+source mon_env/bin/activate  # Linux/Mac
+# ou
+mon_env\Scripts\activate  # Windows
 
-# Installer dépendances
+# 3. Installer les dépendances
 pip install flask
 
-# Créer structure de données
+# 4. Créer la structure de données
 mkdir -p data/ranges
 ```
 
-## 🚀 Démarrage rapide
+---
+
+## 📖 Démarrage rapide
 
 ```bash
-# 1. Placer vos fichiers JSON dans data/ranges/
+# 1. Placer vos fichiers JSON de ranges dans data/ranges/
+# (Créés avec l'éditeur : https://site2wouf.fr/poker-range-editor.php)
 
-# 2. Lancer l'interface web
+# 2. Lancer l'application
 cd web/
 python app.py
 
-# 3. Accéder à http://localhost:5000
+# 3. Ouvrir votre navigateur
+# → http://localhost:5000
 
-# 4. Importer via "Import Pipeline"
-
-# 5. Valider les contextes si nécessaire
-
-# 6. Lancer le quiz !
+# 4. Suivre le workflow
+# Import Pipeline → Validation → Configuration Quiz → Entraînement !
 ```
+
+---
+
+## 🎮 Utilisation
+
+### Workflow complet
+
+```
+1. Import des Ranges
+   ↓
+   Éditeur web → JSON → data/ranges/ → Import Pipeline
+   
+2. Validation
+   ↓
+   Vérification des contextes → Activation pour le quiz
+   
+3. Configuration
+   ↓
+   Sélection contextes + nombre de questions + agressivité
+   
+4. Entraînement
+   ↓
+   Quiz interactif avec drill-down
+   
+5. Résultats
+   ↓
+   Analyse détaillée + recommandations
+   
+6. Progression
+   ↓
+   Historique complet + graphiques + stats
+```
+
+### Pages principales
+
+- **`/`** : Accueil avec statistiques globales
+- **`/import`** : Import des fichiers JSON
+- **`/quiz-setup`** : Configuration du quiz
+- **`/quiz`** : Session d'entraînement
+- **`/quiz-result`** : Résultats détaillés avec progression
+- **`/history`** : Historique complet avec analytics
+
+---
 
 ## 🏗️ Architecture
 
@@ -104,230 +129,226 @@ python app.py
 ```
 poker-training/
 ├── data/
-│   ├── poker_trainer.db          # Base SQLite
-│   └── ranges/                   # Fichiers JSON
+│   ├── poker_trainer.db          # Base SQLite principale
+│   ├── quiz_history.db            # Historique des sessions
+│   └── ranges/                    # Fichiers JSON importés
 ├── web/
-│   ├── app.py                    # Serveur Flask + API
-│   └── templates/                # Interfaces HTML
+│   ├── app.py                     # Serveur Flask + API
+│   └── templates/                 # Interfaces HTML
+│       ├── index.html             # Accueil
+│       ├── quiz-setup.html        # Configuration
+│       ├── quiz.html              # Interface quiz
+│       ├── quiz-result.html       # Résultats + progression
+│       └── history.html           # Historique complet
 ├── modules/
-│   ├── quiz_generator.py         # Génération questions
-│   ├── drill_down_generator.py   # Questions multi-étapes
-│   ├── hand_selector.py          # Sélection intelligente
-│   ├── aggression_settings.py    # Configuration agressivité 🆕 v4.4.0
-│   └── ... (autres modules)
+│   ├── quiz_generator.py          # Génération questions
+│   ├── drill_down_generator.py    # Questions multi-étapes
+│   ├── hand_selector.py           # Sélection intelligente
+│   ├── quiz_history_manager.py    # Gestion historique 🆕
+│   ├── aggression_settings.py     # Configuration agressivité
+│   └── ...
 └── README.md
 ```
 
-### Base de données SQLite
+### Base de données
 
-#### Tables principales
-- **range_files** : Fichiers importés avec métadonnées
-- **range_contexts** : Contextes avec validation et action_sequence (JSON pour multiway)
-- **ranges** : Ranges individuelles avec labels et action_sequence (TEXT pour drill-down)
-- **range_hands** : Mains avec fréquences
+**poker_trainer.db** : Ranges et contextes
+- `range_files` : Fichiers importés
+- `range_contexts` : Contextes validés
+- `ranges` : Ranges avec séquences
+- `range_hands` : Mains avec fréquences
 
-#### Colonne action_sequence
+**quiz_history.db** 🆕 : Suivi de progression
+- `quiz_sessions` : Sessions complétées
+- `quiz_answers` : Réponses détaillées
 
-**Dans `range_contexts` (JSON)** - Gestion multiway :
-```json
-{"opener": "UTG", "callers": ["CO"]}  // Squeeze
-{"limpers": ["UTG", "CO"]}            // VS_Limpers
+---
+
+## 🎯 Niveaux d'agressivité
+
+| Niveau | Drill-down | Séquences longues | All-in | Usage |
+|--------|-----------|-------------------|--------|-------|
+| 🟢 **LOW** | 50% | 30% | Rare | Débutants |
+| 🟡 **MEDIUM** | 70% | 60% | Modéré | Standard |
+| 🔴 **HIGH** | 100% | 100% | Fréquent | Avancés |
+
+**Configuration** : Dans l'interface de setup du quiz
+
+---
+
+## 📊 API Endpoints
+
+### Quiz
+- `POST /api/quiz/generate` - Génère un nouveau quiz
+- `POST /api/quiz/submit-answer` - Sauvegarde une réponse
+- `POST /api/quiz/end-session/:id` - Termine une session
+
+### Progression 🆕
+- `GET /api/quiz/progression` - Toutes les sessions + stats globales
+- `GET /api/quiz/session/:id` - Détails d'une session
+- `GET /api/quiz/user-stats` - Statistiques utilisateur
+- `GET /api/quiz/recent-sessions` - Sessions récentes
+
+### Ranges
+- `POST /api/import-from-folder` - Import des fichiers JSON
+- `GET /api/contexts` - Liste des contextes disponibles
+
+---
+
+## 🐛 Résolution de problèmes
+
+### L'application ne démarre pas
+```bash
+# Vérifier que Flask est installé
+pip list | grep -i flask
+
+# Vérifier le fichier app.py
+python app.py
+# Devrait afficher : "🚀 Démarrage Flask..."
 ```
 
-**Dans `ranges` (TEXT)** - Séquences drill-down :
-```
-"RAISE→RAISE→FOLD"  // Open → 4bet → Fold au 5bet
-```
+### Aucune donnée dans l'historique
+```bash
+# Vérifier que la base existe
+ls -la data/quiz_history.db
 
-### Workflow drill-down
-
-```
-1. quiz_generator.py décide : simple ou drill-down ?
-   ↓
-2. drill_down_generator.py :
-   - Vérifie les sous-ranges
-   - Sélectionne une main (évite répétitions par contexte)
-   - Cherche dans quelle sous-range → sinon FOLD implicite
-   - Génère position Vilain fixe (v4.3.6)
-   - Construit séquence narrative (v4.3.6)
-   - Utilise probabilités selon niveau d'agressivité (v4.4.0)
-   ↓
-3. quiz.html affiche progressivement avec historique narratif
+# Faire au moins un quiz complet
+# Les données apparaîtront ensuite
 ```
 
-## 📚 Workflow complet
-
-```
-Éditeur web → JSON → data/ranges/ → Import Pipeline
-    ↓
-Validation (si nécessaire) → quiz_ready=1
-    ↓
-Configuration Quiz (contextes + nombre + agressivité)
-    ↓
-Entraînement avec drill-down et tracking intelligent
+### Erreur d'import des ranges
+```bash
+# Vérifier le format JSON
+# Les fichiers doivent venir de l'éditeur web officiel
+# https://site2wouf.fr/poker-range-editor.php
 ```
 
-## 🎯 État du développement
+### Port 5000 déjà utilisé
+```python
+# Dans app.py, changer le port :
+app.run(debug=True, host='0.0.0.0', port=5001)  # ← 5001
+```
 
-### ✅ Fonctionnalités opérationnelles (v4.4.2)
+---
 
-- ✅ Pipeline d'import complet
-- ✅ Support tous contextes (Open, Defense, Squeeze, VS_Limpers)
-- ✅ Quiz simple et drill-down multi-étapes
-- ✅ **Paramètre d'agressivité** avec 3 niveaux configurables (v4.4.0)
-- ✅ Position Vilain cohérente et historique narratif (v4.3.6)
-- ✅ Tracking intelligent des mains par contexte (v4.3.7)
-- ✅ Gestion correcte des all-in dans les séquences (v4.4.2)
-- ✅ Interface web responsive avec statistiques temps réel
+## 📝 Changelog
 
-### 🚧 Améliorations prioritaires (v4.5+)
+### v4.5.0 - Beta Release (04/11/2025)
+🎉 **Nouvelle version majeure avec système de progression complet**
 
-- 🔄 **Écran post-quiz détaillé** :
-  - Score par contexte et type de question
-  - Analyse des patterns d'erreurs
-  - Recommandations personnalisées
-  - Export des résultats
+#### ✨ Nouvelles fonctionnalités
+- 📊 **Système de progression complet**
+  - Historique de toutes les sessions
+  - Graphiques d'évolution
+  - Stats par contexte
+  - Mini-graphique sur page de résultats
   
-- 🔄 **Affinage des labels poker** :
-  - Clarification VALUE/BLUFF
-  - Documentation stratégique
-  - Simplification si redondance
+- 📈 **Page d'historique dédiée**
+  - Vue d'ensemble avec 6 indicateurs clés
+  - Graphique de progression complet
+  - Filtres (date, score, contexte)
+  - Liste complète des sessions
+  - Calcul du streak (jours consécutifs)
+  
+- 💾 **Sauvegarde automatique**
+  - Base de données séparée pour l'historique
+  - Chaque réponse sauvegardée en temps réel
+  - Export CSV disponible
 
-- 🔄 **Mode d'entraînement configurable** :
-  - Désactivation drill-down temporaire
-  - Choix du ratio simple/drill-down
-  - Nombre max d'étapes personnalisable
+#### 🔧 Améliorations techniques
+- API `/api/quiz/progression` pour récupérer les données
+- `QuizHistoryManager` pour gérer l'historique
+- Architecture séparée pour performance optimale
 
-### 🔮 Roadmap (v5.0+)
+#### 🎨 Interface
+- Section "Votre progression" sur page de résultats
+- Design moderne avec graphiques en Canvas natif
+- Responsive mobile complet
 
-- Analytics avancées avec progression historique
-- Mode révision espacée (spaced repetition)
-- Contextes 3-way et 4-way
-- Drill-down post-flop
-- Coach virtuel avec suggestions personnalisées
+### v4.4.2 (31/10/2025)
+- 🐛 Correction du skip all-in en mode MEDIUM
+- 🐛 Arrêt automatique après all-in
+- 🐛 Support complet du niveau 3
+
+### v4.4.0 (30/10/2025)
+- ✨ Système d'agressivité avec 3 niveaux
+- ✨ Widget de sélection dans l'interface
+- ⚙️ Configuration centralisée
+
+### v4.3.7 (28/10/2025)
+- ✨ Tracking intelligent par contexte
+- 🐛 Évite les répétitions dans le même contexte
+
+### v4.3.6 (27/10/2025)
+- ✨ Position Vilain cohérente
+- ✨ Historique narratif fluide
+
+---
 
 ## 🤝 Contribution
 
-Les contributions sont les bienvenues !
-
-1. Fork le projet
-2. Créer une branche (`git checkout -b feature/nouvelle-fonctionnalite`)
-3. Commit les changements (`git commit -am 'Ajout nouvelle fonctionnalité'`)
-4. Push vers la branche (`git push origin feature/nouvelle-fonctionnalite`)
-5. Créer une Pull Request
+Les contributions sont bienvenues ! 
 
 **Guidelines** :
 - Suivre PEP 8
 - Ajouter des docstrings
 - Tester avant de soumettre
-- Mettre à jour la documentation
+- Mettre à jour le CHANGELOG
 
-## 📝 Changelog
-
-### v4.4.2 (31/10/2025)
-- 🐛 **Correction Bug #1** : Skip all-in uniquement en mode HIGH (15% de probabilité)
-- 🐛 **Correction Bug #2** : Arrêt automatique de la séquence après all-in
-- 🐛 **Correction Bug #3** : Support complet du niveau 3 avec all-in
-- 📚 Documentation complète des bugs et correctifs
-
-### v4.4.0 (30/10/2025)
-- ✨ **Système d'agressivité** avec 3 niveaux (LOW/MEDIUM/HIGH)
-- ✨ Widget de sélection dans l'interface
-- ⚙️ Configuration centralisée dans `aggression_settings.py`
-- 📊 Probabilités paramétrables pour chaque niveau
-
-### v4.3.7 (28/10/2025)
-- ✨ Tracking intelligent des mains par contexte
-- 🐛 Évite les répétitions dans le même contexte
-- 📝 Permission de réutiliser une main dans un contexte différent
-
-### v4.3.6 (27/10/2025)
-- ✨ Position du Vilain cohérente dans les séquences
-- ✨ Historique narratif fluide (texte naturel au lieu de badges)
-- 🎨 Amélioration de l'UX drill-down
-
-### v4.0.0 (20/10/2025)
-- ✨ Système de drill-down multi-niveaux
-- ✨ Support des séquences 3bet/4bet/5bet/all-in
-- ✨ FOLD implicites automatiques
-
-## 🐛 Problèmes connus résolus
-
-### ✅ All-in Skip en mode MEDIUM (v4.4.2)
-**Problème** : All-in direct généré en MEDIUM au lieu de HIGH uniquement  
-**Correction** : Vérification de `villain_skip_allin_level1` avec probabilité 15% en HIGH
-
-### ✅ Séquence continue après all-in (v4.4.2)
-**Problème** : Le système générait un niveau suivant après un all-in  
-**Correction** : Détection d'all-in avec `break` pour arrêter la boucle
-
-### ✅ Pas d'all-in au niveau 3 (v4.4.2)
-**Problème** : Le niveau 3 n'était pas géré pour les all-in  
-**Correction** : Ajout du cas niveau 3 dans `_get_villain_reaction_at_level()`
-
-### ✅ Position Vilain incohérente (v4.3.6)
-**Problème** : Position changeait à chaque étape  
-**Correction** : Génération fixe UNE SEULE FOIS au début
-
-### ✅ Historique avec badges (v4.3.6)
-**Problème** : Affichage technique peu naturel  
-**Correction** : Texte narratif fluide en français
-
-### ✅ Répétition des mêmes mains (v4.3.7)
-**Problème** : Plusieurs questions sur la même main dans un contexte  
-**Correction** : Tracking par contexte avec `used_hands_by_context`
-
-## 💡 Notes pour développeurs
-
-### Points d'attention Drill-Down
-
-1. **Chargement données** : `quiz_generator.py` DOIT charger `action_sequence` dans la requête SQL
-2. **Position Vilain** : Générée UNE SEULE FOIS et stockée dans `context['villain_position_fixed']`
-3. **Historique narratif** : Utiliser `displayDrillDownSequence()` avec `currentQuestion.sequence`
-4. **Tracking mains** : PAR CONTEXTE (dict) et non global - permet apprentissage différencié
-5. **Agressivité** : Configuration dans `aggression_settings.py`, utilisée par les deux générateurs
-
-### Debugging Tips
-
-**Drill-down ne fonctionne pas :**
-- Vérifier logs : `[DRILL] Main choisie IN-RANGE:` suivi de `✅ Main trouvée` ou `⚠️ FOLD implicite`
-- Vérifier que `action_sequence` est chargé (ligne ~97 de `quiz_generator.py`)
-
-**Historique incorrect :**
-- Console : `console.log('sequence:', currentQuestion.sequence)`
-- Vérifier que `displayDrillDownSequence()` utilise `.slice(0, currentLevel)`
-
-**Répétitions de mains :**
-- Vérifier logs : `[QUIZ GEN] 🎲 Main utilisée: XX dans contexte Y`
-- Vérifier que `used_hands_by_context` est bien un dict
-
-**All-in mal géré :**
-- Vérifier le niveau d'agressivité sélectionné
-- Vérifier les probabilités dans `aggression_settings.py`
-- Vérifier que `is_allin` est détecté et traité avec `break`
-
-### Structure des modules
-
-- **quiz_generator.py** : Décide simple/drill-down, charge ranges, gère tracking
-- **drill_down_generator.py** : Génère séquences, position Vilain fixe, utilise agressivité
-- **aggression_settings.py** : 🆕 v4.4.0 - Configuration centralisée des probabilités
-- **quiz.html** : Affiche historique narratif progressif
-- **app.py** : Maintient `used_hands_by_context`, passe paramètres
-
-## 📄 Licence
-
-Projet sous licence libre - voir [LICENSE](LICENSE) pour plus de détails.
+---
 
 ## 🔗 Liens utiles
 
 - [Éditeur de ranges web](https://site2wouf.fr/poker-range-editor.php)
-- [Documentation Python](https://docs.python.org/3/)
-- [Flask Documentation](https://flask.palletsprojects.com/)
 - [Repository GitHub](https://github.com/w0uf/poker-training)
+- [Documentation Flask](https://flask.palletsprojects.com/)
 
 ---
 
-**Dernière mise à jour** : 31/10/2025  
-**Version actuelle** : 4.4.2
+## 📄 Licence
+
+Projet sous licence libre.
+
+---
+
+## 💡 Notes pour la Beta
+
+### Ce qui fonctionne parfaitement ✅
+- Import et validation des ranges
+- Quiz simple et drill-down
+- Paramètres d'agressivité
+- Sauvegarde automatique des sessions
+- Système de progression complet
+- Graphiques et analytics
+- Export des résultats
+
+### Retours attendus 🎯
+- Pertinence des recommandations
+- Clarté de l'interface historique
+- Performance avec 50+ sessions
+- Bugs éventuels sur différents navigateurs
+
+### Comment signaler un bug
+1. Ouvrir une issue sur GitHub
+2. Préciser la version (4.5.0)
+3. Décrire les étapes pour reproduire
+4. Joindre une capture d'écran si possible
+
+---
+
+**Dernière mise à jour** : 04/11/2025  
+**Version actuelle** : 4.5.0 Beta
 
 Créé avec ❤️ pour la communauté poker
+
+---
+
+## 🎯 Prochaines étapes (Post-Beta)
+
+- Mode révision espacée (spaced repetition)
+- Contextes 3-way et 4-way
+- Drill-down post-flop
+- Coach virtuel avec IA
+- Application mobile
+
+*À discuter selon les retours de la beta !*
