@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Historique - Poker Training</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1f36 0%, #2d3561 100%);
+            color: #e0e7ff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .header-title {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .btn-back {
+            background: rgba(255, 255, 255, 0.1);
+            color: #e0e7ff;
+            padding: 12px 24px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-back:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateX(-3px);
+        }
+
+        /* STATS GLOBALES */
+        .overview-section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 30px;
+        }
+
+        .overview-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .overview-card {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .overview-icon {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .overview-value {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: #fff;
+            margin-bottom: 5px;
+        }
+
+        .overview-label {
+            font-size: 0.9rem;
+            opacity: 0.7;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* GRAPHIQUE DE PROGRESSION */
+        .chart-section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 30px;
+        }
+
+        .chart-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: #fff;
+        }
+
+        #progressChart {
+            width: 100%;
+            height: 400px;
+        }
+
+        /* FILTRES */
+        .filters-section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 30px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .filter-label {
+            font-size: 0.85rem;
+            opacity: 0.7;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .filter-input {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 10px 15px;
+            color: #e0e7ff;
+            font-size: 0.95rem;
+            font-family: inherit;
+        }
+
+        .filter-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        select.filter-input {
+            cursor: pointer;
+        }
+
+        .btn-clear-filters {
+            background: rgba(244, 67, 54, 0.2);
+            color: #f44336;
+            border: 1px solid rgba(244, 67, 54, 0.3);
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+            margin-top: auto;
+        }
+
+        .btn-clear-filters:hover {
+            background: rgba(244, 67, 54, 0.3);
+        }
+
+        /* STATS PAR CONTEXTE */
+        .context-analysis-section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 30px;
+        }
+
+        .context-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .context-stat-card {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+            padding: 20px;
+            border-left: 4px solid;
+        }
+
+        .context-stat-card.excellent { border-color: #4CAF50; }
+        .context-stat-card.good { border-color: #7CB342; }
+        .context-stat-card.average { border-color: #FFB300; }
+        .context-stat-card.poor { border-color: #FF9800; }
+        .context-stat-card.bad { border-color: #F44336; }
+
+        .context-stat-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .context-stat-score {
+            font-size: 2rem;
+            font-weight: 800;
+            color: #fff;
+            margin-bottom: 5px;
+        }
+
+        .context-stat-details {
+            font-size: 0.85rem;
+            opacity: 0.7;
+        }
+
+        /* LISTE DES SESSIONS */
+        .sessions-section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .sessions-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .session-card {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 2px solid transparent;
+        }
+
+        .session-card:hover {
+            background: rgba(0, 0, 0, 0.3);
+            border-color: #667eea;
+            transform: translateX(5px);
+        }
+
+        .session-info {
+            flex: 1;
+        }
+
+        .session-date {
+            font-size: 0.9rem;
+            opacity: 0.7;
+            margin-bottom: 5px;
+        }
+
+        .session-details {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .session-score {
+            font-size: 2rem;
+            font-weight: 800;
+        }
+
+        .score-excellent { color: #4CAF50; }
+        .score-good { color: #7CB342; }
+        .score-average { color: #FFB300; }
+        .score-poor { color: #FF9800; }
+        .score-bad { color: #F44336; }
+
+        .session-meta {
+            display: flex;
+            gap: 15px;
+            font-size: 0.9rem;
+        }
+
+        .session-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .session-contexts {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .context-badge {
+            background: rgba(103, 126, 234, 0.2);
+            color: #6B9FFF;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .session-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-view-session {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .btn-view-session:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(103, 126, 234, 0.4);
+        }
+
+        /* LOADING ET EMPTY STATES */
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+            font-size: 1.2rem;
+            color: #667eea;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .empty-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+        }
+
+        .empty-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .empty-text {
+            color: rgba(255, 255, 255, 0.6);
+            margin-bottom: 30px;
+        }
+
+        .btn-start-quiz {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 12px;
+            text-decoration: none;
+            font-weight: 600;
+            display: inline-block;
+            transition: all 0.2s;
+        }
+
+        .btn-start-quiz:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(103, 126, 234, 0.4);
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                gap: 20px;
+                align-items: flex-start;
+            }
+
+            .header-title {
+                font-size: 2rem;
+            }
+
+            .overview-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .filters-section {
+                flex-direction: column;
+            }
+
+            .filter-group {
+                width: 100%;
+            }
+
+            .session-card {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
+            }
+
+            .session-details {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            #progressChart {
+                height: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- HEADER -->
+        <div class="header">
+            <h1 class="header-title">
+                📊 Historique des sessions
+            </h1>
+            <a href="/" class="btn-back">
+                ← Retour à l'accueil
+            </a>
+        </div>
+
+        <!-- STATS GLOBALES -->
+        <div class="overview-section" id="overviewSection">
+            <div class="loading">Chargement des statistiques...</div>
+        </div>
+
+        <!-- GRAPHIQUE DE PROGRESSION -->
+        <div class="chart-section" id="chartSection" style="display: none;">
+            <h2 class="chart-title">📈 Évolution de vos performances</h2>
+            <canvas id="progressChart"></canvas>
+        </div>
+
+        <!-- FILTRES -->
+        <div class="filters-section" id="filtersSection" style="display: none;">
+            <div class="filter-group">
+                <label class="filter-label">Date de début</label>
+                <input type="date" class="filter-input" id="filterDateStart">
+            </div>
+            
+            <div class="filter-group">
+                <label class="filter-label">Date de fin</label>
+                <input type="date" class="filter-input" id="filterDateEnd">
+            </div>
+            
+            <div class="filter-group">
+                <label class="filter-label">Score minimum</label>
+                <input type="number" class="filter-input" id="filterScoreMin" placeholder="0" min="0" max="100">
+            </div>
+            
+            <div class="filter-group">
+                <label class="filter-label">Contexte</label>
+                <select class="filter-input" id="filterContext">
+                    <option value="">Tous les contextes</option>
+                </select>
+            </div>
+            
+            <button class="btn-clear-filters" onclick="clearFilters()">
+                🔄 Réinitialiser
+            </button>
+        </div>
+
+        <!-- STATS PAR CONTEXTE -->
+        <div class="context-analysis-section" id="contextSection" style="display: none;">
+            <h2 class="chart-title">🎯 Performance par contexte</h2>
+            <div class="context-grid" id="contextGrid"></div>
+        </div>
+
+        <!-- LISTE DES SESSIONS -->
+        <div class="sessions-section">
+            <h2 class="chart-title">📋 Toutes les sessions</h2>
+            <div class="sessions-list" id="sessionsList">
+                <div class="loading">Chargement des sessions...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================
+        // DONNÉES
+        // ============================================
+        let allData = null;
+        let filteredSessions = [];
+
+        // ============================================
+        // INITIALISATION
+        // ============================================
+        async function init() {
+            try {
+                const response = await fetch('/api/quiz/progression');
+                if (!response.ok) {
+                    throw new Error('Erreur lors du chargement');
+                }
+                
+                allData = await response.json();
+                console.log('[HISTORY] Données chargées:', allData);
+                
+                if (!allData.sessions || allData.sessions.length === 0) {
+                    showEmptyState();
+                    return;
+                }
+                
+                // Afficher toutes les sections
+                document.getElementById('chartSection').style.display = 'block';
+                document.getElementById('filtersSection').style.display = 'flex';
+                document.getElementById('contextSection').style.display = 'block';
+                
+                // Initialiser les filtres
+                initFilters();
+                
+                // Afficher les données
+                displayOverview();
+                displayProgressChart();
+                displayContextStats();
+                
+                filteredSessions = [...allData.sessions];
+                displaySessions();
+                
+            } catch (error) {
+                console.error('[ERROR]', error);
+                showErrorState();
+            }
+        }
+
+        function showEmptyState() {
+            document.getElementById('overviewSection').innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">🎯</div>
+                    <div class="empty-title">Aucune session enregistrée</div>
+                    <div class="empty-text">
+                        Commencez votre entraînement pour voir vos statistiques et suivre votre progression !
+                    </div>
+                    <a href="/quiz-setup" class="btn-start-quiz">
+                        🚀 Commencer un quiz
+                    </a>
+                </div>
+            `;
+            
+            document.getElementById('sessionsList').innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-text">Aucune session à afficher</div>
+                </div>
+            `;
+        }
+
+        function showErrorState() {
+            document.getElementById('overviewSection').innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">⚠️</div>
+                    <div class="empty-title">Erreur de chargement</div>
+                    <div class="empty-text">
+                        Impossible de charger vos données. Veuillez réessayer plus tard.
+                    </div>
+                </div>
+            `;
+        }
+
+        // ============================================
+        // OVERVIEW STATS
+        // ============================================
+        function displayOverview() {
+            const stats = allData.overall_stats;
+            const lastSession = allData.sessions[allData.sessions.length - 1];
+            
+            // Calculer la tendance
+            let trendIcon = '→';
+            let trendClass = '';
+            if (allData.sessions.length > 1) {
+                const prevSession = allData.sessions[allData.sessions.length - 2];
+                const diff = lastSession.score_percentage - prevSession.score_percentage;
+                if (diff > 5) {
+                    trendIcon = '↗';
+                    trendClass = 'trend-up';
+                } else if (diff < -5) {
+                    trendIcon = '↘';
+                    trendClass = 'trend-down';
+                }
+            }
+            
+            document.getElementById('overviewSection').innerHTML = `
+                <div class="overview-grid">
+                    <div class="overview-card">
+                        <div class="overview-icon">🏆</div>
+                        <div class="overview-value">${stats.best_score}%</div>
+                        <div class="overview-label">Meilleur score</div>
+                    </div>
+                    
+                    <div class="overview-card">
+                        <div class="overview-icon">📊</div>
+                        <div class="overview-value">${stats.average_score}%</div>
+                        <div class="overview-label">Score moyen ${trendIcon}</div>
+                    </div>
+                    
+                    <div class="overview-card">
+                        <div class="overview-icon">🎯</div>
+                        <div class="overview-value">${stats.total_sessions}</div>
+                        <div class="overview-label">Sessions totales</div>
+                    </div>
+                    
+                    <div class="overview-card">
+                        <div class="overview-icon">✅</div>
+                        <div class="overview-value">${stats.total_questions}</div>
+                        <div class="overview-label">Questions répondues</div>
+                    </div>
+                    
+                    <div class="overview-card">
+                        <div class="overview-icon">📈</div>
+                        <div class="overview-value">${lastSession.score_percentage}%</div>
+                        <div class="overview-label">Dernière session</div>
+                    </div>
+                    
+                    <div class="overview-card">
+                        <div class="overview-icon">🔥</div>
+                        <div class="overview-value">${calculateStreak()}</div>
+                        <div class="overview-label">Jours d'affilée</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function calculateStreak() {
+            if (!allData.sessions || allData.sessions.length === 0) return 0;
+            
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            let streak = 0;
+            let currentDate = new Date(today);
+            
+            // Parcourir les sessions de la plus récente à la plus ancienne
+            const sortedSessions = [...allData.sessions].sort((a, b) => 
+                new Date(b.completed_at) - new Date(a.completed_at)
+            );
+            
+            for (const session of sortedSessions) {
+                const sessionDate = new Date(session.completed_at);
+                sessionDate.setHours(0, 0, 0, 0);
+                
+                const diffDays = Math.floor((currentDate - sessionDate) / (1000 * 60 * 60 * 24));
+                
+                if (diffDays === 0 || diffDays === 1) {
+                    streak++;
+                    currentDate = new Date(sessionDate);
+                    currentDate.setDate(currentDate.getDate() - 1);
+                } else {
+                    break;
+                }
+            }
+            
+            return streak;
+        }
+
+        // ============================================
+        // GRAPHIQUE DE PROGRESSION
+        // ============================================
+        function displayProgressChart() {
+            const canvas = document.getElementById('progressChart');
+            const ctx = canvas.getContext('2d');
+            
+            const sessions = allData.sessions;
+            
+            // Configuration
+            const width = canvas.offsetWidth;
+            const height = 400;
+            canvas.width = width;
+            canvas.height = height;
+            
+            const padding = 60;
+            const chartWidth = width - (padding * 2);
+            const chartHeight = height - (padding * 2);
+            
+            // Échelle
+            const scores = sessions.map(s => s.score_percentage);
+            const minScore = Math.max(0, Math.min(...scores) - 10);
+            const maxScore = Math.min(100, Math.max(...scores) + 10);
+            const scoreRange = maxScore - minScore;
+            
+            const getY = (score) => {
+                return padding + chartHeight - ((score - minScore) / scoreRange * chartHeight);
+            };
+            
+            const getX = (index) => {
+                return padding + (index / (sessions.length - 1)) * chartWidth;
+            };
+            
+            // Grille horizontale
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= 5; i++) {
+                const y = padding + (i / 5) * chartHeight;
+                ctx.beginPath();
+                ctx.moveTo(padding, y);
+                ctx.lineTo(width - padding, y);
+                ctx.stroke();
+                
+                // Labels scores
+                const scoreValue = maxScore - (i / 5) * scoreRange;
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+                ctx.font = '12px Segoe UI';
+                ctx.textAlign = 'right';
+                ctx.fillText(`${Math.round(scoreValue)}%`, padding - 10, y + 4);
+            }
+            
+            // Ligne de tendance (moyenne mobile)
+            if (sessions.length > 3) {
+                ctx.strokeStyle = 'rgba(255, 183, 0, 0.3)';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 5]);
+                ctx.beginPath();
+                
+                sessions.forEach((session, index) => {
+                    const window = 3;
+                    const start = Math.max(0, index - window);
+                    const end = Math.min(sessions.length, index + window + 1);
+                    const avg = sessions.slice(start, end)
+                        .reduce((sum, s) => sum + s.score_percentage, 0) / (end - start);
+                    
+                    const x = getX(index);
+                    const y = getY(avg);
+                    
+                    if (index === 0) {
+                        ctx.moveTo(x, y);
+                    } else {
+                        ctx.lineTo(x, y);
+                    }
+                });
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+            
+            // Ligne principale
+            ctx.strokeStyle = '#667eea';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            sessions.forEach((session, index) => {
+                const x = getX(index);
+                const y = getY(session.score_percentage);
+                
+                if (index === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            });
+            ctx.stroke();
+            
+            // Points
+            sessions.forEach((session, index) => {
+                const x = getX(index);
+                const y = getY(session.score_percentage);
+                
+                // Point principal
+                const scoreClass = getScoreClass(session.score_percentage);
+                ctx.fillStyle = getScoreColor(scoreClass);
+                ctx.beginPath();
+                ctx.arc(x, y, 6, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Bordure
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                // Score au-dessus (seulement tous les N points pour éviter surcharge)
+                const showEvery = Math.max(1, Math.floor(sessions.length / 15));
+                if (index % showEvery === 0 || index === sessions.length - 1) {
+                    ctx.fillStyle = 'white';
+                    ctx.font = 'bold 11px Segoe UI';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(`${session.score_percentage}%`, x, y - 15);
+                }
+            });
+            
+            // Dates en bas (seulement quelques-unes)
+            const showDatesEvery = Math.max(1, Math.floor(sessions.length / 8));
+            sessions.forEach((session, index) => {
+                if (index % showDatesEvery === 0 || index === sessions.length - 1) {
+                    const x = getX(index);
+                    const date = new Date(session.completed_at);
+                    const dateStr = `${date.getDate()}/${date.getMonth() + 1}`;
+                    
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+                    ctx.font = '11px Segoe UI';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(dateStr, x, height - padding + 25);
+                }
+            });
+        }
+
+        // ============================================
+        // STATS PAR CONTEXTE
+        // ============================================
+        function displayContextStats() {
+            const contextMap = {};
+            
+            allData.sessions.forEach(session => {
+                session.contexts.forEach(ctx => {
+                    if (!contextMap[ctx]) {
+                        contextMap[ctx] = { correct: 0, total: 0 };
+                    }
+                    // On compte approximativement (on n'a pas le détail par question)
+                    const questionsInContext = Math.floor(session.num_questions / session.contexts.length);
+                    contextMap[ctx].total += questionsInContext;
+                    contextMap[ctx].correct += Math.floor(questionsInContext * session.score_percentage / 100);
+                });
+            });
+            
+            const container = document.getElementById('contextGrid');
+            container.innerHTML = '';
+            
+            Object.entries(contextMap).forEach(([contextName, stats]) => {
+                const percentage = Math.round((stats.correct / stats.total) * 100);
+                const scoreClass = getScoreClass(percentage);
+                
+                const card = document.createElement('div');
+                card.className = `context-stat-card ${scoreClass}`;
+                card.innerHTML = `
+                    <div class="context-stat-name">${formatContextName(contextName)}</div>
+                    <div class="context-stat-score">${percentage}%</div>
+                    <div class="context-stat-details">
+                        ${stats.correct}/${stats.total} correctes
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // ============================================
+        // FILTRES
+        // ============================================
+        function initFilters() {
+            // Remplir le select des contextes
+            const contexts = new Set();
+            allData.sessions.forEach(session => {
+                session.contexts.forEach(ctx => contexts.add(ctx));
+            });
+            
+            const select = document.getElementById('filterContext');
+            contexts.forEach(ctx => {
+                const option = document.createElement('option');
+                option.value = ctx;
+                option.textContent = formatContextName(ctx);
+                select.appendChild(option);
+            });
+            
+            // Événements
+            document.getElementById('filterDateStart').addEventListener('change', applyFilters);
+            document.getElementById('filterDateEnd').addEventListener('change', applyFilters);
+            document.getElementById('filterScoreMin').addEventListener('input', applyFilters);
+            document.getElementById('filterContext').addEventListener('change', applyFilters);
+        }
+
+        function applyFilters() {
+            const dateStart = document.getElementById('filterDateStart').value;
+            const dateEnd = document.getElementById('filterDateEnd').value;
+            const scoreMin = parseInt(document.getElementById('filterScoreMin').value) || 0;
+            const context = document.getElementById('filterContext').value;
+            
+            filteredSessions = allData.sessions.filter(session => {
+                const sessionDate = new Date(session.completed_at).toISOString().split('T')[0];
+                
+                if (dateStart && sessionDate < dateStart) return false;
+                if (dateEnd && sessionDate > dateEnd) return false;
+                if (session.score_percentage < scoreMin) return false;
+                if (context && !session.contexts.includes(context)) return false;
+                
+                return true;
+            });
+            
+            displaySessions();
+        }
+
+        function clearFilters() {
+            document.getElementById('filterDateStart').value = '';
+            document.getElementById('filterDateEnd').value = '';
+            document.getElementById('filterScoreMin').value = '';
+            document.getElementById('filterContext').value = '';
+            
+            filteredSessions = [...allData.sessions];
+            displaySessions();
+        }
+
+        // ============================================
+        // AFFICHAGE DES SESSIONS
+        // ============================================
+        function displaySessions() {
+            const container = document.getElementById('sessionsList');
+            container.innerHTML = '';
+            
+            if (filteredSessions.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-text">
+                            Aucune session ne correspond aux filtres sélectionnés
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Trier par date décroissante
+            const sortedSessions = [...filteredSessions].sort((a, b) => 
+                new Date(b.completed_at) - new Date(a.completed_at)
+            );
+            
+            sortedSessions.forEach(session => {
+                const card = document.createElement('div');
+                card.className = 'session-card';
+                
+                const date = new Date(session.completed_at);
+                const dateStr = date.toLocaleDateString('fr-FR', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                
+                const scoreClass = getScoreClass(session.score_percentage);
+                
+                card.innerHTML = `
+                    <div class="session-info">
+                        <div class="session-date">${dateStr}</div>
+                        <div class="session-details">
+                            <div class="session-score score-${scoreClass}">
+                                ${session.score_percentage}%
+                            </div>
+                            <div class="session-meta">
+                                <div class="session-meta-item">
+                                    <span>📝</span>
+                                    <span>${session.num_questions} questions</span>
+                                </div>
+                                <div class="session-meta-item">
+                                    <span>✅</span>
+                                    <span>${session.num_correct} correctes</span>
+                                </div>
+                                <div class="session-meta-item">
+                                    <span>⏱️</span>
+                                    <span>${formatDuration(session.duration_seconds)}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="session-contexts">
+                            ${session.contexts.map(ctx => 
+                                `<span class="context-badge">${formatContextName(ctx)}</span>`
+                            ).join('')}
+                        </div>
+                    </div>
+                    <div class="session-actions">
+                        <button class="btn-view-session" onclick="viewSession(${session.id})">
+                            👁️ Voir les détails
+                        </button>
+                    </div>
+                `;
+                
+                container.appendChild(card);
+            });
+        }
+
+        function viewSession(sessionId) {
+            // Rediriger vers une page de détails de session
+            // Pour l'instant, juste un log
+            console.log('[VIEW] Session:', sessionId);
+            alert(`Détails de la session #${sessionId}\n(Fonctionnalité à implémenter)`);
+        }
+
+        // ============================================
+        // UTILITAIRES
+        // ============================================
+        function getScoreClass(percentage) {
+            if (percentage >= 90) return 'excellent';
+            if (percentage >= 75) return 'good';
+            if (percentage >= 60) return 'average';
+            if (percentage >= 40) return 'poor';
+            return 'bad';
+        }
+
+        function getScoreColor(scoreClass) {
+            const colors = {
+                'excellent': '#4CAF50',
+                'good': '#7CB342',
+                'average': '#FFB300',
+                'poor': '#FF9800',
+                'bad': '#F44336'
+            };
+            return colors[scoreClass] || '#888';
+        }
+
+        function formatContextName(context) {
+            const names = {
+                'open': 'Open',
+                'defense': 'Défense',
+                'squeeze': 'Squeeze',
+                'vs_limpers': 'vs Limpers',
+                '4bet': '4-Bet',
+                'call_3bet': 'Call 3-Bet'
+            };
+            return names[context] || context;
+        }
+
+        function formatDuration(seconds) {
+            if (seconds < 60) return `${seconds}s`;
+            const minutes = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${minutes}m ${secs}s`;
+        }
+
+        // ============================================
+        // INITIALISATION
+        // ============================================
+        window.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

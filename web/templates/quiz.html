@@ -695,6 +695,9 @@
 
         // 🆕 TRACKING DÉT AILLÉ DES RÉSULTATS
         let quizResults = [];
+        
+        // 360237206225 v4.5 - Session ID pour historique en BDD
+        let currentSessionId = null;
 
         // Variables pour drill_down
         let isDrillDown = false;
@@ -720,6 +723,10 @@
 
             try {
                 questions = JSON.parse(questionsData);
+                
+                // 360237206225 v4.5 - Charger session_id depuis sessionStorage
+                currentSessionId = sessionStorage.getItem('quizSessionId');
+                console.log('[QUIZ] Session ID:', currentSessionId);
                 console.log('[QUIZ] Questions chargées:', questions.length);
 
                 if (!questions || questions.length === 0) {
@@ -945,8 +952,36 @@
                 handleSimpleAnswer(selectedAction);
             }
         }
+        // ============================================
+        // 🆕 v4.5 - SAUVEGARDE EN BDD
+        // ============================================
+        async function saveAnswerToDatabase(answerData) {
+            if (!currentSessionId) {
+                console.warn('[QUIZ] Pas de session_id, skip sauvegarde BDD');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/quiz/submit-answer', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        session_id: currentSessionId,
+                        ...answerData
+                    })
+                });
+                
+                if (!response.ok) {
+                    console.error('[QUIZ] Erreur sauvegarde BDD:', response.status);
+                }
+            } catch (error) {
+                console.error('[QUIZ] Erreur réseau sauvegarde BDD:', error);
+                // Ne pas bloquer le quiz si la BDD fail
+            }
+        }
 
-        function handleSimpleAnswer(selectedAction) {
+
+        async function handleSimpleAnswer(selectedAction) {
             const isCorrect = selectedAction === currentQuestion.correct_answer;
 
             // 🆕 STOCKER LE RÉSULTAT
@@ -960,6 +995,19 @@
                 is_correct: isCorrect,
                 question_type: 'simple'
             });
+            
+            // 🆕 v4.5 - Sauvegarder en BDD
+            await saveAnswerToDatabase({
+                question_number: currentQuestionNum,
+                hand: currentQuestion.hand,
+                context_id: currentQuestion.context_id,
+                context_name: currentQuestion.context_info.display_name,
+                context_action: currentQuestion.context_info.primary_action,
+                question_type: 'simple',
+                user_answer: selectedAction,
+                correct_answer: currentQuestion.correct_answer,
+                is_correct: isCorrect
+            });
 
             currentQuestionNum++;
             if (isCorrect) correctAnswers++;
@@ -968,7 +1016,7 @@
             showFeedback(isCorrect, selectedAction, currentQuestion.correct_answer);
         }
 
-        function handleDrillDownAnswer(selectedAction) {
+        async function handleDrillDownAnswer(selectedAction) {
             const level = drillDownLevels[currentLevel];
             const isCorrect = selectedAction === level.correct_answer;
 
@@ -983,6 +1031,34 @@
                 is_correct: isCorrect,
                 question_type: 'drill_down',
                 level: currentLevel
+            });
+            
+            // 🆕 v4.5 - Construire l'historique de la séquence
+            const sequenceHistory = {
+                levels: drillDownLevels.slice(0, currentLevel + 1).map((lvl, idx) => ({
+                    level: idx,
+                    question: lvl.question,
+                    villain_reaction: lvl.villain_reaction,
+                    hero_action: currentQuestion.sequence[idx]?.action,
+                    user_answer: idx === currentLevel ? selectedAction : null
+                }))
+            };
+            
+            // 🆕 v4.5 - Sauvegarder en BDD
+            await saveAnswerToDatabase({
+                question_number: currentQuestionNum,
+                hand: currentQuestion.hand,
+                context_id: currentQuestion.context_id,
+                context_name: currentQuestion.context_info.display_name,
+                context_action: currentQuestion.context_info.primary_action,
+                question_type: 'drill_down',
+                drill_level: currentLevel,
+                drill_total_steps: drillDownLevels.length,
+                villain_position: currentQuestion.villain_position,
+                sequence_history: sequenceHistory,
+                user_answer: selectedAction,
+                correct_answer: level.correct_answer,
+                is_correct: isCorrect
             });
 
             // 🔧 Incrémenter à chaque étape du drill-down (chaque étape = 1 question)
@@ -1064,7 +1140,7 @@
             loadNextQuestion();
         }
 
-        function showResults() {
+        async function showResults() {
             // Sauvegarder les résultats dans sessionStorage
             sessionStorage.setItem('quizResults', JSON.stringify(quizResults));
             
@@ -1075,10 +1151,29 @@
             };
             sessionStorage.setItem('quizMetadata', JSON.stringify(quizMetadata));
             
-            console.log('[QUIZ] Résultats sauvegardés, redirection vers analyse...');
+            console.log('[QUIZ] Résultats sauvegardés, fin de session...');
             
-            // Rediriger vers la page d'analyse
-            window.location.href = '/quiz-result';
+            // 🆕 v4.5 - Terminer la session en BDD
+            if (currentSessionId) {
+                try {
+                    const response = await fetch(`/api/quiz/end-session/${currentSessionId}`, {
+                        method: 'POST'
+                    });
+                    
+                    if (response.ok) {
+                        const stats = await response.json();
+                        console.log('[QUIZ] Session terminée:', stats);
+                    }
+                } catch (error) {
+                    console.error('[QUIZ] Erreur fin de session:', error);
+                }
+            }
+            
+            // Rediriger vers la page d'analyse avec session_id
+            const redirectUrl = currentSessionId 
+                ? `/quiz-result?session_id=${currentSessionId}`
+                : '/quiz-result';
+            window.location.href = redirectUrl;
         }
 
 

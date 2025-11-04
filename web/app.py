@@ -1,4 +1,4 @@
-from flask import Flask, render_template, jsonify, request, send_from_directory
+from flask import Flask, render_template, jsonify, request, send_from_directory, session
 import subprocess
 import os
 import sys
@@ -18,6 +18,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / 'modules'))
 from quiz_generator import QuizGenerator
 from poker_constants import ALL_POKER_HANDS
 from conflict_detector import detect_context_conflicts
+from quiz_history_manager import QuizHistoryManager  # 🆕 v4.5 - Historique des quiz
 
 # Importer context_validator si disponible
 try:
@@ -42,6 +43,16 @@ except Exception as e:
     VALIDATOR_AVAILABLE = False
 
 app = Flask(__name__)
+app.secret_key = 'poker_training_secret_key_2025'  # 🆕 v4.5 - Pour les sessions Flask
+
+# 🆕 v4.5 - Gestionnaire d'historique des quiz (base séparée)
+history_db_path = Path(__file__).parent.parent / "data" / "quiz_history.db"
+try:
+    history_manager = QuizHistoryManager(str(history_db_path))
+    print(f"✓ QuizHistoryManager initialisé: {history_db_path}")
+except Exception as e:
+    print(f"✗ ERREUR lors de l'initialisation du QuizHistoryManager: {e}")
+    history_manager = None
 
 # Variable globale pour le nombre d'orphelins
 ORPHAN_COUNT = 0
@@ -1561,6 +1572,7 @@ def generate_quiz_with_variants():
     """
     Génère un quiz avec support des variantes.
     🆕 Respecte le nombre de SOUS-QUESTIONS demandé (drill-down = N sous-questions)
+    🆕 v4.5 - Crée une session en BDD pour historique
 
     Body JSON:
         {
@@ -1584,7 +1596,8 @@ def generate_quiz_with_variants():
                     "options": [...],
                     "correct_answer": "RAISE"
                 }
-            ]
+            ],
+            "session_id": 123  # 🆕 v4.5
         }
     """
     try:
@@ -1599,6 +1612,20 @@ def generate_quiz_with_variants():
         
         # 🎚️ Log du niveau d'agressivité
         print(f"[QUIZ GEN] 🎚️ Agressivité de la table: {aggression.upper()}")
+        
+        # 🆕 v4.5 - Créer session en BDD
+        session_id = None
+        if history_manager:
+            try:
+                session_id = history_manager.start_session(
+                    aggression_level=aggression,
+                    contexts_used=context_ids,
+                    total_questions=question_count
+                )
+                print(f"[QUIZ GEN] 💾 Session créée en BDD: ID={session_id}")
+            except Exception as e:
+                print(f"[QUIZ GEN] ⚠️ Erreur création session BDD: {e}")
+                # Continuer sans session BDD si erreur
 
         generator = QuizGenerator(aggression_level=aggression)  # 🎚️ Passer l'agressivité
         questions = []
@@ -1672,7 +1699,8 @@ def generate_quiz_with_variants():
         print(f"[QUIZ GEN] ✅ Quiz généré: {len(questions)} questions, {total_subquestions} sous-questions")
 
         return jsonify({
-            'questions': questions
+            'questions': questions,
+            'session_id': session_id  # 🆕 v4.5 - ID de session pour historique
         })
 
     except Exception as e:
@@ -1684,13 +1712,322 @@ def generate_quiz_with_variants():
         }), 500
 
 
+@app.route('/api/quiz/submit-answer', methods=['POST'])
+def submit_quiz_answer():
+    """
+    🆕 v4.5 - Sauvegarde une réponse dans l'historique
+    
+    Body JSON:
+        {
+            "session_id": 123,
+            "question_number": 1,
+            "hand": "KK",
+            "context_id": 1,
+            "context_name": "UTG Open",
+            "context_action": "open",
+            "question_type": "simple" | "drill_down",
+            "user_answer": "RAISE",
+            "correct_answer": "RAISE",
+            "is_correct": true,
+            "drill_level": 0,
+            "drill_total_steps": 3,
+            "villain_position": "CO",
+            "sequence_history": {...}
+        }
+    """
+    try:
+        if not history_manager:
+            return jsonify({'error': 'History manager non disponible'}), 500
+        
+        answer_data = request.get_json()
+        session_id = answer_data.get('session_id')
+        
+        if not session_id:
+            return jsonify({'error': 'session_id manquant'}), 400
+        
+        # Sauvegarder la réponse
+        history_manager.save_answer(session_id, answer_data)
+        
+        return jsonify({'success': True})
+    
+    except Exception as e:
+        print(f"[API] Erreur sauvegarde réponse: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/quiz/session/<int:session_id>', methods=['GET'])
+def get_quiz_session(session_id):
+    """
+    🆕 v4.5 - Récupère les résultats complets d'une session
+    
+    Returns JSON:
+        {
+            "session": {
+                "id": 123,
+                "date_start": "2025-10-31 10:00:00",
+                "aggression_level": "medium",
+                ...
+            },
+            "answers": [
+                {
+                    "hand": "KK",
+                    "context_name": "UTG Open",
+                    "user_answer": "RAISE",
+                    "correct_answer": "RAISE",
+                    "is_correct": true,
+                    ...
+                }
+            ]
+        }
+    """
+    try:
+        if not history_manager:
+            return jsonify({'error': 'History manager non disponible'}), 500
+        
+        results = history_manager.get_session_results(session_id)
+        
+        if not results['session']:
+            return jsonify({'error': 'Session non trouvée'}), 404
+        
+        return jsonify(results)
+    
+    except Exception as e:
+        print(f"[API] Erreur récupération session: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/quiz/end-session/<int:session_id>', methods=['POST'])
+def end_quiz_session(session_id):
+    """
+    🆕 v4.5 - Termine une session et calcule les statistiques
+    
+    Returns JSON:
+        {
+            "session_id": 123,
+            "total_questions": 10,
+            "correct_answers": 7,
+            "score_percentage": 70.0
+        }
+    """
+    try:
+        if not history_manager:
+            return jsonify({'error': 'History manager non disponible'}), 500
+        
+        stats = history_manager.end_session(session_id)
+        
+        return jsonify(stats)
+    
+    except Exception as e:
+        print(f"[API] Erreur fin de session: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/test-quiz')
 def test_quiz():
     return render_template('test-quiz.html')
 
+
+@app.route('/api/quiz/user-stats', methods=['GET'])
+def get_user_stats():
+    """
+    🆕 v4.5 - Récupère les statistiques globales de l'utilisateur
+    
+    Returns JSON:
+        {
+            "total_sessions": 25,
+            "total_questions": 250,
+            "total_correct": 200,
+            "average_score": 80.0,
+            "best_score": 95.0,
+            "last_session_date": "2025-10-31 10:00:00"
+        }
+    """
+    try:
+        if not history_manager:
+            return jsonify({'error': 'History manager non disponible'}), 500
+        
+        stats = history_manager.get_user_stats()
+        return jsonify(stats)
+    
+    except Exception as e:
+        print(f"[API] Erreur stats utilisateur: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/quiz/recent-sessions', methods=['GET'])
+def get_recent_sessions():
+    """
+    🆕 v4.5 - Récupère l'historique des sessions récentes
+    
+    Query params:
+        limit: Nombre de sessions (défaut: 10)
+    
+    Returns JSON:
+        {
+            "sessions": [
+                {
+                    "id": 123,
+                    "date_start": "2025-10-31 10:00:00",
+                    "score_percentage": 80.0,
+                    ...
+                }
+            ]
+        }
+    """
+    try:
+        if not history_manager:
+            return jsonify({'error': 'History manager non disponible'}), 500
+        
+        limit = request.args.get('limit', 10, type=int)
+        sessions = history_manager.get_recent_sessions(limit=limit)
+        
+        return jsonify({'sessions': sessions})
+    
+    except Exception as e:
+        print(f"[API] Erreur sessions récentes: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/quiz/progression')
+def get_quiz_progression():
+    """
+    🆕 API pour récupérer les données de progression
+    Utilisée par quiz-result.html et history.html
+    
+    Returns JSON:
+        {
+            "sessions": [...],
+            "overall_stats": {...}
+        }
+    """
+    try:
+        print("[API] /api/quiz/progression appelée")
+        
+        if not history_manager:
+            print("[API] ⚠️ history_manager non disponible")
+            return jsonify({
+                'sessions': [],
+                'overall_stats': {
+                    'total_sessions': 0,
+                    'total_questions': 0,
+                    'average_score': 0,
+                    'best_score': 0
+                }
+            })
+        
+        # Récupérer toutes les sessions (limit=100 max)
+        sessions_data = history_manager.get_recent_sessions(limit=100)
+        
+        print(f"[API] {len(sessions_data)} session(s) récupérée(s)")
+        
+        if not sessions_data:
+            return jsonify({
+                'sessions': [],
+                'overall_stats': {
+                    'total_sessions': 0,
+                    'total_questions': 0,
+                    'average_score': 0,
+                    'best_score': 0
+                }
+            })
+        
+        # Convertir au format attendu
+        formatted_sessions = []
+        for s in sessions_data:
+            # Extraire les contextes
+            contexts = []
+            if 'contexts' in s and s['contexts']:
+                contexts = s['contexts']
+            else:
+                try:
+                    session_results = history_manager.get_session_results(s['id'])
+                    if session_results and 'answers' in session_results:
+                        contexts_set = set()
+                        for answer in session_results['answers']:
+                            if 'context_action' in answer and answer['context_action']:
+                                contexts_set.add(answer['context_action'])
+                        contexts = list(contexts_set)
+                except:
+                    contexts = ['unknown']
+            
+            # Calculer la durée
+            duration_seconds = 0
+            if 'date_start' in s and 'date_end' in s and s['date_end']:
+                try:
+                    start = datetime.fromisoformat(s['date_start'])
+                    end = datetime.fromisoformat(s['date_end'])
+                    duration_seconds = int((end - start).total_seconds())
+                except:
+                    duration_seconds = 0
+            
+            formatted_session = {
+                'id': s['id'],
+                'completed_at': s.get('date_end') or s.get('date_start', ''),
+                'score_percentage': int(s.get('score_percentage', 0)),
+                'num_questions': s.get('total_questions', 0),
+                'num_correct': s.get('correct_answers', 0),
+                'duration_seconds': duration_seconds,
+                'contexts': contexts
+            }
+            
+            formatted_sessions.append(formatted_session)
+            print(f"[API] Session {s['id']}: {formatted_session['score_percentage']}%")
+        
+        # Calculer les stats globales
+        total_sessions = len(formatted_sessions)
+        total_questions = sum(s['num_questions'] for s in formatted_sessions)
+        
+        if total_sessions > 0:
+            average_score = round(sum(s['score_percentage'] for s in formatted_sessions) / total_sessions)
+            best_score = max(s['score_percentage'] for s in formatted_sessions)
+        else:
+            average_score = 0
+            best_score = 0
+        
+        result = {
+            'sessions': formatted_sessions,
+            'overall_stats': {
+                'total_sessions': total_sessions,
+                'total_questions': total_questions,
+                'average_score': average_score,
+                'best_score': best_score
+            }
+        }
+        
+        print(f"[API] ✅ {total_sessions} sessions, moyenne {average_score}%")
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        print(f'[ERROR] API progression: {e}')
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/quiz-result')
 def quiz_result():
+    """
+    Page de résultats du quiz
+    
+    🆕 v4.5 - Supporte deux sources de données:
+    - BDD via session_id dans l'URL (?session_id=123)
+    - sessionStorage en fallback (compatibilité)
+    """
     return render_template('quiz-result.html')
+
+@app.route('/history')
+def history():
+    """Page d'historique des sessions de quiz"""
+    return render_template('history.html')
 if __name__ == '__main__':
-    ORPHAN_COUNT = check_orphans_on_startup()
-    app.run(debug=True)
+    print("\n🚀 Démarrage Flask...")
+    print("📍 http://localhost:5000\n")
+    app.run(debug=True, host='0.0.0.0', port=5000)
+

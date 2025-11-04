@@ -173,6 +173,47 @@
             color: #4CAF50;
         }
 
+        /* Styles pour la séquence */
+        .error-sequence {
+            margin-top: 8px;
+            font-size: 0.85rem;
+        }
+
+        .error-sequence-title {
+            color: #6B9FFF;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .error-sequence-history {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            align-items: center;
+        }
+
+        .seq-step {
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .seq-step.hero {
+            background: rgba(103, 126, 234, 0.2);
+            color: #6B9FFF;
+        }
+
+        .seq-step.villain {
+            background: rgba(244, 67, 54, 0.2);
+            color: #FF8A80;
+        }
+
+        .seq-step.error-step {
+            background: rgba(244, 67, 54, 0.3);
+            border: 2px solid #f44336;
+        }
+
         .recommendations-list {
             display: flex;
             flex-direction: column;
@@ -232,154 +273,329 @@
 
         .btn-home {
             background: rgba(255, 255, 255, 0.1);
+            color: #e0e7ff;
+        }
+
+        /* 🆕 NOUVELLES SECTIONS - PROGRESSION */
+        .progression-section {
+            background: linear-gradient(135deg, rgba(103, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+            border-radius: 16px;
+            padding: 30px;
+            margin-top: 40px;
+            border: 1px solid rgba(103, 126, 234, 0.3);
+        }
+
+        .progression-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .progression-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-view-history {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 12px 24px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.95rem;
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-view-history:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(103, 126, 234, 0.4);
+        }
+
+        .global-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .global-stat-card {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .global-stat-icon {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+
+        .global-stat-value {
+            font-size: 2rem;
+            font-weight: 800;
+            color: #fff;
+            margin-bottom: 5px;
+        }
+
+        .global-stat-label {
+            font-size: 0.85rem;
+            opacity: 0.7;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .global-stat-trend {
+            font-size: 0.8rem;
+            margin-top: 8px;
+            font-weight: 600;
+        }
+
+        .trend-up {
+            color: #4CAF50;
+        }
+
+        .trend-down {
+            color: #f44336;
+        }
+
+        .trend-stable {
+            color: #FFB300;
+        }
+
+        .mini-chart-container {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .mini-chart-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #6B9FFF;
+        }
+
+        #miniProgressChart {
+            width: 100%;
+            height: 200px;
+        }
+
+        .loading-spinner {
+            text-align: center;
+            padding: 40px;
+            font-size: 1.1rem;
+            color: #667eea;
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 30px;
+            color: rgba(255, 255, 255, 0.5);
+            font-style: italic;
+        }
+
+        @media (max-width: 768px) {
+            .results-stats {
+                grid-template-columns: 1fr;
+            }
+
+            .global-stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .progression-header {
+                flex-direction: column;
+                gap: 15px;
+                align-items: stretch;
+            }
+
+            .btn-view-history {
+                text-align: center;
+                justify-content: center;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="results-card">
-            <!-- SCORE GLOBAL -->
-            <div class="results-title">🎯 Quiz Terminé !</div>
-            <div class="results-score">
-                <span id="finalScore">0</span>%
-            </div>
-
+            <h1 class="results-title">🎯 Résultats du Quiz</h1>
+            
+            <!-- Score principal -->
+            <div class="results-score" id="finalScore">--</div>
+            
+            <!-- Statistiques principales -->
             <div class="results-stats">
                 <div class="stat-item">
-                    <div class="stat-value" id="totalAnswered">0</div>
-                    <div class="stat-label">Questions</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-value" id="totalCorrect">0</div>
+                    <div class="stat-value" id="correctCount">--</div>
                     <div class="stat-label">Correctes</div>
                 </div>
                 <div class="stat-item">
-                    <div class="stat-value" id="totalIncorrect">0</div>
-                    <div class="stat-label">Incorrectes</div>
+                    <div class="stat-value" id="totalQuestions">--</div>
+                    <div class="stat-label">Questions</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="errorCount">--</div>
+                    <div class="stat-label">Erreurs</div>
                 </div>
             </div>
 
-            <!-- STATISTIQUES PAR CONTEXTE -->
+            <!-- Stats par contexte -->
             <div class="analysis-section">
-                <h3 class="section-title">📊 Performance par contexte</h3>
-                <div id="contextStats" class="context-stats-grid"></div>
+                <div class="section-title">
+                    📊 Performance par contexte
+                </div>
+                <div class="context-stats-grid" id="contextStats"></div>
             </div>
 
-            <!-- ERREURS DÉTAILLÉES -->
-            <div id="errorsSection" class="analysis-section">
-                <h3 class="section-title">❌ Vos erreurs (<span id="errorCount">0</span>)</h3>
-                <div id="errorsList" class="errors-list"></div>
+            <!-- Erreurs détaillées -->
+            <div class="analysis-section" id="errorsSection" style="display: none;">
+                <div class="section-title">
+                    ❌ Erreurs à réviser
+                </div>
+                <div class="errors-list" id="errorsList"></div>
             </div>
 
-            <!-- RECOMMANDATIONS -->
+            <!-- Recommandations -->
             <div class="analysis-section">
-                <h3 class="section-title">💡 Recommandations</h3>
-                <div id="recommendations" class="recommendations-list"></div>
+                <div class="section-title">
+                    💡 Recommandations
+                </div>
+                <div class="recommendations-list" id="recommendations"></div>
             </div>
 
-            <!-- ACTIONS -->
+            <!-- Actions principales -->
             <div class="results-actions">
                 <button class="results-btn btn-retry" onclick="retryQuiz()">
-                    🔄 Recommencer
+                    🔄 Refaire le quiz
                 </button>
                 <button class="results-btn btn-export" onclick="exportResults()">
-                    📊 Exporter CSV
+                    💾 Exporter CSV
                 </button>
                 <button class="results-btn btn-home" onclick="goHome()">
                     🏠 Accueil
                 </button>
             </div>
         </div>
+
+        <!-- 🆕 SECTION PROGRESSION -->
+        <div class="progression-section">
+            <div class="progression-header">
+                <h2 class="progression-title">
+                    📈 Votre progression
+                </h2>
+                <a href="/history" class="btn-view-history">
+                    📊 Voir l'historique complet
+                    <span>→</span>
+                </a>
+            </div>
+
+            <!-- Stats globales -->
+            <div id="globalStatsContainer" class="loading-spinner">
+                Chargement des statistiques...
+            </div>
+
+            <!-- Mini graphique -->
+            <div class="mini-chart-container">
+                <div class="mini-chart-title">📉 5 dernières sessions</div>
+                <canvas id="miniProgressChart"></canvas>
+            </div>
+        </div>
     </div>
 
     <script>
         // ============================================
-        // RÉCUPÉRATION DES RÉSULTATS
+        // DONNÉES ET ÉTAT
         // ============================================
         let quizResults = [];
-        let quizMetadata = {};
+        let progressionData = null;
 
+        // ============================================
+        // INITIALISATION
+        // ============================================
         function init() {
-            console.log('[RESULTS] Chargement de l\'analyse...');
-
-            // Récupérer les résultats depuis sessionStorage
-            const resultsData = sessionStorage.getItem('quizResults');
-            const metadataData = sessionStorage.getItem('quizMetadata');
-
-            if (!resultsData || !metadataData) {
-                console.error('[RESULTS] Aucun résultat trouvé');
-                alert('Aucun résultat trouvé. Veuillez d\'abord terminer un quiz.');
-                window.location.href = '/quiz-setup';
-                return;
-            }
-
-            quizResults = JSON.parse(resultsData);
-            quizMetadata = JSON.parse(metadataData);
-
-            console.log('[RESULTS] Résultats chargés:', quizResults.length, 'questions');
-
-            // Afficher l'analyse
-            displayAnalysis();
-        }
-
-        // ============================================
-        // AFFICHAGE DE L'ANALYSE
-        // ============================================
-        function displayAnalysis() {
-            const totalAnswered = quizResults.length;
-            const totalCorrect = quizResults.filter(r => r.is_correct).length;
-            const percentage = totalAnswered > 0 ? Math.round((totalCorrect / totalAnswered) * 100) : 0;
-
-            displayGlobalScore(percentage, totalCorrect, totalAnswered);
-            displayContextStats();
+            loadResults();
+            displayResults();
+            analyzeByContext();
             displayErrors();
             generateRecommendations();
+            
+            // 🆕 Charger les données de progression
+            loadProgressionData();
         }
 
-        function displayGlobalScore(percentage, correct, total) {
-            document.getElementById('finalScore').textContent = percentage;
-            document.getElementById('totalCorrect').textContent = correct;
-            document.getElementById('totalAnswered').textContent = total;
-            document.getElementById('totalIncorrect').textContent = (total - correct);
+        function loadResults() {
+            const resultsData = sessionStorage.getItem('quizResults');
+            if (resultsData) {
+                quizResults = JSON.parse(resultsData);
+                console.log('[RESULTS] Résultats chargés:', quizResults.length);
+            } else {
+                console.error('[ERROR] Aucun résultat trouvé');
+                alert('Aucun résultat trouvé. Retour à l\'accueil.');
+                window.location.href = '/';
+            }
         }
 
-        function displayContextStats() {
-            const contextGroups = {};
+        // ============================================
+        // AFFICHAGE DES RÉSULTATS
+        // ============================================
+        function displayResults() {
+            const correct = quizResults.filter(r => r.is_correct).length;
+            const total = quizResults.length;
+            const percentage = Math.round((correct / total) * 100);
+
+            document.getElementById('finalScore').textContent = percentage + '%';
+            document.getElementById('correctCount').textContent = correct;
+            document.getElementById('totalQuestions').textContent = total;
+            document.getElementById('errorCount').textContent = total - correct;
+        }
+
+        function analyzeByContext() {
+            const contextMap = {};
+
             quizResults.forEach(result => {
-                if (!contextGroups[result.context_id]) {
-                    contextGroups[result.context_id] = {
+                const key = result.context_action;
+                if (!contextMap[key]) {
+                    contextMap[key] = {
                         name: result.context_name,
-                        action: result.context_action,
-                        total: 0,
-                        correct: 0
+                        correct: 0,
+                        total: 0
                     };
                 }
-                contextGroups[result.context_id].total++;
+                contextMap[key].total++;
                 if (result.is_correct) {
-                    contextGroups[result.context_id].correct++;
+                    contextMap[key].correct++;
                 }
             });
 
             const container = document.getElementById('contextStats');
             container.innerHTML = '';
 
-            Object.entries(contextGroups).forEach(([contextId, stats]) => {
-                const percentage = Math.round((stats.correct / stats.total) * 100);
-                
-                let scoreClass = 'bad';
-                if (percentage >= 90) scoreClass = 'excellent';
-                else if (percentage >= 75) scoreClass = 'good';
-                else if (percentage >= 60) scoreClass = 'average';
-                else if (percentage >= 50) scoreClass = 'poor';
+            Object.entries(contextMap).forEach(([key, data]) => {
+                const percentage = Math.round((data.correct / data.total) * 100);
+                let performanceClass = 'bad';
+                if (percentage >= 90) performanceClass = 'excellent';
+                else if (percentage >= 75) performanceClass = 'good';
+                else if (percentage >= 60) performanceClass = 'average';
+                else if (percentage >= 40) performanceClass = 'poor';
 
                 const card = document.createElement('div');
-                card.className = `context-card-result ${scoreClass}`;
+                card.className = `context-card-result ${performanceClass}`;
                 card.innerHTML = `
-                    <div class="context-name">${stats.name}</div>
+                    <div class="context-name">${data.name}</div>
                     <div class="context-score">${percentage}%</div>
-                    <div class="context-details">${stats.correct}/${stats.total} bonnes réponses</div>
+                    <div class="context-details">${data.correct}/${data.total} correctes</div>
                 `;
                 container.appendChild(card);
             });
@@ -394,26 +610,77 @@
             }
 
             document.getElementById('errorsSection').style.display = 'block';
-            document.getElementById('errorCount').textContent = errors.length;
-
             const container = document.getElementById('errorsList');
             container.innerHTML = '';
 
             errors.forEach(error => {
                 const item = document.createElement('div');
                 item.className = 'error-item';
-                item.innerHTML = `
+                
+                let content = `
                     <div>
-                        <div class="error-hand">${error.hand}</div>
+                        <div class="error-hand">${formatHand(error.hand)}</div>
                         <div class="error-context">${error.context_name}</div>
+                `;
+                
+                if (error.sequence_history && error.sequence_history.levels) {
+                    content += `
+                        <div class="error-sequence">
+                            <div class="error-sequence-title">📋 Séquence :</div>
+                            <div class="error-sequence-history">
+                                ${formatSequence(error.sequence_history, error.villain_position)}
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                content += `
                     </div>
                     <div class="error-actions">
-                        <div class="error-your-answer">Votre réponse : ${translateAction(error.user_answer)}</div>
-                        <div class="error-correct-answer">Bonne réponse : ${translateAction(error.correct_answer)}</div>
+                        <div class="error-your-answer">❌ Votre réponse : ${translateAction(error.user_answer)}</div>
+                        <div class="error-correct-answer">✅ Bonne réponse : ${translateAction(error.correct_answer)}</div>
                     </div>
                 `;
+                
+                item.innerHTML = content;
                 container.appendChild(item);
             });
+        }
+        
+        function formatHand(hand) {
+            if (!hand) return '';
+            return hand
+                .replace(/s/g, '♠')
+                .replace(/h/g, '♥')
+                .replace(/d/g, '♦')
+                .replace(/c/g, '♣');
+        }
+        
+        function formatSequence(sequenceHistory, villainPos) {
+            if (!sequenceHistory || !sequenceHistory.levels) return '';
+            
+            const parts = [];
+            sequenceHistory.levels.forEach((level, idx) => {
+                if (idx === 0) {
+                    parts.push(`<span class="seq-step hero">Vous ${translateAction(level.hero_action)}</span>`);
+                } else {
+                    if (level.villain_reaction) {
+                        const villainText = level.villain_reaction.text || 
+                            `${villainPos} ${translateAction(level.villain_reaction.action)}`;
+                        parts.push(`<span class="seq-step villain">${villainText}</span>`);
+                    }
+                    
+                    if (level.user_answer) {
+                        const isError = idx === sequenceHistory.levels.length - 1;
+                        const errorClass = isError ? ' error-step' : '';
+                        parts.push(`<span class="seq-step hero${errorClass}">Vous ${translateAction(level.user_answer)}</span>`);
+                    } else if (level.hero_action) {
+                        parts.push(`<span class="seq-step hero">Vous ${translateAction(level.hero_action)}</span>`);
+                    }
+                }
+            });
+            
+            return parts.join(' → ');
         }
 
         function generateRecommendations() {
@@ -421,7 +688,6 @@
             const errors = quizResults.filter(r => !r.is_correct);
             const percentage = Math.round((quizResults.filter(r => r.is_correct).length / quizResults.length) * 100);
 
-            // Recommandation selon le score
             if (percentage >= 90) {
                 recommendations.push({
                     title: '🎉 Excellent travail !',
@@ -444,7 +710,6 @@
                 });
             }
 
-            // Analyser les patterns d'erreurs
             if (errors.length > 0) {
                 const errorsByContext = {};
                 errors.forEach(error => {
@@ -482,7 +747,6 @@
                     });
                 }
 
-                // Détection tight/loose
                 const foldErrors = errors.filter(e => e.user_answer === 'FOLD').length;
                 const raiseErrors = errors.filter(e => ['RAISE', 'OPEN', '3BET'].includes(e.user_answer)).length;
                 
@@ -499,7 +763,6 @@
                 }
             }
 
-            // Afficher
             const container = document.getElementById('recommendations');
             container.innerHTML = '';
 
@@ -511,6 +774,196 @@
                     <div class="recommendation-text">${rec.text}</div>
                 `;
                 container.appendChild(item);
+            });
+        }
+
+        // ============================================
+        // 🆕 PROGRESSION ET STATISTIQUES GLOBALES
+        // ============================================
+        async function loadProgressionData() {
+            try {
+                const response = await fetch('/api/quiz/progression');
+                if (!response.ok) {
+                    throw new Error('Erreur lors du chargement des données');
+                }
+                
+                progressionData = await response.json();
+                console.log('[PROGRESSION] Données chargées:', progressionData);
+                
+                displayGlobalStats();
+                displayMiniChart();
+            } catch (error) {
+                console.error('[ERROR] Erreur chargement progression:', error);
+                document.getElementById('globalStatsContainer').innerHTML = `
+                    <div class="no-data">
+                        Impossible de charger les statistiques. Première session ?
+                    </div>
+                `;
+            }
+        }
+
+        function displayGlobalStats() {
+            const container = document.getElementById('globalStatsContainer');
+            
+            if (!progressionData || !progressionData.sessions || progressionData.sessions.length === 0) {
+                container.innerHTML = `
+                    <div class="no-data">
+                        C'est votre première session ! Continuez à vous entraîner pour voir vos statistiques globales.
+                    </div>
+                `;
+                return;
+            }
+
+            const stats = progressionData.overall_stats;
+            const currentScore = Math.round((quizResults.filter(r => r.is_correct).length / quizResults.length) * 100);
+            
+            // Calculer la tendance
+            let trend = 'stable';
+            let trendText = '→ Stable';
+            let trendClass = 'trend-stable';
+            
+            if (progressionData.sessions.length > 1) {
+                const previousScore = progressionData.sessions[progressionData.sessions.length - 2].score_percentage;
+                const diff = currentScore - previousScore;
+                
+                if (diff > 5) {
+                    trend = 'up';
+                    trendText = `↗ +${diff}%`;
+                    trendClass = 'trend-up';
+                } else if (diff < -5) {
+                    trend = 'down';
+                    trendText = `↘ ${diff}%`;
+                    trendClass = 'trend-down';
+                }
+            }
+
+            container.innerHTML = `
+                <div class="global-stats-grid">
+                    <div class="global-stat-card">
+                        <div class="global-stat-icon">🏆</div>
+                        <div class="global-stat-value">${stats.best_score}%</div>
+                        <div class="global-stat-label">Meilleur score</div>
+                    </div>
+                    
+                    <div class="global-stat-card">
+                        <div class="global-stat-icon">📊</div>
+                        <div class="global-stat-value">${stats.average_score}%</div>
+                        <div class="global-stat-label">Score moyen</div>
+                        <div class="global-stat-trend ${trendClass}">${trendText}</div>
+                    </div>
+                    
+                    <div class="global-stat-card">
+                        <div class="global-stat-icon">🎯</div>
+                        <div class="global-stat-value">${stats.total_sessions}</div>
+                        <div class="global-stat-label">Sessions totales</div>
+                    </div>
+                    
+                    <div class="global-stat-card">
+                        <div class="global-stat-icon">✅</div>
+                        <div class="global-stat-value">${stats.total_questions}</div>
+                        <div class="global-stat-label">Questions répondues</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function displayMiniChart() {
+            const canvas = document.getElementById('miniProgressChart');
+            const ctx = canvas.getContext('2d');
+            
+            if (!progressionData || !progressionData.sessions || progressionData.sessions.length === 0) {
+                canvas.height = 100;
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+                ctx.font = '14px Segoe UI';
+                ctx.textAlign = 'center';
+                ctx.fillText('Aucune donnée disponible', canvas.width / 2, 50);
+                return;
+            }
+
+            // Prendre les 5 dernières sessions
+            const sessions = progressionData.sessions.slice(-5);
+            
+            // Configuration du canvas
+            const width = canvas.offsetWidth;
+            const height = 200;
+            canvas.width = width;
+            canvas.height = height;
+            
+            const padding = 40;
+            const chartWidth = width - (padding * 2);
+            const chartHeight = height - (padding * 2);
+            
+            // Trouver min et max pour l'échelle
+            const scores = sessions.map(s => s.score_percentage);
+            const minScore = Math.max(0, Math.min(...scores) - 10);
+            const maxScore = Math.min(100, Math.max(...scores) + 10);
+            const scoreRange = maxScore - minScore;
+            
+            // Fonction pour convertir score en position Y
+            const getY = (score) => {
+                return padding + chartHeight - ((score - minScore) / scoreRange * chartHeight);
+            };
+            
+            // Fonction pour convertir index en position X
+            const getX = (index) => {
+                return padding + (index / (sessions.length - 1)) * chartWidth;
+            };
+            
+            // Dessiner la grille
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= 4; i++) {
+                const y = padding + (i / 4) * chartHeight;
+                ctx.beginPath();
+                ctx.moveTo(padding, y);
+                ctx.lineTo(width - padding, y);
+                ctx.stroke();
+            }
+            
+            // Dessiner la ligne de progression
+            ctx.strokeStyle = '#667eea';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            sessions.forEach((session, index) => {
+                const x = getX(index);
+                const y = getY(session.score_percentage);
+                
+                if (index === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            });
+            ctx.stroke();
+            
+            // Dessiner les points
+            sessions.forEach((session, index) => {
+                const x = getX(index);
+                const y = getY(session.score_percentage);
+                
+                // Point
+                ctx.fillStyle = '#667eea';
+                ctx.beginPath();
+                ctx.arc(x, y, 6, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Bordure blanche
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                // Score au-dessus du point
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 12px Segoe UI';
+                ctx.textAlign = 'center';
+                ctx.fillText(`${session.score_percentage}%`, x, y - 15);
+                
+                // Date en bas
+                const date = new Date(session.completed_at);
+                const dateStr = `${date.getDate()}/${date.getMonth() + 1}`;
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+                ctx.font = '10px Segoe UI';
+                ctx.fillText(dateStr, x, height - padding + 20);
             });
         }
 

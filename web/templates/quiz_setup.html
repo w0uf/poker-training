@@ -719,6 +719,12 @@
                 // on stocke aussi l’agressivité pour l’écran de quiz (si tu veux l’afficher)
                 sessionStorage.setItem('quizQuestions', JSON.stringify(data.questions));
                 sessionStorage.setItem('quizAggression', aggression);
+                
+                // 🆕 v4.5 - Stocker session_id pour historique BDD
+                if (data.session_id) {
+                    sessionStorage.setItem('quizSessionId', data.session_id);
+                    console.log('[SETUP] Session ID stocké:', data.session_id);
+                }
 
                 window.location.href = '/quiz';
             } catch (error) {
