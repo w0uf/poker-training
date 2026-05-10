@@ -37,10 +37,13 @@ echo "📋 Copie de l'application..."
 cp -r web/* "$OUTPUT_DIR/poker-training/web/" 2>/dev/null || echo "⚠️  Dossier web/ non trouvé"
 cp -r modules/* "$OUTPUT_DIR/poker-training/modules/" 2>/dev/null || echo "⚠️  Dossier modules/ non trouvé"
 
-# Copier les bases de données vides (templates)
-if [ -d "data" ]; then
-    cp -r data/*.db "$OUTPUT_DIR/poker-training/data/" 2>/dev/null || echo "ℹ️  Pas de base de données à copier"
+# Copier les fichiers de données (ranges JSON uniquement, pas les BDD — elles sont créées au premier démarrage)
+if [ -d "data/ranges" ]; then
+    cp -r data/ranges "$OUTPUT_DIR/poker-training/data/" 2>/dev/null || echo "ℹ️  Pas de ranges à copier"
 fi
+
+# Copier VERSION dans poker-training/ pour que app.py puisse la lire (Path(__file__).parent.parent)
+cp "$SCRIPT_DIR/VERSION" "$OUTPUT_DIR/poker-training/VERSION"
 
 # 3. Créer START.bat
 echo "🎬 Création de START.bat..."
@@ -50,24 +53,24 @@ title Poker Training v$VERSION
 color 0A
 
 cls
-echo ╔════════════════════════════════════════════════════════════════╗
-echo ║                                                                ║
-echo ║          🃏  POKER TRAINING v$VERSION                             ║
-echo ║          Entrainement de Ranges Preflop                       ║
-echo ║                                                                ║
-echo ╚════════════════════════════════════════════════════════════════╝
+echo ================================================
 echo.
-echo 🚀 Demarrage du serveur...
+echo   POKER TRAINING v$VERSION
+echo   Entrainement de Ranges Preflop
+echo.
+echo ================================================
+echo.
+echo Demarrage du serveur...
 echo.
 
-REM Vérifier que Python est présent
+REM Verifier que Python est present
 if not exist "python\python.exe" (
-    echo ❌ ERREUR: Python embarque non trouve !
+    echo ERREUR: Python embarque non trouve !
     echo.
-    echo 📝 Instructions:
-    echo    1. Telecharger Python Embeddable depuis:
+    echo Instructions:
+    echo    1. Lire INSTRUCTIONS.txt
+    echo    2. Telecharger Python Embeddable
     echo       https://www.python.org/downloads/windows/
-    echo    2. Chercher "Windows embeddable package (64-bit)"
     echo    3. Extraire dans le dossier "python\"
     echo    4. Installer Flask (voir INSTRUCTIONS.txt^)
     echo.
@@ -82,9 +85,9 @@ cd poker-training\web
 REM Si erreur
 if errorlevel 1 (
     echo.
-    echo ❌ Erreur au demarrage !
+    echo Erreur au demarrage !
     echo.
-    echo 💡 Verifications:
+    echo Verifications:
     echo    - Flask est-il installe ? (voir INSTRUCTIONS.txt^)
     echo    - Le port 5000 est-il libre ?
     echo    - L'antivirus bloque-t-il python.exe ?
@@ -144,10 +147,9 @@ PokerTraining-Portable-v$VERSION/
 └── poker-training/              ← L'application
     ├── web/                     ← Serveur Flask
     ├── modules/                 ← Modules Python
-    └── data/                    ← Bases de données
-        ├── poker_trainer.db
-        ├── quiz_history.db
+    └── data/                    ← Données
         └── ranges/              ← VOS FICHIERS JSON ICI
+            (les bases de données sont créées automatiquement au premier démarrage)
 
 
 🎯 IMPORTER VOS RANGES
@@ -241,156 +243,94 @@ EOFREADME
 # 5. Créer INSTRUCTIONS.txt (installation Python)
 echo "📄 Création de INSTRUCTIONS.txt..."
 cat > "$OUTPUT_DIR/INSTRUCTIONS.txt" << EOFINST
-╔════════════════════════════════════════════════════════════════╗
-║                                                                ║
-║     INSTRUCTIONS D'INSTALLATION - PYTHON EMBARQUÉ              ║
-║                                                                ║
-╚════════════════════════════════════════════════════════════════╝
+================================================
+  POKER TRAINING v$VERSION
+  Installation de Python (premiere utilisation)
+================================================
 
-⚠️ CES INSTRUCTIONS SONT POUR LE CRÉATEUR DU PACKAGE
-   Les utilisateurs finaux n'ont qu'à double-cliquer sur START.bat
+Cette etape est OBLIGATOIRE uniquement si le dossier "python\" est absent.
+Si START.bat fonctionne deja, vous pouvez ignorer ce fichier.
 
 
-📦 ÉTAPE 1 : TÉLÉCHARGER PYTHON EMBEDDABLE
-═══════════════════════════════════════════════════════════════
+ETAPE 1 : TELECHARGER PYTHON
+================================================
 
 1. Aller sur : https://www.python.org/downloads/windows/
 
-2. Chercher "Windows embeddable package (64-bit)"
-   Version recommandée : Python 3.11.x
+2. Faire defiler jusqu'a "Python 3.11.x"
 
-3. Télécharger le fichier (environ 10 MB)
-   Exemple : python-3.11.6-embed-amd64.zip
+3. Cliquer sur "Windows embeddable package (64-bit)"
+   (fichier d'environ 10 MB, exemple : python-3.11.9-embed-amd64.zip)
 
-
-📂 ÉTAPE 2 : EXTRAIRE DANS LE DOSSIER PYTHON/
-═══════════════════════════════════════════════════════════════
-
-1. Créer le dossier "python\" s'il n'existe pas
-
-2. Extraire TOUT le contenu du .zip dans ce dossier
-
-3. Vérifier que vous avez :
-   python\
-   ├── python.exe       ← Important !
-   ├── python311.dll
-   ├── pythonw.exe
-   └── ... autres fichiers
+4. Telecharger le fichier .zip
 
 
-📦 ÉTAPE 3 : INSTALLER PIP
-═══════════════════════════════════════════════════════════════
+ETAPE 2 : INSTALLER PYTHON DANS LE DOSSIER "python\"
+================================================
 
-1. Télécharger get-pip.py depuis :
+1. Creer le dossier "python\" dans ce dossier si absent
+
+2. Extraire TOUT le contenu du .zip dans "python\"
+
+3. Verifier que "python\python.exe" existe
+
+
+ETAPE 3 : INSTALLER PIP
+================================================
+
+1. Telecharger get-pip.py :
    https://bootstrap.pypa.io/get-pip.py
 
-2. Copier get-pip.py dans le dossier python\
+2. Copier get-pip.py dans le dossier "python\"
 
-3. Ouvrir un terminal (CMD) dans PokerTraining-Portable-vX.X.X\
+3. Ouvrir une invite de commande (CMD) dans ce dossier :
+   - Maintenir Shift + clic droit dans l'explorateur
+   - Choisir "Ouvrir la fenetre de commandes ici"
 
-4. Exécuter :
+4. Taper la commande suivante et appuyer sur Entree :
    python\python.exe python\get-pip.py
 
 
-🔧 ÉTAPE 4 : INSTALLER FLASK
-═══════════════════════════════════════════════════════════════
+ETAPE 4 : INSTALLER FLASK
+================================================
 
-Dans le même terminal, exécuter :
+Dans la meme invite de commande, taper :
 
-python\python.exe -m pip install flask --target python\Lib\site-packages
+   python\python.exe -m pip install flask --target python\Lib\site-packages
 
-Attendre la fin de l'installation (quelques secondes).
-
-
-✅ ÉTAPE 5 : VÉRIFIER L'INSTALLATION
-═══════════════════════════════════════════════════════════════
-
-1. Double-cliquer sur START.bat
-
-2. Si le serveur démarre → C'est bon ! ✅
-
-3. Sinon, vérifier :
-   - python\python.exe existe
-   - python\Lib\site-packages\flask\ existe
-   - Pas d'erreur dans le terminal
+Attendre la fin (environ 30 secondes).
 
 
-📦 ÉTAPE 6 : CRÉER LE ZIP FINAL
-═══════════════════════════════════════════════════════════════
+ETAPE 5 : LANCER L'APPLICATION
+================================================
 
-1. Fermer l'application (si elle tourne)
+Double-cliquer sur START.bat
 
-2. Sélectionner TOUT le dossier PokerTraining-Portable-vX.X.X\
+Une fenetre noire s'ouvre : NE PAS LA FERMER.
 
-3. Clic droit → Envoyer vers → Dossier compressé
-
-   OU avec 7-Zip :
-   7z a PokerTraining-Portable-v$VERSION.zip PokerTraining-Portable-v$VERSION\
-
-4. Le fichier final devrait faire environ 80-120 MB
+Ouvrir votre navigateur sur : http://localhost:5000
 
 
-🚀 ÉTAPE 7 : DISTRIBUER
-═══════════════════════════════════════════════════════════════
+EN CAS DE PROBLEME
+================================================
 
-Option 1 : GitHub Releases
-   - Créer une nouvelle release
-   - Uploader le .zip
-   - Ajouter le changelog
+"Python embarque non trouve"
+   -> Verifier que python\python.exe existe (etape 2)
 
-Option 2 : Hébergement direct
-   - Uploader sur votre serveur
-   - Partager le lien
+"Module flask not found"
+   -> Recommencer l'etape 4
 
-Option 3 : Les deux
-   - GitHub pour les développeurs
-   - Hébergement pour les utilisateurs
+"Port 5000 deja utilise"
+   -> Fermer les autres applications sur ce port
+   -> Ou modifier le port dans poker-training\web\app.py
 
-
-📋 CHECKLIST FINALE
-═══════════════════════════════════════════════════════════════
-
-Avant de distribuer, vérifier :
-
-☐ python\python.exe existe et fonctionne
-☐ Flask est installé (python\Lib\site-packages\flask\)
-☐ START.bat lance l'application sans erreur
-☐ http://localhost:5000 affiche l'interface
-☐ README.txt est clair et complet
-☐ Le .zip se décompresse correctement
-☐ Test sur un autre PC Windows si possible
+Antivirus bloque python.exe
+   -> Ajouter une exception pour python.exe dans votre antivirus
 
 
-💡 CONSEILS
-═══════════════════════════════════════════════════════════════
-
-- Testez sur Windows 10 ET Windows 11
-- Testez avec l'antivirus activé
-- Vérifiez que le port 5000 n'est pas bloqué
-- Ajoutez un .gitignore pour python/ (fichiers volumineux)
-
-
-🐛 EN CAS DE PROBLÈME
-═══════════════════════════════════════════════════════════════
-
-Erreur pip :
-   → Télécharger get-pip.py manuellement
-   → https://bootstrap.pypa.io/get-pip.py
-
-Erreur Flask :
-   → Installer avec --no-deps d'abord :
-     python\python.exe -m pip install flask --no-deps --target python\Lib\site-packages
-   → Puis installer les dépendances une par une
-
-Antivirus bloque :
-   → Ajouter python.exe aux exceptions
-   → Ou signer le .exe avec un certificat (avancé)
-
-
-═══════════════════════════════════════════════════════════════
-
+================================================
 Version : $VERSION
-Dernière mise à jour : $(date +%d/%m/%Y)
+================================================
 EOFINST
 
 # 6. Créer un .gitignore pour le package
