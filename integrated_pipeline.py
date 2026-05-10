@@ -5,7 +5,13 @@ Point d'entrée pour Flask et pour l'exécution autonome
 """
 
 import sys
+import io
 from pathlib import Path
+
+# Forcer UTF-8 sur Windows (évite 'charmap codec can't encode character')
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
 
 # Ajouter le répertoire modules au path
 modules_dir = Path(__file__).parent / "modules"
