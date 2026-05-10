@@ -2038,7 +2038,20 @@ def history():
     """Page d'historique des sessions de quiz"""
     return render_template('history.html')
 if __name__ == '__main__':
-    print("\n🚀 Démarrage Flask...")
-    print("📍 http://localhost:5000\n")
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    import threading
+    import webbrowser
+
+    port = 5000
+    url = f"http://localhost:{port}"
+
+    print(f"\n Demarrage Flask...")
+    print(f" {url}\n")
+
+    def _open_browser():
+        import time
+        time.sleep(1.5)
+        webbrowser.open(url)
+
+    threading.Thread(target=_open_browser, daemon=True).start()
+    app.run(debug=False, host='0.0.0.0', port=port, use_reloader=False)
 
