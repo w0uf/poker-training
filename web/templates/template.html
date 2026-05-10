@@ -5,110 +5,90 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🃏 Poker Training - Dashboard</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <link rel="stylesheet" href="/static/poker.css">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            color: #333;
-        }
-
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 20px;
-        }
+        body { padding: 20px; }
 
         /* HEADER */
         .header {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
             padding: 25px;
-            margin-bottom: 30px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            margin-bottom: 25px;
+            border: 1px solid var(--glass-border);
+            border-top: 2px solid var(--gold-dim);
         }
 
         .header h1 {
-            font-size: 2.5rem;
-            background: linear-gradient(45deg, #667eea, #764ba2);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+            font-size: 2rem;
+            color: var(--gold-light);
             text-align: center;
-            margin-bottom: 10px;
+            margin-bottom: 15px;
         }
 
         .nav-pills {
             display: flex;
             justify-content: center;
-            gap: 15px;
-            margin-top: 20px;
+            gap: 12px;
+            flex-wrap: wrap;
         }
 
         .nav-pill {
-            padding: 12px 24px;
-            background: linear-gradient(45deg, #667eea, #764ba2);
-            color: white;
+            padding: 10px 22px;
+            background: rgba(255,255,255,0.06);
+            color: var(--text-muted);
             text-decoration: none;
             border-radius: 25px;
+            font-size: 0.9rem;
             font-weight: 500;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+            border: 1px solid var(--glass-border);
+            transition: all 0.2s;
         }
 
         .nav-pill:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+            background: rgba(255,255,255,0.10);
+            color: var(--text-bright);
+            border-color: var(--gold-dim);
         }
 
         .nav-pill.active {
-            background: linear-gradient(45deg, #764ba2, #667eea);
+            background: rgba(201,168,76,0.15);
+            color: var(--gold-light);
+            border-color: var(--gold-dim);
         }
 
         /* STATS CARDS */
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
         }
 
         .stat-card {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
+            background: var(--bg-card);
+            border-radius: var(--radius-md);
             padding: 25px;
             text-align: center;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-            transition: transform 0.3s ease;
+            border: 1px solid var(--glass-border);
+            border-top: 2px solid var(--gold-dim);
+            transition: transform 0.2s;
         }
 
-        .stat-card:hover {
-            transform: translateY(-5px);
-        }
+        .stat-card:hover { transform: translateY(-3px); }
 
-        .stat-icon {
-            font-size: 3rem;
-            margin-bottom: 15px;
-            filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.1));
-        }
+        .stat-icon { font-size: 2.5rem; margin-bottom: 12px; }
 
         .stat-value {
-            font-size: 2.5rem;
+            font-size: 2.2rem;
             font-weight: 700;
-            color: #667eea;
-            margin-bottom: 5px;
+            color: var(--gold-light);
+            margin-bottom: 4px;
         }
 
         .stat-label {
-            color: #666;
-            font-size: 0.9rem;
+            color: var(--text-muted);
+            font-size: 0.85rem;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
@@ -116,182 +96,155 @@
         /* MAIN CONTENT */
         .content-grid {
             display: grid;
-            grid-template-columns: 1fr 400px;
-            gap: 30px;
-            margin-bottom: 30px;
+            grid-template-columns: 1fr 380px;
+            gap: 20px;
+            margin-bottom: 25px;
         }
 
         .card {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            background: var(--bg-card);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--glass-border);
+            border-top: 2px solid var(--gold-dim);
             overflow: hidden;
         }
 
         .card-header {
-            padding: 25px 25px 0;
-            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            padding: 20px 20px 0;
         }
 
         .card-title {
-            font-size: 1.3rem;
+            font-size: 1.1rem;
             font-weight: 600;
-            color: #333;
-            margin-bottom: 20px;
+            color: var(--gold-light);
+            margin-bottom: 15px;
         }
 
-        .card-body {
-            padding: 25px;
-        }
+        .card-body { padding: 20px; }
 
         /* RECENT IMPORTS */
         .import-item {
             display: flex;
             align-items: center;
-            padding: 15px 0;
-            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            padding: 12px 0;
+            border-bottom: 1px solid var(--glass-border);
         }
 
-        .import-item:last-child {
-            border-bottom: none;
-        }
+        .import-item:last-child { border-bottom: none; }
 
         .import-icon {
-            width: 40px;
-            height: 40px;
-            border-radius: 10px;
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin-right: 15px;
-            font-size: 1.2rem;
+            margin-right: 12px;
+            font-size: 1rem;
+            flex-shrink: 0;
         }
 
-        .import-success { background: linear-gradient(45deg, #4CAF50, #45a049); color: white; }
-        .import-warning { background: linear-gradient(45deg, #FF9800, #f57c00); color: white; }
-        .import-error { background: linear-gradient(45deg, #f44336, #d32f2f); color: white; }
+        .import-success { background: rgba(30, 132, 73, 0.25); }
+        .import-warning { background: rgba(255, 183, 0, 0.2); }
+        .import-error   { background: rgba(192, 57, 43, 0.25); }
 
         .import-details h4 {
-            font-size: 0.9rem;
-            margin-bottom: 5px;
-            color: #333;
+            font-size: 0.88rem;
+            color: var(--text-bright);
+            margin-bottom: 3px;
         }
 
-        .import-meta {
-            font-size: 0.8rem;
-            color: #666;
-        }
+        .import-meta { font-size: 0.78rem; color: var(--text-muted); }
 
         .confidence-badge {
             display: inline-block;
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 0.7rem;
-            font-weight: 500;
-            margin-left: 8px;
+            padding: 2px 7px;
+            border-radius: 10px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            margin-left: 6px;
         }
 
-        .confidence-high { background: #4CAF50; color: white; }
-        .confidence-medium { background: #FF9800; color: white; }
-        .confidence-low { background: #f44336; color: white; }
+        .confidence-high   { background: rgba(30, 132, 73, 0.3);  color: var(--correct-color); border: 1px solid rgba(30,132,73,0.4); }
+        .confidence-medium { background: rgba(255,183,0,0.2);     color: #FFB300;               border: 1px solid rgba(255,183,0,0.35); }
+        .confidence-low    { background: rgba(192,57,43,0.2);     color: var(--wrong-color);    border: 1px solid rgba(192,57,43,0.35); }
 
         /* CONTEXTS TABLE */
-        .contexts-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
+        .contexts-table { width: 100%; border-collapse: collapse; }
 
         .contexts-table th {
-            background: linear-gradient(45deg, #667eea, #764ba2);
-            color: white;
-            padding: 15px 12px;
+            background: rgba(201, 168, 76, 0.12);
+            color: var(--gold-light);
+            padding: 12px 10px;
             text-align: left;
-            font-weight: 500;
-            font-size: 0.9rem;
+            font-weight: 600;
+            font-size: 0.85rem;
+            border-bottom: 1px solid var(--gold-dim);
         }
 
         .contexts-table td {
-            padding: 12px;
-            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-            font-size: 0.9rem;
+            padding: 10px;
+            border-bottom: 1px solid var(--glass-border);
+            font-size: 0.88rem;
+            color: var(--text-muted);
         }
 
-        .contexts-table tr:hover {
-            background: rgba(102, 126, 234, 0.05);
-        }
+        .contexts-table tr:hover td { background: rgba(255,255,255,0.03); }
 
         .context-name {
             font-weight: 600;
-            color: #333;
+            color: var(--text-bright);
             max-width: 200px;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
         }
 
-        .context-meta {
-            font-size: 0.8rem;
-            color: #666;
-        }
+        .context-meta { font-size: 0.78rem; color: var(--text-muted); }
 
         /* LOADING */
         .loading {
             text-align: center;
             padding: 40px;
-            color: #666;
+            color: var(--text-muted);
         }
 
         .spinner {
             display: inline-block;
-            width: 40px;
-            height: 40px;
-            border: 4px solid rgba(102, 126, 234, 0.3);
+            width: 36px;
+            height: 36px;
+            border: 3px solid rgba(201,168,76,0.2);
             border-radius: 50%;
-            border-top-color: #667eea;
+            border-top-color: var(--gold-dim);
             animation: spin 1s ease-in-out infinite;
         }
 
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        /* RESPONSIVE */
-        @media (max-width: 768px) {
-            .content-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .nav-pills {
-                flex-wrap: wrap;
-            }
-
-            .header h1 {
-                font-size: 2rem;
-            }
-
-            .contexts-table {
-                font-size: 0.8rem;
-            }
-        }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
         /* EMPTY STATE */
         .empty-state {
             text-align: center;
-            padding: 60px 20px;
-            color: #666;
+            padding: 50px 20px;
+            color: var(--text-muted);
         }
 
-        .empty-icon {
-            font-size: 4rem;
-            margin-bottom: 20px;
-            opacity: 0.5;
+        .empty-icon { font-size: 3.5rem; margin-bottom: 15px; opacity: 0.4; }
+
+        .empty-state h3 { color: var(--text-bright); margin-bottom: 8px; }
+
+        /* Chart container dark bg */
+        #confidenceChart { filter: invert(0); }
+
+        @media (max-width: 768px) {
+            .content-grid { grid-template-columns: 1fr; }
+            .nav-pills { flex-wrap: wrap; }
+            .header h1 { font-size: 1.5rem; }
+            .contexts-table { font-size: 0.78rem; }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- HEADER -->
         <div class="header">
             <h1>🃏 Poker Training Dashboard</h1>
             <div class="nav-pills">
@@ -302,7 +255,7 @@
             </div>
         </div>
 
-        <!-- STATS CARDS -->
+        <!-- STATS -->
         <div class="stats-grid">
             <div class="stat-card">
                 <div class="stat-icon">📁</div>
@@ -333,10 +286,10 @@
                 <div class="card-header">
                     <h2 class="card-title">📋 Contextes importés</h2>
                 </div>
-                <div class="card-body" style="padding: 0; max-height: 600px; overflow-y: auto;">
+                <div class="card-body" style="padding: 0; max-height: 550px; overflow-y: auto;">
                     <div id="contexts-loading" class="loading">
                         <div class="spinner"></div>
-                        <p>Chargement des contextes...</p>
+                        <p style="margin-top:12px;">Chargement des contextes...</p>
                     </div>
                     <div id="contexts-content" style="display: none;">
                         <table class="contexts-table">
@@ -350,8 +303,7 @@
                                     <th>Mains</th>
                                 </tr>
                             </thead>
-                            <tbody id="contexts-list">
-                            </tbody>
+                            <tbody id="contexts-list"></tbody>
                         </table>
                     </div>
                     <div id="contexts-empty" class="empty-state" style="display: none;">
@@ -364,18 +316,18 @@
             </div>
 
             <!-- SIDEBAR -->
-            <div style="display: flex; flex-direction: column; gap: 20px;">
+            <div style="display: flex; flex-direction: column; gap: 15px;">
                 <!-- IMPORTS RÉCENTS -->
                 <div class="card">
                     <div class="card-header">
                         <h3 class="card-title">📥 Imports récents</h3>
                     </div>
                     <div class="card-body">
-                        <div id="recent-imports-loading" class="loading" style="padding: 20px;">
+                        <div id="recent-imports-loading" class="loading" style="padding: 15px;">
                             <div class="spinner"></div>
                         </div>
                         <div id="recent-imports-list" style="display: none;"></div>
-                        <div id="recent-imports-empty" class="empty-state" style="display: none; padding: 40px 20px;">
+                        <div id="recent-imports-empty" class="empty-state" style="display: none; padding: 30px 15px;">
                             <div class="empty-icon">📥</div>
                             <p>Aucun import récent</p>
                         </div>
@@ -396,20 +348,15 @@
     </div>
 
     <script>
-        // State global
         let confidenceChart = null;
 
-        // Initialisation
         document.addEventListener('DOMContentLoaded', function() {
             loadDashboardData();
-            // Actualisation automatique toutes les 30 secondes
             setInterval(loadDashboardData, 30000);
         });
 
-        // Chargement des données
         async function loadDashboardData() {
             try {
-                // Charger stats et contextes en parallèle
                 const [statsResponse, contextsResponse] = await Promise.all([
                     fetch('/api/dashboard/stats'),
                     fetch('/api/dashboard/contexts')
@@ -433,7 +380,6 @@
             }
         }
 
-        // Mise à jour des statistiques
         function updateStats(stats) {
             document.getElementById('total-files').textContent = formatNumber(stats.total_files);
             document.getElementById('total-contexts').textContent = formatNumber(stats.total_contexts);
@@ -441,7 +387,6 @@
             document.getElementById('total-hands').textContent = formatNumber(stats.total_hands);
         }
 
-        // Mise à jour des imports récents
         function updateRecentImports(imports) {
             const loading = document.getElementById('recent-imports-loading');
             const list = document.getElementById('recent-imports-list');
@@ -483,7 +428,6 @@
             }).join('');
         }
 
-        // Mise à jour de la liste des contextes
         function updateContextsList(contexts) {
             const loading = document.getElementById('contexts-loading');
             const content = document.getElementById('contexts-content');
@@ -524,36 +468,27 @@
             }).join('');
         }
 
-        // Mise à jour du graphique de confiance
         function updateConfidenceChart(confidenceData) {
             const canvas = document.getElementById('confidenceChart');
             const ctx = canvas.getContext('2d');
 
-            // Détruire l'ancien graphique s'il existe
-            if (confidenceChart) {
-                confidenceChart.destroy();
-            }
-
-            const data = {
-                labels: ['Haute (≥80%)', 'Moyenne (50-80%)', 'Faible (<50%)'],
-                datasets: [{
-                    data: [
-                        confidenceData.high || 0,
-                        confidenceData.medium || 0,
-                        confidenceData.low || 0
-                    ],
-                    backgroundColor: [
-                        '#4CAF50',
-                        '#FF9800',
-                        '#f44336'
-                    ],
-                    borderWidth: 0
-                }]
-            };
+            if (confidenceChart) confidenceChart.destroy();
 
             confidenceChart = new Chart(ctx, {
                 type: 'doughnut',
-                data: data,
+                data: {
+                    labels: ['Haute (≥80%)', 'Moyenne (50-80%)', 'Faible (<50%)'],
+                    datasets: [{
+                        data: [
+                            confidenceData.high || 0,
+                            confidenceData.medium || 0,
+                            confidenceData.low || 0
+                        ],
+                        backgroundColor: ['rgba(30,132,73,0.7)', 'rgba(255,183,0,0.6)', 'rgba(192,57,43,0.6)'],
+                        borderColor: ['rgba(30,132,73,0.9)', 'rgba(255,183,0,0.8)', 'rgba(192,57,43,0.8)'],
+                        borderWidth: 1
+                    }]
+                },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
@@ -561,10 +496,9 @@
                         legend: {
                             position: 'bottom',
                             labels: {
-                                padding: 20,
-                                font: {
-                                    size: 12
-                                }
+                                padding: 16,
+                                font: { size: 11 },
+                                color: '#b0b0b0'
                             }
                         }
                     }
@@ -572,25 +506,16 @@
             });
         }
 
-        // Utilitaires
         function formatNumber(num) {
-            if (num >= 1000000) {
-                return (num / 1000000).toFixed(1) + 'M';
-            } else if (num >= 1000) {
-                return (num / 1000).toFixed(1) + 'K';
-            }
+            if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+            if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
             return num.toString();
         }
 
         function formatDate(dateStr) {
             if (!dateStr) return '-';
             const date = new Date(dateStr);
-            return date.toLocaleDateString('fr-FR', {
-                day: '2-digit',
-                month: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
+            return date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
         }
 
         function getConfidenceClass(confidence) {
@@ -600,20 +525,13 @@
         }
 
         function showError(message) {
-            // Simple error display - could be enhanced with toast notifications
             console.error(message);
-            const statsCards = document.querySelectorAll('.stat-value');
-            statsCards.forEach(card => {
+            document.querySelectorAll('.stat-value').forEach(card => {
                 if (card.textContent === '-') {
                     card.textContent = 'Erreur';
-                    card.style.color = '#f44336';
+                    card.style.color = 'var(--wrong-color)';
                 }
             });
-        }
-
-        // Auto-refresh indicator
-        function showRefreshIndicator() {
-            // Could add a subtle refresh indicator
         }
     </script>
 </body>

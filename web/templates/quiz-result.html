@@ -4,32 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Résultats du Quiz - Poker Training</title>
+    <link rel="stylesheet" href="/static/poker.css">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #1a1f36 0%, #2d3561 100%);
-            color: #e0e7ff;
-            min-height: 100vh;
-            padding: 20px;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
+        body { padding: 20px; }
 
         .results-card {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 20px;
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
             padding: 40px;
+            border: 1px solid var(--glass-border);
+            border-top: 2px solid var(--gold-dim);
             backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 30px;
         }
 
         .results-title {
@@ -37,7 +23,7 @@
             font-size: 2.5rem;
             font-weight: 800;
             margin-bottom: 30px;
-            color: #fff;
+            color: var(--gold-light);
         }
 
         .results-score {
@@ -45,7 +31,7 @@
             font-size: 5rem;
             font-weight: 900;
             margin-bottom: 30px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, var(--gold) 0%, var(--gold-light) 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -59,37 +45,40 @@
         }
 
         .stat-item {
-            background: rgba(255, 255, 255, 0.08);
-            border-radius: 12px;
+            background: rgba(255,255,255,0.04);
+            border-radius: var(--radius-md);
             padding: 20px;
             text-align: center;
+            border: 1px solid var(--glass-border);
         }
 
         .stat-value {
             font-size: 2.5rem;
             font-weight: 800;
-            color: #fff;
+            color: var(--gold-light);
             margin-bottom: 8px;
         }
 
         .stat-label {
             font-size: 0.9rem;
-            opacity: 0.7;
+            color: var(--text-muted);
             text-transform: uppercase;
             letter-spacing: 1px;
         }
 
         .analysis-section {
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 12px;
+            background: rgba(0, 0, 0, 0.25);
+            border-radius: var(--radius-md);
             padding: 20px;
             margin: 20px 0;
+            border: 1px solid var(--glass-border);
         }
 
         .section-title {
             font-size: 1.4rem;
             font-weight: 700;
             margin-bottom: 15px;
+            color: var(--text-bright);
             display: flex;
             align-items: center;
             gap: 8px;
@@ -102,31 +91,33 @@
         }
 
         .context-card-result {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
+            background: rgba(255,255,255,0.05);
+            border-radius: var(--radius-sm);
             padding: 15px;
             border-left: 4px solid;
         }
-        .context-card-result.excellent { border-color: #4CAF50; }
-        .context-card-result.good { border-color: #7CB342; }
-        .context-card-result.average { border-color: #FFB300; }
-        .context-card-result.poor { border-color: #FF9800; }
-        .context-card-result.bad { border-color: #F44336; }
+        .context-card-result.excellent { border-color: var(--correct-color); }
+        .context-card-result.good      { border-color: #7CB342; }
+        .context-card-result.average   { border-color: #FFB300; }
+        .context-card-result.poor      { border-color: #FF9800; }
+        .context-card-result.bad       { border-color: var(--wrong-color); }
 
         .context-name {
             font-size: 1rem;
             font-weight: 600;
             margin-bottom: 8px;
+            color: var(--text-bright);
         }
 
         .context-score {
             font-size: 2rem;
             font-weight: 800;
+            color: var(--gold-light);
         }
 
         .context-details {
             font-size: 0.85rem;
-            opacity: 0.8;
+            color: var(--text-muted);
             margin-top: 5px;
         }
 
@@ -137,43 +128,69 @@
         }
 
         .error-item {
-            background: rgba(244, 67, 54, 0.1);
-            border-radius: 10px;
+            background: rgba(192, 57, 43, 0.1);
+            border-radius: var(--radius-sm);
             padding: 15px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-left: 3px solid #f44336;
+            border-left: 3px solid var(--wrong-color);
         }
 
         .error-hand {
             font-size: 1.1rem;
             font-weight: 700;
-            color: #FFB300;
+            color: var(--gold-light);
         }
 
         .error-context {
             font-size: 0.8rem;
-            opacity: 0.7;
+            color: var(--text-muted);
             margin-top: 3px;
         }
 
-        .error-actions {
-            text-align: right;
+        .error-positions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 6px;
         }
+
+        .pos-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .pos-badge.hero {
+            background: rgba(201, 168, 76, 0.15);
+            color: var(--gold-light);
+            border: 1px solid rgba(201, 168, 76, 0.3);
+        }
+
+        .pos-badge.villain {
+            background: rgba(93, 173, 226, 0.12);
+            color: #5dade2;
+            border: 1px solid rgba(93, 173, 226, 0.25);
+        }
+
+        .error-actions { text-align: right; }
 
         .error-your-answer {
             font-size: 0.9rem;
-            color: #f44336;
+            color: var(--wrong-color);
             margin-bottom: 5px;
         }
 
         .error-correct-answer {
             font-size: 0.9rem;
-            color: #4CAF50;
+            color: var(--correct-color);
         }
 
-        /* Styles pour la séquence */
         .error-sequence {
             margin-top: 8px;
             font-size: 0.85rem;
@@ -194,7 +211,7 @@
 
         .seq-step {
             padding: 4px 10px;
-            border-radius: 6px;
+            border-radius: var(--radius-sm);
             font-size: 0.8rem;
             font-weight: 600;
         }
@@ -211,7 +228,7 @@
 
         .seq-step.error-step {
             background: rgba(244, 67, 54, 0.3);
-            border: 2px solid #f44336;
+            border: 2px solid var(--wrong-color);
         }
 
         .recommendations-list {
@@ -221,22 +238,23 @@
         }
 
         .recommendation-item {
-            background: rgba(103, 126, 234, 0.15);
-            border-radius: 8px;
+            background: rgba(201, 168, 76, 0.08);
+            border-radius: var(--radius-sm);
             padding: 15px;
-            border-left: 3px solid #667eea;
+            border-left: 3px solid var(--gold-dim);
         }
 
         .recommendation-title {
             font-size: 1.1rem;
             font-weight: 700;
             margin-bottom: 8px;
-            color: #6B9FFF;
+            color: var(--gold-light);
         }
 
         .recommendation-text {
             font-size: 0.95rem;
             line-height: 1.4;
+            color: var(--text-bright);
         }
 
         .results-actions {
@@ -251,38 +269,42 @@
             font-size: 1rem;
             font-weight: 600;
             border: none;
-            border-radius: 12px;
+            border-radius: var(--radius-md);
             cursor: pointer;
             transition: transform 0.2s, box-shadow 0.2s;
         }
 
         .results-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
         }
 
         .btn-retry {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, var(--check-color) 0%, #27ae60 100%);
             color: white;
+            box-shadow: 0 4px 12px rgba(30, 132, 73, 0.4);
         }
 
         .btn-export {
-            background: #43a047;
-            color: white;
+            background: rgba(201, 168, 76, 0.18);
+            color: var(--gold-light);
+            border: 1px solid var(--gold-dim);
         }
 
         .btn-home {
-            background: rgba(255, 255, 255, 0.1);
-            color: #e0e7ff;
+            background: rgba(255, 255, 255, 0.07);
+            color: var(--text-muted);
+            border: 1px solid var(--glass-border);
         }
 
-        /* 🆕 NOUVELLES SECTIONS - PROGRESSION */
+        /* PROGRESSION SECTION */
         .progression-section {
-            background: linear-gradient(135deg, rgba(103, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
-            border-radius: 16px;
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
             padding: 30px;
-            margin-top: 40px;
-            border: 1px solid rgba(103, 126, 234, 0.3);
+            border: 1px solid var(--glass-border);
+            border-top: 2px solid var(--gold-dim);
+            backdrop-filter: blur(10px);
         }
 
         .progression-header {
@@ -295,20 +317,21 @@
         .progression-title {
             font-size: 1.8rem;
             font-weight: 700;
-            color: #fff;
+            color: var(--gold-light);
             display: flex;
             align-items: center;
             gap: 10px;
         }
 
         .btn-view-history {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            background: linear-gradient(135deg, var(--gold-dim) 0%, rgba(201,168,76,0.25) 100%);
+            color: var(--gold-light);
             padding: 12px 24px;
-            border-radius: 10px;
+            border-radius: var(--radius-sm);
             text-decoration: none;
             font-weight: 600;
             font-size: 0.95rem;
+            border: 1px solid var(--gold-dim);
             transition: transform 0.2s, box-shadow 0.2s;
             display: inline-flex;
             align-items: center;
@@ -317,7 +340,7 @@
 
         .btn-view-history:hover {
             transform: translateY(-2px);
-            box-shadow: 0 8px 16px rgba(103, 126, 234, 0.4);
+            box-shadow: 0 8px 16px rgba(201, 168, 76, 0.2);
         }
 
         .global-stats-grid {
@@ -328,11 +351,11 @@
         }
 
         .global-stat-card {
-            background: rgba(255, 255, 255, 0.08);
-            border-radius: 12px;
+            background: rgba(255,255,255,0.04);
+            border-radius: var(--radius-md);
             padding: 20px;
             text-align: center;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--glass-border);
         }
 
         .global-stat-icon {
@@ -343,13 +366,13 @@
         .global-stat-value {
             font-size: 2rem;
             font-weight: 800;
-            color: #fff;
+            color: var(--gold-light);
             margin-bottom: 5px;
         }
 
         .global-stat-label {
             font-size: 0.85rem;
-            opacity: 0.7;
+            color: var(--text-muted);
             text-transform: uppercase;
             letter-spacing: 1px;
         }
@@ -360,70 +383,46 @@
             font-weight: 600;
         }
 
-        .trend-up {
-            color: #4CAF50;
-        }
-
-        .trend-down {
-            color: #f44336;
-        }
-
-        .trend-stable {
-            color: #FFB300;
-        }
+        .trend-up    { color: var(--correct-color); }
+        .trend-down  { color: var(--wrong-color); }
+        .trend-stable{ color: #FFB300; }
 
         .mini-chart-container {
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 12px;
+            background: rgba(0, 0, 0, 0.25);
+            border-radius: var(--radius-md);
             padding: 20px;
             margin-top: 20px;
+            border: 1px solid var(--glass-border);
         }
 
         .mini-chart-title {
             font-size: 1.1rem;
             font-weight: 600;
             margin-bottom: 15px;
-            color: #6B9FFF;
+            color: var(--gold-light);
         }
 
-        #miniProgressChart {
-            width: 100%;
-            height: 200px;
-        }
+        #miniProgressChart { width: 100%; height: 200px; }
 
         .loading-spinner {
             text-align: center;
             padding: 40px;
             font-size: 1.1rem;
-            color: #667eea;
+            color: var(--text-muted);
         }
 
         .no-data {
             text-align: center;
             padding: 30px;
-            color: rgba(255, 255, 255, 0.5);
+            color: var(--text-muted);
             font-style: italic;
         }
 
         @media (max-width: 768px) {
-            .results-stats {
-                grid-template-columns: 1fr;
-            }
-
-            .global-stats-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .progression-header {
-                flex-direction: column;
-                gap: 15px;
-                align-items: stretch;
-            }
-
-            .btn-view-history {
-                text-align: center;
-                justify-content: center;
-            }
+            .results-stats { grid-template-columns: 1fr; }
+            .global-stats-grid { grid-template-columns: 1fr; }
+            .progression-header { flex-direction: column; gap: 15px; align-items: stretch; }
+            .btn-view-history { text-align: center; justify-content: center; }
         }
     </style>
 </head>
@@ -431,10 +430,10 @@
     <div class="container">
         <div class="results-card">
             <h1 class="results-title">🎯 Résultats du Quiz</h1>
-            
+
             <!-- Score principal -->
             <div class="results-score" id="finalScore">--</div>
-            
+
             <!-- Statistiques principales -->
             <div class="results-stats">
                 <div class="stat-item">
@@ -530,7 +529,7 @@
             analyzeByContext();
             displayErrors();
             generateRecommendations();
-            
+
             // 🆕 Charger les données de progression
             loadProgressionData();
         }
@@ -603,7 +602,7 @@
 
         function displayErrors() {
             const errors = quizResults.filter(r => !r.is_correct);
-            
+
             if (errors.length === 0) {
                 document.getElementById('errorsSection').style.display = 'none';
                 return;
@@ -616,13 +615,28 @@
             errors.forEach(error => {
                 const item = document.createElement('div');
                 item.className = 'error-item';
-                
+
+                // Position badges
+                let posHtml = '';
+                if (error.hero_position || error.vs_position || error.villain_position) {
+                    posHtml = '<div class="error-positions">';
+                    if (error.hero_position) {
+                        posHtml += `<span class="pos-badge hero">📍 ${error.hero_position}</span>`;
+                    }
+                    const opp = error.villain_position || error.vs_position;
+                    if (opp && opp !== 'N/A') {
+                        posHtml += `<span class="pos-badge villain">⚔️ ${opp}</span>`;
+                    }
+                    posHtml += '</div>';
+                }
+
                 let content = `
                     <div>
                         <div class="error-hand">${formatHand(error.hand)}</div>
                         <div class="error-context">${error.context_name}</div>
+                        ${posHtml}
                 `;
-                
+
                 if (error.sequence_history && error.sequence_history.levels) {
                     content += `
                         <div class="error-sequence">
@@ -633,7 +647,7 @@
                         </div>
                     `;
                 }
-                
+
                 content += `
                     </div>
                     <div class="error-actions">
@@ -641,12 +655,12 @@
                         <div class="error-correct-answer">✅ Bonne réponse : ${translateAction(error.correct_answer)}</div>
                     </div>
                 `;
-                
+
                 item.innerHTML = content;
                 container.appendChild(item);
             });
         }
-        
+
         function formatHand(hand) {
             if (!hand) return '';
             return hand
@@ -655,21 +669,21 @@
                 .replace(/d/g, '♦')
                 .replace(/c/g, '♣');
         }
-        
+
         function formatSequence(sequenceHistory, villainPos) {
             if (!sequenceHistory || !sequenceHistory.levels) return '';
-            
+
             const parts = [];
             sequenceHistory.levels.forEach((level, idx) => {
                 if (idx === 0) {
                     parts.push(`<span class="seq-step hero">Vous ${translateAction(level.hero_action)}</span>`);
                 } else {
                     if (level.villain_reaction) {
-                        const villainText = level.villain_reaction.text || 
+                        const villainText = level.villain_reaction.text ||
                             `${villainPos} ${translateAction(level.villain_reaction.action)}`;
                         parts.push(`<span class="seq-step villain">${villainText}</span>`);
                     }
-                    
+
                     if (level.user_answer) {
                         const isError = idx === sequenceHistory.levels.length - 1;
                         const errorClass = isError ? ' error-step' : '';
@@ -679,7 +693,7 @@
                     }
                 }
             });
-            
+
             return parts.join(' → ');
         }
 
@@ -723,7 +737,7 @@
                 if (sortedContexts.length > 0) {
                     const [topContext, errorCount] = sortedContexts[0];
                     let contextTips = '';
-                    
+
                     switch (topContext) {
                         case 'open':
                             contextTips = 'Révisez vos ranges d\'ouverture. Faites attention aux positions early vs late et à l\'ajustement selon le stack.';
@@ -749,7 +763,7 @@
 
                 const foldErrors = errors.filter(e => e.user_answer === 'FOLD').length;
                 const raiseErrors = errors.filter(e => ['RAISE', 'OPEN', '3BET'].includes(e.user_answer)).length;
-                
+
                 if (foldErrors > errors.length * 0.6) {
                     recommendations.push({
                         title: '📉 Tendance : Trop tight',
@@ -786,10 +800,10 @@
                 if (!response.ok) {
                     throw new Error('Erreur lors du chargement des données');
                 }
-                
+
                 progressionData = await response.json();
                 console.log('[PROGRESSION] Données chargées:', progressionData);
-                
+
                 displayGlobalStats();
                 displayMiniChart();
             } catch (error) {
@@ -804,7 +818,7 @@
 
         function displayGlobalStats() {
             const container = document.getElementById('globalStatsContainer');
-            
+
             if (!progressionData || !progressionData.sessions || progressionData.sessions.length === 0) {
                 container.innerHTML = `
                     <div class="no-data">
@@ -816,16 +830,16 @@
 
             const stats = progressionData.overall_stats;
             const currentScore = Math.round((quizResults.filter(r => r.is_correct).length / quizResults.length) * 100);
-            
+
             // Calculer la tendance
             let trend = 'stable';
             let trendText = '→ Stable';
             let trendClass = 'trend-stable';
-            
+
             if (progressionData.sessions.length > 1) {
                 const previousScore = progressionData.sessions[progressionData.sessions.length - 2].score_percentage;
                 const diff = currentScore - previousScore;
-                
+
                 if (diff > 5) {
                     trend = 'up';
                     trendText = `↗ +${diff}%`;
@@ -844,20 +858,20 @@
                         <div class="global-stat-value">${stats.best_score}%</div>
                         <div class="global-stat-label">Meilleur score</div>
                     </div>
-                    
+
                     <div class="global-stat-card">
                         <div class="global-stat-icon">📊</div>
                         <div class="global-stat-value">${stats.average_score}%</div>
                         <div class="global-stat-label">Score moyen</div>
                         <div class="global-stat-trend ${trendClass}">${trendText}</div>
                     </div>
-                    
+
                     <div class="global-stat-card">
                         <div class="global-stat-icon">🎯</div>
                         <div class="global-stat-value">${stats.total_sessions}</div>
                         <div class="global-stat-label">Sessions totales</div>
                     </div>
-                    
+
                     <div class="global-stat-card">
                         <div class="global-stat-icon">✅</div>
                         <div class="global-stat-value">${stats.total_questions}</div>
@@ -870,7 +884,7 @@
         function displayMiniChart() {
             const canvas = document.getElementById('miniProgressChart');
             const ctx = canvas.getContext('2d');
-            
+
             if (!progressionData || !progressionData.sessions || progressionData.sessions.length === 0) {
                 canvas.height = 100;
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
@@ -882,33 +896,33 @@
 
             // Prendre les 5 dernières sessions
             const sessions = progressionData.sessions.slice(-5);
-            
+
             // Configuration du canvas
             const width = canvas.offsetWidth;
             const height = 200;
             canvas.width = width;
             canvas.height = height;
-            
+
             const padding = 40;
             const chartWidth = width - (padding * 2);
             const chartHeight = height - (padding * 2);
-            
+
             // Trouver min et max pour l'échelle
             const scores = sessions.map(s => s.score_percentage);
             const minScore = Math.max(0, Math.min(...scores) - 10);
             const maxScore = Math.min(100, Math.max(...scores) + 10);
             const scoreRange = maxScore - minScore;
-            
+
             // Fonction pour convertir score en position Y
             const getY = (score) => {
                 return padding + chartHeight - ((score - minScore) / scoreRange * chartHeight);
             };
-            
+
             // Fonction pour convertir index en position X
             const getX = (index) => {
                 return padding + (index / (sessions.length - 1)) * chartWidth;
             };
-            
+
             // Dessiner la grille
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
             ctx.lineWidth = 1;
@@ -919,15 +933,15 @@
                 ctx.lineTo(width - padding, y);
                 ctx.stroke();
             }
-            
+
             // Dessiner la ligne de progression
-            ctx.strokeStyle = '#667eea';
+            ctx.strokeStyle = '#c9a84c';
             ctx.lineWidth = 3;
             ctx.beginPath();
             sessions.forEach((session, index) => {
                 const x = getX(index);
                 const y = getY(session.score_percentage);
-                
+
                 if (index === 0) {
                     ctx.moveTo(x, y);
                 } else {
@@ -935,29 +949,29 @@
                 }
             });
             ctx.stroke();
-            
+
             // Dessiner les points
             sessions.forEach((session, index) => {
                 const x = getX(index);
                 const y = getY(session.score_percentage);
-                
+
                 // Point
-                ctx.fillStyle = '#667eea';
+                ctx.fillStyle = '#c9a84c';
                 ctx.beginPath();
                 ctx.arc(x, y, 6, 0, Math.PI * 2);
                 ctx.fill();
-                
+
                 // Bordure blanche
                 ctx.strokeStyle = 'white';
                 ctx.lineWidth = 2;
                 ctx.stroke();
-                
+
                 // Score au-dessus du point
                 ctx.fillStyle = 'white';
                 ctx.font = 'bold 12px Segoe UI';
                 ctx.textAlign = 'center';
                 ctx.fillText(`${session.score_percentage}%`, x, y - 15);
-                
+
                 // Date en bas
                 const date = new Date(session.completed_at);
                 const dateStr = `${date.getDate()}/${date.getMonth() + 1}`;
@@ -1004,12 +1018,12 @@
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement('a');
             const url = URL.createObjectURL(blob);
-            
+
             const date = new Date().toISOString().split('T')[0];
             link.setAttribute('href', url);
             link.setAttribute('download', `poker-quiz-results-${date}.csv`);
             link.style.visibility = 'hidden';
-            
+
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);

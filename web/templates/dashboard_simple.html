@@ -4,112 +4,153 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🃏 Poker Training - Dashboard Simple</title>
+    <link rel="stylesheet" href="/static/poker.css">
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            margin: 0;
-            padding: 20px;
-            color: #333;
-        }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        .card {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 15px;
-            padding: 20px;
-            margin: 20px 0;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-        }
-        h1 {
-            text-align: center;
-            color: #667eea;
-            margin-bottom: 30px;
-        }
-        .stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-        .stat {
-            text-align: center;
-            padding: 20px;
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
-        }
-        .stat-value {
-            font-size: 2em;
-            font-weight: bold;
-            color: #667eea;
-        }
-        .loading {
-            text-align: center;
-            padding: 40px;
-            color: #666;
-        }
-        .error {
-            background: #ffebee;
-            color: #c62828;
-            padding: 15px;
-            border-radius: 5px;
-            margin: 10px 0;
-        }
-        .debug {
-            background: #f3f4f6;
-            padding: 15px;
-            border-radius: 5px;
-            font-family: monospace;
-            font-size: 0.9em;
-            white-space: pre-wrap;
-            max-height: 300px;
-            overflow-y: auto;
-        }
-        button {
-            background: #667eea;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
-            cursor: pointer;
-            margin: 5px;
-        }
-        button:hover {
-            background: #5a67d8;
-        }
-        .nav {
+        body { padding: 20px; }
+
+        .page-title {
+            color: var(--gold-light);
+            font-size: 1.6rem;
             text-align: center;
             margin-bottom: 20px;
         }
+
+        .nav {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
         .nav a {
-            color: white;
+            color: var(--text-muted);
             text-decoration: none;
-            background: rgba(255,255,255,0.2);
-            padding: 10px 20px;
-            margin: 0 5px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid var(--glass-border);
+            padding: 8px 18px;
             border-radius: 20px;
-            display: inline-block;
+            font-size: 0.9rem;
+            transition: all 0.2s;
         }
+
         .nav a:hover {
-            background: rgba(255,255,255,0.3);
+            color: var(--text-bright);
+            background: rgba(255,255,255,0.1);
         }
+
+        .nav button {
+            background: rgba(201,168,76,0.15);
+            color: var(--gold-light);
+            border: 1px solid var(--gold-dim);
+            padding: 8px 18px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .nav button:hover {
+            background: rgba(201,168,76,0.25);
+        }
+
+        .card {
+            background: var(--bg-card);
+            border-radius: var(--radius-md);
+            padding: 20px;
+            margin: 15px 0;
+            border: 1px solid var(--glass-border);
+            border-top: 2px solid var(--gold-dim);
+        }
+
+        .card h2 {
+            color: var(--gold-light);
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 15px;
+        }
+
+        .stat {
+            text-align: center;
+            padding: 20px 15px;
+            background: rgba(0,0,0,0.25);
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--glass-border);
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--gold-light);
+        }
+
+        .stat div:last-child {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin-top: 4px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 30px;
+            color: var(--text-muted);
+        }
+
+        .error {
+            background: rgba(192, 57, 43, 0.15);
+            color: var(--wrong-color);
+            padding: 12px;
+            border-radius: var(--radius-sm);
+            border: 1px solid rgba(192, 57, 43, 0.3);
+            margin: 8px 0;
+        }
+
+        .debug {
+            background: rgba(0, 0, 0, 0.6);
+            padding: 15px;
+            border-radius: var(--radius-sm);
+            font-family: monospace;
+            font-size: 0.85em;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+            color: #c9a84c;
+            border: 1px solid var(--glass-border);
+        }
+
+        .import-row, .context-row {
+            padding: 10px 0;
+            border-bottom: 1px solid var(--glass-border);
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .import-row:last-child, .context-row:last-child { border-bottom: none; }
+
+        .import-row strong, .context-row strong {
+            color: var(--text-bright);
+            display: block;
+            margin-bottom: 2px;
+        }
+
+        .import-row small, .context-row small { font-size: 0.8rem; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🃏 Poker Training Dashboard - Mode Debug</h1>
+        <h1 class="page-title">🃏 Poker Training Dashboard - Mode Debug</h1>
 
         <div class="nav">
             <a href="/">Dashboard</a>
-            <a href="/import">Import</a>
             <button onclick="runAllTests()">🧪 Test Toutes les APIs</button>
             <button onclick="loadSimpleData()">📊 Charger Données</button>
         </div>
 
-        <!-- STATS SIMPLES -->
         <div class="card">
             <h2>📊 Statistiques</h2>
             <div class="stats">
@@ -132,7 +173,6 @@
             </div>
         </div>
 
-        <!-- IMPORTS RÉCENTS -->
         <div class="card">
             <h2>📥 Imports Récents</h2>
             <div id="imports">
@@ -140,7 +180,6 @@
             </div>
         </div>
 
-        <!-- CONTEXTES -->
         <div class="card">
             <h2>📋 Contextes</h2>
             <div id="contexts-list">
@@ -148,7 +187,6 @@
             </div>
         </div>
 
-        <!-- DEBUG -->
         <div class="card">
             <h2>🔧 Debug Console</h2>
             <div id="debug-output" class="debug">Cliquez sur "Test Toutes les APIs" pour commencer...</div>
@@ -164,12 +202,10 @@
             debugOutput.scrollTop = debugOutput.scrollHeight;
         }
 
-        // Test simple de toutes les APIs
         async function runAllTests() {
             debugOutput.textContent = '';
             log('🚀 Début des tests...');
 
-            // Test 1: Chemins
             try {
                 log('📁 Test des chemins...');
                 const pathsResponse = await fetch('/api/debug/paths');
@@ -179,7 +215,6 @@
                 log('❌ Erreur chemins: ' + error.message);
             }
 
-            // Test 2: Base de données
             try {
                 log('🗄️ Test base de données...');
                 const dbResponse = await fetch('/api/debug/db');
@@ -190,7 +225,6 @@
                 log('❌ Erreur base: ' + error.message);
             }
 
-            // Test 3: API Stats
             try {
                 log('📊 Test API stats...');
                 const statsResponse = await fetch('/api/dashboard/stats');
@@ -206,7 +240,6 @@
                 log('❌ Erreur stats: ' + error.message);
             }
 
-            // Test 4: API Contexts
             try {
                 log('📋 Test API contexts...');
                 const contextsResponse = await fetch('/api/dashboard/contexts');
@@ -225,12 +258,10 @@
             log('🎉 Tests terminés!');
         }
 
-        // Chargement simple des données
         async function loadSimpleData() {
             log('📊 Chargement des données simples...');
 
             try {
-                // Utiliser directement l'API debug pour avoir les stats de base
                 const dbResponse = await fetch('/api/debug/db');
                 const dbData = await dbResponse.json();
 
@@ -242,11 +273,10 @@
                     log('✅ Stats mises à jour depuis debug DB');
                 }
 
-                // Afficher les imports récents depuis les données debug
                 if (dbData.recent_imports_test) {
                     const importsHtml = dbData.recent_imports_test.map(imp => `
-                        <div style="padding: 10px; border-bottom: 1px solid #eee;">
-                            <strong>${imp.context_name || imp.filename}</strong><br>
+                        <div class="import-row">
+                            <strong>${imp.context_name || imp.filename}</strong>
                             <small>${imp.filename} • ${imp.imported_at} • ${Math.round((imp.confidence || 0) * 100)}%</small>
                         </div>
                     `).join('');
@@ -254,11 +284,10 @@
                     log('✅ Imports récents affichés');
                 }
 
-                // Afficher quelques contextes
                 if (dbData.range_contexts_examples) {
                     const contextsHtml = dbData.range_contexts_examples.map(ctx => `
-                        <div style="padding: 10px; border-bottom: 1px solid #eee;">
-                            <strong>${ctx.name}</strong><br>
+                        <div class="context-row">
+                            <strong>${ctx.name}</strong>
                             <small>ID: ${ctx.id} • Confiance: ${Math.round((ctx.confidence || 0) * 100)}%</small>
                         </div>
                     `).join('');
@@ -279,8 +308,8 @@
 
             if (stats.recent_imports && stats.recent_imports.length > 0) {
                 const importsHtml = stats.recent_imports.map(imp => `
-                    <div style="padding: 10px; border-bottom: 1px solid #eee;">
-                        <strong>${imp.context_name || imp.filename}</strong><br>
+                    <div class="import-row">
+                        <strong>${imp.context_name || imp.filename}</strong>
                         <small>${imp.filename} • ${imp.imported_at} • ${Math.round((imp.confidence || 0) * 100)}%</small>
                     </div>
                 `).join('');
@@ -291,8 +320,8 @@
         function updateSimpleContexts(contexts) {
             if (contexts && contexts.length > 0) {
                 const contextsHtml = contexts.map(ctx => `
-                    <div style="padding: 10px; border-bottom: 1px solid #eee;">
-                        <strong>${ctx.name}</strong><br>
+                    <div class="context-row">
+                        <strong>${ctx.name}</strong>
                         <small>
                             ${ctx.hero_position || '-'} • ${ctx.primary_action || '-'} •
                             ${Math.round((ctx.confidence || 0) * 100)}% •
@@ -304,7 +333,6 @@
             }
         }
 
-        // Chargement automatique au démarrage
         document.addEventListener('DOMContentLoaded', function() {
             log('🚀 Dashboard simple chargé');
             loadSimpleData();

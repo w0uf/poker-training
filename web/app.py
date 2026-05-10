@@ -11,6 +11,9 @@ import random
 
 CARDS_DIR = os.path.join(os.path.dirname(__file__), '..', 'data', 'cartes')
 
+_version_file = Path(__file__).parent.parent / "VERSION"
+APP_VERSION = _version_file.read_text().strip() if _version_file.exists() else "dev"
+
 # Ajouter le chemin vers les modules
 sys.path.insert(0, str(Path(__file__).parent.parent / 'modules'))
 
@@ -44,6 +47,7 @@ except Exception as e:
 
 app = Flask(__name__)
 app.secret_key = 'poker_training_secret_key_2025'  # 🆕 v4.5 - Pour les sessions Flask
+print(f"✓ Poker Training v{APP_VERSION}")
 
 # 🆕 v4.5 - Gestionnaire d'historique des quiz (base séparée)
 history_db_path = Path(__file__).parent.parent / "data" / "quiz_history.db"
@@ -156,7 +160,9 @@ def get_db_connection():
     db_path = Path(__file__).parent.parent / "data" / "poker_trainer.db"
     if not db_path.exists():
         return None
-    return sqlite3.connect(db_path)
+    conn = sqlite3.connect(db_path)
+    conn.execute("PRAGMA foreign_keys = ON")
+    return conn
 
 
 def check_orphans_on_startup():
@@ -354,6 +360,11 @@ def cards_static(filename):
 def dashboard():
     """Page principale du dashboard"""
     return render_template('dashboard.html')
+
+
+@app.route('/api/version')
+def get_version():
+    return jsonify({'version': APP_VERSION})
 
 
 # ============================================

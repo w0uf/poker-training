@@ -3,274 +3,240 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🃏 Poker Training - Dashboard</title>
+    <title>Poker Training — Dashboard</title>
+    <link rel="stylesheet" href="/static/poker.css">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        body { min-height: 100vh; }
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            color: #333;
+        /* ---- Bandeau orphelins ---- */
+        #orphan-banner {
+            display: none;
+            background: rgba(243,156,18,0.12);
+            border-bottom: 2px solid rgba(243,156,18,0.4);
+            padding: 12px 20px;
+            text-align: center;
         }
-
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 20px;
+        #orphan-banner span { color: #f39c12; font-weight: 600; font-size: 0.9rem; }
+        #orphan-banner button {
+            margin-left: 14px;
+            padding: 6px 18px;
+            background: rgba(243,156,18,0.2);
+            border: 1px solid #f39c12;
+            border-radius: 99px;
+            cursor: pointer;
+            font-weight: 600;
+            color: #f39c12;
+            font-size: 0.85rem;
+            transition: background 0.15s;
         }
+        #orphan-banner button:hover { background: rgba(243,156,18,0.35); }
 
+        .container { max-width: 1400px; }
+
+        /* ---- Header ---- */
         .header {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            padding: 25px;
-            margin-bottom: 30px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            background: var(--bg-card);
+            border: 1px solid var(--glass-border);
+            border-bottom: 2px solid var(--gold-dim);
+            border-radius: var(--radius-lg);
+            padding: 24px 28px;
+            margin-bottom: 24px;
+            backdrop-filter: blur(12px);
         }
 
         .header h1 {
-            font-size: 2.5rem;
-            background: linear-gradient(45deg, #667eea, #764ba2);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--gold-light);
             text-align: center;
-            margin-bottom: 10px;
+            margin-bottom: 18px;
         }
 
         .nav-pills {
             display: flex;
             justify-content: center;
-            gap: 15px;
-            margin-top: 20px;
+            gap: 12px;
             flex-wrap: wrap;
         }
 
         .nav-pill {
-            padding: 12px 24px;
-            background: linear-gradient(45deg, #667eea, #764ba2);
-            color: white;
+            padding: 10px 22px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid var(--glass-border);
+            color: var(--text-bright);
             text-decoration: none;
-            border-radius: 25px;
-            font-weight: 500;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-            border: none;
+            border-radius: 99px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: all 0.2s;
             cursor: pointer;
-            font-size: inherit;
             font-family: inherit;
         }
-
-        .nav-pill:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
-        }
-
+        .nav-pill:hover { background: rgba(255,255,255,0.12); border-color: var(--gold-dim); }
         .nav-pill.active {
-            background: linear-gradient(45deg, #764ba2, #667eea);
+            background: var(--gold-dim);
+            border-color: var(--gold);
+            color: var(--gold-light);
         }
-
-        .nav-pill:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-        }
+        .nav-pill:disabled { opacity: 0.4; cursor: not-allowed; }
 
         .nav-pill.validation-pill {
-            background: linear-gradient(45deg, #f39c12, #e67e22);
-            box-shadow: 0 4px 15px rgba(243, 156, 18, 0.3);
+            background: rgba(243,156,18,0.12);
+            border-color: rgba(243,156,18,0.4);
+            color: #f39c12;
         }
-
         .nav-pill.validation-pill:hover {
-            box-shadow: 0 6px 20px rgba(243, 156, 18, 0.4);
+            background: rgba(243,156,18,0.22);
         }
 
+        .btn-quiz {
+            background: linear-gradient(135deg, #145229, var(--check-color));
+            border: none;
+            color: #fff;
+            box-shadow: 0 4px 16px rgba(30,132,73,0.35);
+        }
+        .btn-quiz:hover:not(:disabled) {
+            box-shadow: 0 6px 24px rgba(30,132,73,0.55);
+            border-color: transparent;
+        }
+        .btn-quiz:disabled { background: rgba(255,255,255,0.06); box-shadow: none; color: var(--text-muted); }
+
+        /* ---- Stats grid ---- */
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
         }
 
         .stat-card {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            padding: 25px;
+            background: var(--bg-card);
+            border: 1px solid var(--glass-border);
+            border-top: 2px solid var(--gold-dim);
+            border-radius: var(--radius-lg);
+            padding: 24px;
             text-align: center;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-            transition: transform 0.3s ease;
+            backdrop-filter: blur(12px);
+            transition: transform 0.2s, border-color 0.2s;
         }
-
         .stat-card:hover {
-            transform: translateY(-5px);
+            transform: translateY(-4px);
+            border-top-color: var(--gold);
         }
 
-        .stat-icon {
-            font-size: 3rem;
-            margin-bottom: 15px;
-            filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.1));
-        }
+        .stat-icon { font-size: 2.2rem; margin-bottom: 10px; }
 
         .stat-value {
-            font-size: 2.5rem;
-            font-weight: 700;
-            color: #667eea;
-            margin-bottom: 5px;
+            font-size: 2.6rem;
+            font-weight: 800;
+            color: var(--gold-light);
+            margin-bottom: 4px;
+            line-height: 1;
         }
 
         .stat-label {
-            color: #666;
-            font-size: 0.9rem;
+            color: var(--text-muted);
+            font-size: 0.78rem;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 1px;
+            font-weight: 600;
         }
 
+        /* ---- Content grid ---- */
         .content-grid {
             display: grid;
-            grid-template-columns: 1fr 400px;
-            gap: 30px;
-            margin-bottom: 30px;
+            grid-template-columns: 1fr 340px;
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+        @media (max-width: 900px) {
+            .content-grid { grid-template-columns: 1fr; }
         }
 
-        @media (max-width: 768px) {
-            .content-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-
+        /* ---- Cards ---- */
         .card {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            background: var(--bg-card);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg);
             overflow: hidden;
+            backdrop-filter: blur(12px);
         }
 
         .card-header {
-            padding: 25px 25px 0;
-            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            padding: 20px 22px 0;
         }
 
         .card-title {
-            font-size: 1.3rem;
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 20px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--gold-light);
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--glass-border);
         }
 
-        .card-body {
-            padding: 25px;
-        }
+        .card-body { padding: 20px 22px; }
 
-        .loading {
-            text-align: center;
-            padding: 40px;
-            color: #666;
-        }
-
-        .spinner {
-            display: inline-block;
-            width: 40px;
-            height: 40px;
-            border: 4px solid rgba(102, 126, 234, 0.3);
-            border-radius: 50%;
-            border-top-color: #667eea;
-            animation: spin 1s ease-in-out infinite;
-            margin-bottom: 15px;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        .error {
-            background: #FFEBEE;
-            color: #f44336;
-            padding: 20px;
-            border-radius: 10px;
-            border-left: 4px solid #f44336;
-            margin: 10px 0;
-        }
-
-        .success {
-            background: #E8F5E8;
-            color: #4CAF50;
-            padding: 20px;
-            border-radius: 10px;
-            border-left: 4px solid #4CAF50;
-            margin: 10px 0;
-        }
-
+        /* ---- Contextes liste ---- */
         .context-item {
-            padding: 15px;
-            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-            position: relative;
-            transition: all 0.3s ease;
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--glass-border);
+            transition: background 0.2s;
         }
-
-        .context-item:last-child {
-            border-bottom: none;
-        }
-
-        .context-item:hover {
-            background: rgba(102, 126, 234, 0.03);
-        }
+        .context-item:last-child { border-bottom: none; }
+        .context-item:hover { background: rgba(255,255,255,0.03); }
 
         .context-item.pending-validation {
-            background: rgba(243, 156, 18, 0.08);
-            border-left: 4px solid #f39c12;
-            padding-left: 11px;
+            background: rgba(243,156,18,0.06);
+            border-left: 3px solid #f39c12;
+            padding-left: 13px;
         }
 
-        .context-info {
-            flex: 1;
-        }
+        .context-info { flex: 1; min-width: 0; }
 
         .context-name {
             font-weight: 600;
-            margin-bottom: 5px;
-            color: #333;
+            margin-bottom: 4px;
+            color: var(--text-bright);
             display: flex;
             align-items: center;
             flex-wrap: wrap;
             gap: 8px;
+            font-size: 0.95rem;
         }
 
         .context-meta {
-            font-size: 0.8rem;
-            color: #666;
-            margin-top: 5px;
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            margin-top: 4px;
         }
 
         .context-stats {
             text-align: right;
-            font-size: 0.9rem;
-            color: #666;
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            white-space: nowrap;
         }
 
+        /* Badges confiance */
         .confidence-badge {
             display: inline-block;
             padding: 2px 8px;
-            border-radius: 12px;
+            border-radius: 99px;
             font-size: 0.7rem;
-            font-weight: 500;
+            font-weight: 700;
         }
-
-        .confidence-high { background: #4CAF50; color: white; }
-        .confidence-medium { background: #FF9800; color: white; }
-        .confidence-low { background: #f44336; color: white; }
+        .confidence-high   { background: rgba(46,204,113,0.2); color: #2ecc71; border: 1px solid rgba(46,204,113,0.3); }
+        .confidence-medium { background: rgba(243,156,18,0.2); color: #f39c12; border: 1px solid rgba(243,156,18,0.3); }
+        .confidence-low    { background: rgba(231,76,60,0.2);  color: #e74c3c; border: 1px solid rgba(231,76,60,0.3); }
 
         .validation-badge {
             display: inline-block;
-            padding: 4px 10px;
-            background: #f39c12;
-            color: white;
-            border-radius: 5px;
+            padding: 2px 8px;
+            background: rgba(243,156,18,0.2);
+            color: #f39c12;
+            border: 1px solid rgba(243,156,18,0.4);
+            border-radius: 99px;
             font-size: 0.7rem;
             font-weight: 700;
             text-transform: uppercase;
@@ -280,121 +246,104 @@
         .context-actions {
             display: flex;
             gap: 8px;
-            margin-top: 12px;
-            padding-top: 12px;
-            border-top: 1px solid rgba(0, 0, 0, 0.06);
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid var(--glass-border);
         }
 
-        .btn-validate {
+        .btn-validate, .btn-edit {
             flex: 1;
-            padding: 10px 16px;
-            background: linear-gradient(45deg, #f39c12, #e67e22);
-            color: white;
+            padding: 9px 14px;
             border: none;
-            border-radius: 8px;
-            font-size: 0.85rem;
-            font-weight: 600;
+            border-radius: var(--radius-sm);
+            font-size: 0.82rem;
+            font-weight: 700;
             cursor: pointer;
-            transition: all 0.3s;
-            box-shadow: 0 2px 8px rgba(243, 156, 18, 0.3);
+            transition: all 0.15s;
+        }
+        .btn-validate {
+            background: linear-gradient(135deg, #7d5a00, #f39c12);
+            color: #fff;
+            box-shadow: 0 2px 8px rgba(243,156,18,0.25);
+        }
+        .btn-validate:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(243,156,18,0.4); }
+
+        .btn-edit {
+            background: rgba(255,255,255,0.08);
+            color: var(--text-bright);
+            border: 1px solid var(--glass-border);
+        }
+        .btn-edit:hover { background: rgba(255,255,255,0.14); border-color: var(--gold-dim); }
+
+        /* ---- Status summary ---- */
+        #status-summary {
+            font-size: 1rem;
+            line-height: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
         }
 
-        .btn-validate:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(243, 156, 18, 0.4);
+        .status-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 14px;
+            background: rgba(255,255,255,0.04);
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--glass-border);
         }
 
+        .status-row strong {
+            font-size: 1.4rem;
+            font-weight: 800;
+        }
+
+        /* ---- Empty state ---- */
         .empty-state {
             text-align: center;
-            padding: 60px 20px;
-            color: #666;
+            padding: 50px 20px;
+            color: var(--text-muted);
         }
-        .btn-edit {
-    flex: 1;
-    padding: 10px 16px;
-    background: linear-gradient(45deg, #667eea, #764ba2);
-    color: white;
-    border: none;
-    border-radius: 8px;
-    font-size: 0.85rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s;
-    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
-}
+        .empty-icon { font-size: 3.5rem; margin-bottom: 16px; opacity: 0.5; }
+        .empty-state h3 { font-size: 1.1rem; margin-bottom: 8px; color: var(--text-bright); }
+        .empty-state p { font-size: 0.9rem; }
 
-.btn-edit:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-}
-        .empty-icon {
-            font-size: 4rem;
-            margin-bottom: 20px;
-            opacity: 0.5;
-        }
-
+        /* ---- Status indicator (toast) ---- */
         .status-indicator {
             position: fixed;
             top: 20px;
             right: 20px;
-            padding: 10px 15px;
-            border-radius: 10px;
+            padding: 12px 18px;
+            border-radius: var(--radius-md);
             font-size: 0.9rem;
-            font-weight: 500;
+            font-weight: 600;
             z-index: 1000;
             display: none;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
         }
+        .status-loading { background: rgba(36,113,163,0.85); color: #fff; }
+        .status-success { background: rgba(30,132,73,0.85); color: #fff; }
+        .status-error   { background: rgba(192,57,43,0.85); color: #fff; }
 
-        .status-loading {
-            background: #E3F2FD;
-            color: #1976D2;
-            border-left: 4px solid #2196F3;
+        /* ---- Loading ---- */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-muted);
         }
-
-        .status-success {
-            background: #E8F5E8;
-            color: #2E7D32;
-            border-left: 4px solid #4CAF50;
-        }
-
-        .status-error {
-            background: #FFEBEE;
-            color: #C62828;
-            border-left: 4px solid #f44336;
-        }
-        .btn-quiz {
-    background: linear-gradient(135deg, #9c27b0 0%, #7b1fa2 100%);
-    color: white;
-    border: none;
-    padding: 15px 30px;
-    font-size: 1.1rem;
-    font-weight: 600;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.2s;
-    box-shadow: 0 4px 15px rgba(156, 39, 176, 0.3);
-}
-
-.btn-quiz:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 25px rgba(156, 39, 176, 0.5);
-}
     </style>
 </head>
 <body>
 
-<div id="orphan-banner" style="display: none; background: #fff3cd; border-bottom: 3px solid #ffc107; padding: 15px; text-align: center;">
-    <span style="color: #856404; font-weight: 600;">
-        ⚠️ <span id="orphan-count">0</span> fichier(s) JSON manquant(s)
-    </span>
-    <button onclick="window.location.href='/orphans'" style="margin-left: 15px; padding: 8px 20px; background: #ffc107; border: none; border-radius: 5px; cursor: pointer; font-weight: 600;">
-        Gérer maintenant
-    </button>
+<div id="orphan-banner">
+    <span>⚠️ <span id="orphan-count">0</span> fichier(s) JSON manquant(s)</span>
+    <button onclick="window.location.href='/orphans'">Gérer maintenant</button>
 </div>
 
 <script>
-// Vérifier les orphelins au chargement
 fetch('/api/orphans/check')
     .then(r => r.json())
     .then(data => {
@@ -405,412 +354,361 @@ fetch('/api/orphans/check')
     });
 </script>
 
-    <div class="container">
-        <div id="status-indicator" class="status-indicator"></div>
+<div class="container">
+    <div id="status-indicator" class="status-indicator"></div>
 
-        <div class="header">
-            <h1>🃏 Poker Training Dashboard</h1>
-            <div class="nav-pills">
-                <a href="/" class="nav-pill active">📊 Dashboard</a>
-                <button id="import-btn" class="nav-pill">📥 Import Pipeline</button>
-                <button id="validation-btn" class="nav-pill validation-pill" style="display: none;">
-                    🔧 Valider les contextes (<span id="nav-validation-count">0</span>)
-                </button>
-                <button id="quiz-btn" class="nav-pill btn-quiz" disabled title="Aucun contexte validé">
-    🎯 Lancer le Quiz
-</button>
+    <div class="header">
+        <h1>🃏 Poker Training</h1>
+        <div class="nav-pills">
+            <a href="/" class="nav-pill active">📊 Dashboard</a>
+            <button id="import-btn" class="nav-pill">📥 Import Pipeline</button>
+            <button id="validation-btn" class="nav-pill validation-pill" style="display: none;">
+                🔧 Valider (<span id="nav-validation-count">0</span>)
+            </button>
+            <button id="quiz-btn" class="nav-pill btn-quiz" disabled title="Aucun contexte validé">
+                🎯 Lancer le Quiz
+            </button>
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">📁</div>
+            <div class="stat-value" id="total-files">0</div>
+            <div class="stat-label">Fichiers importés</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">📋</div>
+            <div class="stat-value" id="total-contexts">0</div>
+            <div class="stat-label">Contextes</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">🎯</div>
+            <div class="stat-value" id="total-ranges">0</div>
+            <div class="stat-label">Ranges</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">🃏</div>
+            <div class="stat-value" id="total-hands">0</div>
+            <div class="stat-label">Mains</div>
+        </div>
+    </div>
+
+    <!-- Contenu principal -->
+    <div class="content-grid">
+
+        <!-- Contextes -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">📋 Contextes importés</h2>
+            </div>
+            <div class="card-body" style="padding: 0;">
+                <div id="contexts-container">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <p>Chargement des contextes…</p>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-icon">📁</div>
-                <div class="stat-value" id="total-files">0</div>
-                <div class="stat-label">Fichiers importés</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon">📋</div>
-                <div class="stat-value" id="total-contexts">0</div>
-                <div class="stat-label">Contextes</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon">🎯</div>
-                <div class="stat-value" id="total-ranges">0</div>
-                <div class="stat-label">Ranges</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon">🃏</div>
-                <div class="stat-value" id="total-hands">0</div>
-                <div class="stat-label">Mains</div>
-            </div>
-        </div>
-
-        <div class="content-grid">
+        <!-- Statuts -->
+        <div style="display: flex; flex-direction: column; gap: 16px;">
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">📋 Contextes importés</h2>
+                    <h3 class="card-title">📊 Statuts des contextes</h3>
                 </div>
                 <div class="card-body">
-                    <div id="contexts-container">
-                        <div class="loading">
-                            <div class="spinner"></div>
-                            <p>Chargement des contextes...</p>
+                    <div id="status-summary">
+                        <div class="status-row">
+                            <span>🟢 Prêts quiz</span>
+                            <strong id="ready-count">0</strong>
                         </div>
-                    </div>
-                </div>
-            </div>
-
-            <div style="display: flex; flex-direction: column; gap: 20px;">
-                <div class="card">
-                    <div class="card-header">
-                        <h3 class="card-title">📊 Statuts des contextes</h3>
-                    </div>
-                    <div class="card-body">
-                        <div id="status-summary" style="font-size: 1.1rem; line-height: 2.5;">
-                            <div>🟢 Prêts quiz: <strong id="ready-count">0</strong></div>
-                            <div>🟡 À valider: <strong id="validation-count">0</strong></div>
-                            <div>🔴 Erreurs: <strong id="error-count">0</strong></div>
+                        <div class="status-row">
+                            <span>🟡 À valider</span>
+                            <strong id="validation-count">0</strong>
+                        </div>
+                        <div class="status-row">
+                            <span>🔴 Erreurs</span>
+                            <strong id="error-count">0</strong>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
+
     </div>
+</div>
 
-    <script>
-        let isLoading = false;
+<script>
+    let isLoading = false;
 
-        document.addEventListener('DOMContentLoaded', function() {
-            loadDashboard();
-            setInterval(loadDashboard, 30000);
-            setupActionButtons();
-            checkValidationSuccess();
+    document.addEventListener('DOMContentLoaded', function() {
+        loadDashboard();
+        setInterval(loadDashboard, 30000);
+        setupActionButtons();
+        checkValidationSuccess();
+    });
+
+    function setupActionButtons() {
+        document.getElementById('import-btn').addEventListener('click', handleImportPipeline);
+        document.getElementById('validation-btn').addEventListener('click', showValidationList);
+    }
+
+    function checkValidationSuccess() {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('validated') === 'true') {
+            showStatus('✓ Contexte validé avec succès !', 'success');
+            window.history.replaceState({}, '', '/');
+            setTimeout(hideStatus, 4000);
+        }
+    }
+
+    async function handleImportPipeline() {
+        const btn = document.getElementById('import-btn');
+        const originalText = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = '⏳ Import en cours...';
+        showStatus('Démarrage du pipeline d\'import...', 'loading');
+
+        try {
+            const response = await fetch('/api/import_pipeline', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'}
+            });
+            if (!response.ok) throw new Error(`Erreur ${response.status}: ${response.statusText}`);
+            const result = await response.json();
+
+            if (result.success) {
+                const stats = result.stats || {};
+                showStatus('Pipeline d\'import terminé avec succès !', 'success');
+                if (stats.needs_validation > 0 && result.contexts_to_validate && result.contexts_to_validate.length > 0) {
+                    setTimeout(() => {
+                        const goToValidation = confirm(
+                            `${stats.needs_validation} contexte(s) nécessitent une validation manuelle.\n\nVoulez-vous les valider maintenant ?`
+                        );
+                        if (goToValidation) { window.location.href = `/validate?id=${result.contexts_to_validate[0].id}`; }
+                        else { loadDashboard(); }
+                    }, 1000);
+                } else {
+                    setTimeout(() => loadDashboard(), 1000);
+                }
+            }
+        } catch (error) {
+            showStatus('Erreur lors du pipeline: ' + error.message, 'error');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = originalText;
+            setTimeout(hideStatus, 5000);
+        }
+    }
+
+    async function updateQuizButton() {
+        try {
+            const response = await fetch('/api/quiz/check');
+            const data = await response.json();
+            const quizBtn = document.getElementById('quiz-btn');
+            if (!quizBtn) return;
+            if (data.ready && data.ready_contexts > 0) {
+                quizBtn.disabled = false;
+                quizBtn.title = `${data.ready_contexts} contexte(s) prêt(s)`;
+                quizBtn.onclick = () => window.location.href = '/quiz-setup';
+            } else {
+                quizBtn.disabled = true;
+                quizBtn.title = 'Aucun contexte validé pour le quiz';
+                quizBtn.onclick = null;
+            }
+        } catch (error) {
+            console.error('Erreur vérification quiz:', error);
+            const quizBtn = document.getElementById('quiz-btn');
+            if (quizBtn) { quizBtn.disabled = true; quizBtn.title = 'Quiz non disponible'; }
+        }
+    }
+
+    async function loadDashboard() {
+        if (isLoading) return;
+        isLoading = true;
+        try {
+            await loadStats();
+            await loadContexts();
+            await updateValidationButton();
+            await updateQuizButton();
+        } catch (error) {
+            showStatus('Erreur de chargement: ' + error.message, 'error');
+        } finally {
+            isLoading = false;
+        }
+    }
+
+    async function loadStats() {
+        const response = await fetch('/api/debug/db');
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const debugData = await response.json();
+
+        if (debugData.status === 'no_database') {
+            ['total-files','total-contexts','total-ranges','total-hands'].forEach(id => {
+                document.getElementById(id).textContent = 0;
+            });
+            resetStatusCounters();
+            return;
+        }
+
+        document.getElementById('total-files').textContent = debugData.data.range_files || 0;
+        document.getElementById('total-contexts').textContent = debugData.data.range_contexts || 0;
+        document.getElementById('total-ranges').textContent = debugData.data.ranges || 0;
+        document.getElementById('total-hands').textContent = debugData.data.range_hands || 0;
+    }
+
+    async function loadContexts() {
+        const response = await fetch('/api/dashboard/contexts');
+        if (response.ok) {
+            updateContextsList(await response.json());
+            return;
+        }
+        const debugResponse = await fetch('/api/debug/db');
+        if (!debugResponse.ok) throw new Error('Erreur accès debug DB');
+        const debugData = await debugResponse.json();
+        if (debugData.range_contexts_examples && debugData.range_contexts_examples.length > 0) {
+            updateContextsList(debugData.range_contexts_examples.map(ctx => ({
+                id: ctx.id, name: ctx.name, confidence: ctx.confidence || 0, context_status: 'unknown'
+            })));
+            return;
+        }
+        updateContextsList([]);
+    }
+
+    async function updateValidationButton() {
+        try {
+            const response = await fetch('/api/validation/stats');
+            if (!response.ok) return;
+            const data = await response.json();
+            const count = data.total_pending || 0;
+            document.getElementById('nav-validation-count').textContent = count;
+            document.getElementById('validation-btn').style.display = count > 0 ? 'block' : 'none';
+        } catch (error) {
+            console.error('Erreur mise à jour bouton validation:', error);
+        }
+    }
+
+    async function showValidationList() {
+        try {
+            const response = await fetch('/api/validation/candidates');
+            if (!response.ok) throw new Error('Erreur récupération candidats');
+            const data = await response.json();
+            if (data.contexts && data.contexts.length > 0) {
+                window.location.href = `/validate?id=${data.contexts[0].id}`;
+            } else {
+                alert('Aucun contexte à valider !');
+            }
+        } catch (error) {
+            showStatus('Erreur lors de la récupération des contextes', 'error');
+        }
+    }
+
+    function validateContext(contextId) { window.location.href = `/validate?id=${contextId}`; }
+
+    function resetStatusCounters() {
+        document.getElementById('ready-count').textContent = 0;
+        document.getElementById('validation-count').textContent = 0;
+        document.getElementById('error-count').textContent = 0;
+    }
+
+    function getStatusFlag(context) {
+        const status = context.context_status || context.status;
+        if (status === 'quiz_ready') return '🟢';
+        if (status === 'needs_validation') return '🟡';
+        if (status === 'error') return '🔴';
+        return '⚪';
+    }
+
+    function updateContextsList(contexts) {
+        const container = document.getElementById('contexts-container');
+
+        if (!contexts || contexts.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">🔭</div>
+                    <h3>Aucun contexte trouvé</h3>
+                    <p>Commencez par utiliser Import Pipeline</p>
+                    <button onclick="handleImportPipeline()" class="nav-pill" style="margin-top: 20px; display: inline-block;">
+                        📥 Import Pipeline
+                    </button>
+                </div>`;
+            resetStatusCounters();
+            return;
+        }
+
+        contexts.sort((a, b) => {
+            const sa = a.context_status || a.status;
+            const sb = b.context_status || b.status;
+            if (sa === 'needs_validation' && sb !== 'needs_validation') return -1;
+            if (sa !== 'needs_validation' && sb === 'needs_validation') return 1;
+            if (sa === 'quiz_ready' && sb !== 'quiz_ready') return -1;
+            if (sa !== 'quiz_ready' && sb === 'quiz_ready') return 1;
+            return 0;
         });
 
-        function setupActionButtons() {
-            document.getElementById('import-btn').addEventListener('click', handleImportPipeline);
-            document.getElementById('validation-btn').addEventListener('click', showValidationList);
+        const html = contexts.map(ctx => {
+            const status = ctx.context_status || ctx.status;
+            const needsValidation = status === 'needs_validation';
+            const confidenceClass = ctx.confidence >= 0.8 ? 'confidence-high' :
+                                   ctx.confidence >= 0.5 ? 'confidence-medium' : 'confidence-low';
+            const validationBadge = needsValidation ? '<span class="validation-badge">À valider</span>' : '';
+            const buttonText = needsValidation ? '🔧 Compléter les métadonnées' : '✏️ Éditer';
+            const buttonClass = needsValidation ? 'btn-validate' : 'btn-edit';
 
-        }
-
-        function checkValidationSuccess() {
-            const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.get('validated') === 'true') {
-                showStatus('✓ Contexte validé avec succès !', 'success');
-                window.history.replaceState({}, '', '/');
-                setTimeout(hideStatus, 4000);
-            }
-        }
-
-        async function handleImportPipeline() {
-            const btn = document.getElementById('import-btn');
-            const originalText = btn.textContent;
-            btn.disabled = true;
-            btn.textContent = '⏳ Import en cours...';
-            showStatus('Démarrage du pipeline d\'import...', 'loading');
-
-            try {
-                const response = await fetch('/api/import_pipeline', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'}
-                });
-
-                if (!response.ok) throw new Error(`Erreur ${response.status}: ${response.statusText}`);
-
-                const result = await response.json();
-
-                if (result.success) {
-                    const stats = result.stats || {};
-                    const message = `✅ Pipeline terminé !\n\n` +
-                                  `📁 Fichiers : ${stats.total_files || 0}\n` +
-                                  `🎯 Contextes : ${stats.total_contexts || 0}\n` +
-                                  `🟢 Prêts quiz : ${stats.quiz_ready || 0}\n` +
-                                  `🟡 À valider : ${stats.needs_validation || 0}\n` +
-                                  `🔴 Erreurs : ${stats.errors || 0}`;
-
-                    showStatus('Pipeline d\'import terminé avec succès !', 'success');
-
-                    // Si des contextes nécessitent validation, proposer d'y aller
-                    if (stats.needs_validation > 0 && result.contexts_to_validate && result.contexts_to_validate.length > 0) {
-                        setTimeout(() => {
-                            const goToValidation = confirm(
-                                `${stats.needs_validation} contexte(s) nécessitent une validation manuelle.\n\n` +
-                                `Voulez-vous les valider maintenant ?`
-                            );
-
-                            if (goToValidation) {
-                                window.location.href = `/validate?id=${result.contexts_to_validate[0].id}`;
-                                return;
-                            } else {
-                                loadDashboard();
-                            }
-                        }, 1000);
-                    } else {
-                        setTimeout(() => loadDashboard(), 1000);
-                    }
-                }
-            } catch (error) {
-                showStatus('Erreur lors du pipeline: ' + error.message, 'error');
-            } finally {
-                btn.disabled = false;
-                btn.textContent = originalText;
-                setTimeout(hideStatus, 5000);
-            }
-        }
-
-async function updateQuizButton() {
-    try {
-        const response = await fetch('/api/quiz/check');
-        const data = await response.json();
-
-        const quizBtn = document.getElementById('quiz-btn');
-        if (!quizBtn) return;
-
-        if (data.ready && data.ready_contexts > 0) {
-            quizBtn.disabled = false;
-            quizBtn.title = `${data.ready_contexts} contexte(s) prêt(s)`;
-            quizBtn.onclick = () => window.location.href = '/quiz-setup';
-        } else {
-            quizBtn.disabled = true;
-            quizBtn.title = 'Aucun contexte validé pour le quiz';
-            quizBtn.onclick = null;
-        }
-    } catch (error) {
-        console.error('Erreur vérification quiz:', error);
-        const quizBtn = document.getElementById('quiz-btn');
-        if (quizBtn) {
-            quizBtn.disabled = true;
-            quizBtn.title = 'Quiz non disponible';
-        }
-    }
-}
-
-     async function loadDashboard() {
-    if (isLoading) return;
-    isLoading = true;
-
-    try {
-        await loadStats();
-        await loadContexts();
-        await updateValidationButton();
-        await updateQuizButton(); // ← AJOUTER CETTE LIGNE
-    } catch (error) {
-        showStatus('Erreur de chargement: ' + error.message, 'error');
-    } finally {
-        isLoading = false;
-    }
-}
-
-        async function loadStats() {
-            const response = await fetch('/api/debug/db');
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-            const debugData = await response.json();
-
-            if (debugData.status === 'no_database') {
-                document.getElementById('total-files').textContent = 0;
-                document.getElementById('total-contexts').textContent = 0;
-                document.getElementById('total-ranges').textContent = 0;
-                document.getElementById('total-hands').textContent = 0;
-                resetStatusCounters();
-                return;
-            }
-
-            document.getElementById('total-files').textContent = debugData.data.range_files || 0;
-            document.getElementById('total-contexts').textContent = debugData.data.range_contexts || 0;
-            document.getElementById('total-ranges').textContent = debugData.data.ranges || 0;
-            document.getElementById('total-hands').textContent = debugData.data.range_hands || 0;
-        }
-
-        async function loadContexts() {
-            const response = await fetch('/api/dashboard/contexts');
-            if (response.ok) {
-                const contexts = await response.json();
-                updateContextsList(contexts);
-                return;
-            }
-
-            const debugResponse = await fetch('/api/debug/db');
-            if (!debugResponse.ok) throw new Error('Erreur accès debug DB');
-
-            const debugData = await debugResponse.json();
-            if (debugData.range_contexts_examples && debugData.range_contexts_examples.length > 0) {
-                const simpleContexts = debugData.range_contexts_examples.map(ctx => ({
-                    id: ctx.id,
-                    name: ctx.name,
-                    confidence: ctx.confidence || 0,
-                    context_status: 'unknown'
-                }));
-                updateContextsList(simpleContexts);
-                return;
-            }
-            updateContextsList([]);
-        }
-
-        async function updateValidationButton() {
-            try {
-                const response = await fetch('/api/validation/stats');
-                if (!response.ok) return;
-
-                const data = await response.json();
-                const count = data.total_pending || 0;
-
-                document.getElementById('nav-validation-count').textContent = count;
-
-                const btn = document.getElementById('validation-btn');
-                btn.style.display = count > 0 ? 'block' : 'none';
-
-            } catch (error) {
-                console.error('Erreur mise à jour bouton validation:', error);
-            }
-        }
-
-        async function showValidationList() {
-            try {
-                const response = await fetch('/api/validation/candidates');
-                if (!response.ok) throw new Error('Erreur récupération candidats');
-
-                const data = await response.json();
-
-                if (data.contexts && data.contexts.length > 0) {
-                    window.location.href = `/validate?id=${data.contexts[0].id}`;
-                } else {
-                    alert('Aucun contexte à valider !');
-                }
-
-            } catch (error) {
-                console.error('Erreur:', error);
-                showStatus('Erreur lors de la récupération des contextes', 'error');
-            }
-        }
-
-        function validateContext(contextId) {
-            window.location.href = `/validate?id=${contextId}`;
-        }
-
-        function resetStatusCounters() {
-            document.getElementById('ready-count').textContent = 0;
-            document.getElementById('validation-count').textContent = 0;
-            document.getElementById('error-count').textContent = 0;
-        }
-
-        function getStatusFlag(context) {
-            const status = context.context_status || context.status;
-            if (status === 'quiz_ready') return '🟢';
-            if (status === 'needs_validation') return '🟡';
-            if (status === 'error') return '🔴';
-            return '⚪';
-        }
-
-        function updateContextsList(contexts) {
-            const container = document.getElementById('contexts-container');
-
-            if (!contexts || contexts.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <div class="empty-icon">🔭</div>
-                        <h3>Aucun contexte trouvé</h3>
-                        <p>Commencez par utiliser Import Pipeline</p>
-                        <button onclick="handleImportPipeline()" class="nav-pill" style="margin-top: 20px; display: inline-block;">
-                            📥 Import Pipeline
-                        </button>
-                    </div>
-                `;
-                resetStatusCounters();
-                return;
-            }
-
-            // Trier : validation d'abord, puis quiz_ready, puis erreurs
-            contexts.sort((a, b) => {
-                const statusA = a.context_status || a.status;
-                const statusB = b.context_status || b.status;
-
-                if (statusA === 'needs_validation' && statusB !== 'needs_validation') return -1;
-                if (statusA !== 'needs_validation' && statusB === 'needs_validation') return 1;
-                if (statusA === 'quiz_ready' && statusB !== 'quiz_ready') return -1;
-                if (statusA !== 'quiz_ready' && statusB === 'quiz_ready') return 1;
-                return 0;
-            });
-
-            const html = contexts.map(ctx => {
-                const status = ctx.context_status || ctx.status;
-                const needsValidation = status === 'needs_validation';
-                const containerClass = needsValidation ? 'pending-validation' : '';
-
-                const confidenceClass = ctx.confidence >= 0.8 ? 'confidence-high' :
-                                       ctx.confidence >= 0.5 ? 'confidence-medium' : 'confidence-low';
-
-                const validationBadge = needsValidation ?
-                    '<span class="validation-badge">À valider</span>' : '';
-
-                // Bouton pour tous les contextes (validation OU édition)
-const buttonText = needsValidation ? '🔧 Compléter les métadonnées' : '✏️ Éditer';
-const buttonClass = needsValidation ? 'btn-validate' : 'btn-edit';
-
-const actionButton = `
-    <div class="context-actions">
-        <button class="${buttonClass}" onclick="validateContext(${ctx.id})">
-            ${buttonText}
-        </button>
-    </div>
-`;
-
-                return `
-                    <div class="context-item ${containerClass}">
-                        <div style="display: flex; justify-content: space-between; align-items: start;">
-                            <div class="context-info">
-                                <div class="context-name">
-                                    <span>${getStatusFlag(ctx)}</span>
-                                    <span>${ctx.name}</span>
-                                    ${validationBadge}
-                                    <span class="confidence-badge ${confidenceClass}">
-                                        ${Math.round(ctx.confidence * 100)}%
-                                    </span>
-                                </div>
-                                <div class="context-meta">
-                                    ${ctx.hero_position || '-'} • ${ctx.primary_action || '-'} • ${ctx.filename || '-'}
-                                </div>
+            return `
+                <div class="context-item ${needsValidation ? 'pending-validation' : ''}">
+                    <div style="display: flex; justify-content: space-between; align-items: start;">
+                        <div class="context-info">
+                            <div class="context-name">
+                                <span>${getStatusFlag(ctx)}</span>
+                                <span>${ctx.name}</span>
+                                ${validationBadge}
+                                <span class="confidence-badge ${confidenceClass}">
+                                    ${Math.round(ctx.confidence * 100)}%
+                                </span>
                             </div>
-                            <div class="context-stats">
-                                <div>${ctx.ranges_count || 0} ranges</div>
-                                <div>${ctx.hands_count || 0} mains</div>
+                            <div class="context-meta">
+                                ${ctx.hero_position || '-'} • ${ctx.primary_action || '-'} • ${ctx.filename || '-'}
                             </div>
                         </div>
-                        ${actionButton}
+                        <div class="context-stats">
+                            <div>${ctx.ranges_count || 0} ranges</div>
+                            <div>${ctx.hands_count || 0} mains</div>
+                        </div>
                     </div>
-                `;
-            }).join('');
+                    <div class="context-actions">
+                        <button class="${buttonClass}" onclick="validateContext(${ctx.id})">${buttonText}</button>
+                    </div>
+                </div>`;
+        }).join('');
 
-            container.innerHTML = html;
+        container.innerHTML = html;
 
-            // Calculer et afficher les statistiques de statut
-            const readyCount = contexts.filter(c => (c.context_status || c.status) === 'quiz_ready').length;
-            const validationCount = contexts.filter(c => (c.context_status || c.status) === 'needs_validation').length;
-            const errorCount = contexts.filter(c => (c.context_status || c.status) === 'error').length;
+        const readyCount      = contexts.filter(c => (c.context_status || c.status) === 'quiz_ready').length;
+        const validationCount = contexts.filter(c => (c.context_status || c.status) === 'needs_validation').length;
+        const errorCount      = contexts.filter(c => (c.context_status || c.status) === 'error').length;
 
-            document.getElementById('ready-count').textContent = readyCount;
-            document.getElementById('validation-count').textContent = validationCount;
-            document.getElementById('error-count').textContent = errorCount;
-        }
+        document.getElementById('ready-count').textContent = readyCount;
+        document.getElementById('validation-count').textContent = validationCount;
+        document.getElementById('error-count').textContent = errorCount;
+    }
 
-        function showStatus(message, type) {
-            const indicator = document.getElementById('status-indicator');
-            indicator.className = `status-indicator status-${type}`;
-            indicator.textContent = message;
-            indicator.style.display = 'block';
-        }
+    function showStatus(message, type) {
+        const indicator = document.getElementById('status-indicator');
+        indicator.className = `status-indicator status-${type}`;
+        indicator.textContent = message;
+        indicator.style.display = 'block';
+    }
 
-        function hideStatus() {
-            document.getElementById('status-indicator').style.display = 'none';
-        }
+    function hideStatus() {
+        document.getElementById('status-indicator').style.display = 'none';
+    }
 
-        window.addEventListener('error', function(event) {
-            showStatus('Erreur JavaScript détectée', 'error');
-        });
-
-        window.addEventListener('unhandledrejection', function(event) {
-            showStatus('Erreur réseau ou API', 'error');
-        });
-    </script>
+    window.addEventListener('error', () => showStatus('Erreur JavaScript détectée', 'error'));
+    window.addEventListener('unhandledrejection', () => showStatus('Erreur réseau ou API', 'error'));
+</script>
 </body>
 </html>

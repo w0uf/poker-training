@@ -3,164 +3,293 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quiz Poker - Training</title>
+    <title>Quiz — Poker Training</title>
+    <link rel="stylesheet" href="/static/poker.css">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
-            color: #fff;
-            min-height: 100vh;
-            padding: 20px;
-        }
-
-        .container {
-            max-width: 1000px;
-            margin: 0 auto;
-        }
-
-        /* Header */
+        /* ---- Header ---- */
         .quiz-header {
             display: flex;
-            justify-content: space-between;
             align-items: center;
-            margin-bottom: 30px;
-            padding: 20px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
-            backdrop-filter: blur(10px);
+            gap: 18px;
+            padding: 14px 20px;
+            margin-bottom: 20px;
+            background: var(--bg-card);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md);
+            backdrop-filter: blur(12px);
         }
 
         .progress-bar {
             flex: 1;
-            height: 8px;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 4px;
+            height: 6px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 3px;
             overflow: hidden;
-            margin: 0 20px;
         }
 
         .progress-fill {
             height: 100%;
-            background: linear-gradient(90deg, #4CAF50, #8BC34A);
-            transition: width 0.3s ease;
-            border-radius: 4px;
+            background: linear-gradient(90deg, var(--gold), var(--gold-light), var(--gold));
+            background-size: 200% 100%;
+            animation: shimmer 2s linear infinite;
+            transition: width 0.4s ease;
+            border-radius: 3px;
+        }
+
+        @keyframes shimmer {
+            0%   { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
         }
 
         .progress-text {
-            font-size: 1.2rem;
+            font-size: 0.95rem;
             font-weight: 600;
-            min-width: 100px;
+            color: var(--text-bright);
+            white-space: nowrap;
+            min-width: 110px;
             text-align: right;
         }
 
-        .score {
-            font-size: 1.2rem;
-            font-weight: 600;
-            min-width: 120px;
+        .score-chip {
+            font-size: 0.85rem;
+            font-weight: 700;
+            padding: 5px 14px;
+            border-radius: 99px;
+            background: var(--gold-dim);
+            border: 1px solid var(--gold);
+            color: var(--gold-light);
+            white-space: nowrap;
         }
 
-        /* Table de poker */
+        /* ---- Context card (HUD) ---- */
+        .context-card {
+            background: var(--bg-card);
+            border: 1px solid var(--glass-border);
+            border-top: 2px solid var(--gold-dim);
+            border-radius: var(--radius-md);
+            padding: 14px 20px;
+            margin-bottom: 18px;
+            backdrop-filter: blur(12px);
+        }
+
+        .context-info {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .info-badge {
+            padding: 5px 13px;
+            border-radius: 99px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: var(--text-bright);
+        }
+
+        .info-badge.highlight {
+            background: rgba(201, 168, 76, 0.14);
+            border-color: var(--gold-dim);
+            color: var(--gold-light);
+        }
+
+        /* ---- Table de poker ---- */
         .poker-table {
-            background: #1a472a;
-            border-radius: 200px;
-            padding: 60px;
-            margin-bottom: 30px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), inset 0 0 30px rgba(0, 0, 0, 0.3);
-            border: 8px solid #4a2c0f;
             position: relative;
+            background: radial-gradient(ellipse at 50% 40%, var(--felt-center) 0%, #145229 50%, var(--felt-edge) 100%);
+            border-radius: 160px / 100px;
+            padding: 50px 60px;
+            margin-bottom: 20px;
+            border: 10px solid var(--rail-dark);
+            box-shadow:
+                0 0 0 3px var(--rail-light),
+                0 24px 70px rgba(0,0,0,0.75),
+                inset 0 0 80px rgba(0,0,0,0.35),
+                inset 0 0 12px rgba(255,255,255,0.03);
         }
 
         .poker-table::before {
             content: '';
             position: absolute;
-            inset: 20px;
-            border: 2px solid rgba(255, 255, 255, 0.1);
-            border-radius: 180px;
+            inset: 18px;
+            border: 1px solid rgba(255,255,255,0.07);
+            border-radius: 150px / 90px;
+            pointer-events: none;
         }
 
-        /* Carte de contexte */
-        .context-card {
-            background: rgba(255, 255, 255, 0.95);
-            color: #333;
-            padding: 20px;
-            border-radius: 12px;
-            margin-bottom: 30px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-            position: relative;
-        }
-
-        .context-info {
-            display: flex;
-            gap: 20px;
-            flex-wrap: wrap;
-            font-size: 0.95rem;
-        }
-
-        .info-badge {
-            padding: 8px 15px;
-            background: #f0f0f0;
-            border-radius: 20px;
-            font-weight: 500;
-            border: 2px solid #ddd;
-        }
-
-        .info-badge.highlight {
-            background: #e3f2fd;
-            border-color: #2196F3;
-            color: #1976D2;
-        }
-
-        /* Variante */
-        .question-variant {
-            background: #f8f9fa;
-            border-left: 4px solid #6c757d;
-            padding: 10px 14px;
-            margin-bottom: 20px;
-            font-style: italic;
-            color: #495057;
-            border-radius: 4px;
-            font-size: 0.95em;
-        }
-
-        .question-variant::before {
-            content: "Variante : ";
-            font-weight: 600;
-            font-style: normal;
-            color: #343a40;
-        }
-
-        /* Zone de question */
+        /* ---- Zone de question ---- */
         .question-zone {
             text-align: center;
-            padding: 40px 20px;
+            padding: 20px 10px;
+            position: relative;
+            z-index: 2;
         }
 
         .situation-text {
             font-size: 1.3rem;
-            line-height: 1.6;
-            margin-bottom: 30px;
-            color: #fff;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            font-weight: 500;
+            line-height: 1.7;
+            color: var(--text-bright);
+            text-shadow: 0 2px 10px rgba(0,0,0,0.9);
+            margin-bottom: 10px;
+            letter-spacing: 0.01em;
         }
 
-        .hand-display {
+        /* ---- Variante ---- */
+        .question-variant {
+            display: inline-block;
+            background: rgba(255,255,255,0.07);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: var(--radius-sm);
+            padding: 8px 16px;
+            margin-bottom: 16px;
+            font-style: italic;
+            font-size: 0.9rem;
+            color: rgba(240,235,224,0.75);
+        }
+
+        .question-variant::before {
+            content: "Variante : ";
+            font-weight: 700;
+            font-style: normal;
+            color: var(--gold-light);
+        }
+
+        /* ---- Drill-down séquence ---- */
+        .quiz-action-sequence {
+            margin-bottom: 16px;
+            padding: 12px 16px;
+            background: rgba(201, 168, 76, 0.08);
+            border-radius: var(--radius-sm);
+            border-left: 3px solid var(--gold);
+        }
+
+        .quiz-action-badge {
             display: inline-flex;
-            gap: 10px;
-            margin: 20px 0;
+            align-items: center;
+            padding: 4px 10px;
+            border-radius: 5px;
+            font-weight: 700;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            white-space: nowrap;
         }
 
-        /* Boutons d'action */
+        .quiz-action-raise { background: rgba(202,111,30,0.85); color: #fff; }
+        .quiz-action-call  { background: rgba(36,113,163,0.85); color: #fff; }
+        .quiz-action-fold  { background: rgba(192,57,43,0.85);  color: #fff; }
+        .quiz-action-check { background: rgba(30,132,73,0.85);  color: #fff; }
+
+        .quiz-action-arrow {
+            color: rgba(255,255,255,0.5);
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        /* ---- Cartes CSS ---- */
+        #handDisplay {
+            position: relative;
+            min-height: 148px;
+            margin: 18px 0 28px;
+            display: flex;
+            justify-content: center;
+            gap: 0;
+        }
+
+        .card-slot {
+            width: 96px;
+            height: 134px;
+            border-radius: 10px;
+            flex-shrink: 0;
+        }
+
+        .card-slot + .card-slot { margin-left: -32px; }
+
+        .playing-card {
+            position: absolute;
+            width: 96px;
+            height: 134px;
+            background: #fff;
+            border-radius: 10px;
+            border: 1px solid rgba(0,0,0,0.12);
+            box-shadow: 0 4px 14px rgba(0,0,0,0.45), 0 1px 4px rgba(0,0,0,0.2);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 7px 9px;
+            font-family: 'Georgia', 'Times New Roman', serif;
+            user-select: none;
+            z-index: 10;
+            overflow: hidden;
+        }
+
+        .card-corner {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            line-height: 1;
+            gap: 1px;
+        }
+
+        .card-corner-bottom {
+            align-self: flex-end;
+            transform: rotate(180deg);
+        }
+
+        .card-rank {
+            font-size: 1.25rem;
+            font-weight: 800;
+            line-height: 1;
+            letter-spacing: -0.02em;
+        }
+
+        .card-suit-small {
+            font-size: 0.85rem;
+            line-height: 1;
+        }
+
+        .card-center-suit {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 3.4rem;
+            line-height: 1;
+            opacity: 0.9;
+        }
+
+        .card-red   { color: #c0392b; }
+        .card-black { color: #111; }
+
+        .playing-card.from-center {
+            left: 50%; top: 50%;
+            transform: translate(-50%, -50%) scale(0.2) rotate(var(--deal-rot, -4deg));
+            opacity: 0;
+            filter: blur(2px);
+        }
+
+        .playing-card.to-slot {
+            transform: translate(0, 0) scale(1) rotate(var(--deal-rot, 0deg));
+            opacity: 1;
+            filter: none;
+            transition: transform 0.4s cubic-bezier(0.22, 0.61, 0.36, 1),
+                        opacity 0.3s ease-out,
+                        filter 0.3s ease-out;
+        }
+
+        .playing-card.arrived {
+            box-shadow: 0 8px 28px rgba(0,0,0,0.55), 0 2px 8px rgba(0,0,0,0.25);
+        }
+
+        /* ---- Boutons d'action ---- */
         .action-buttons {
             display: flex;
             justify-content: center;
-            gap: 20px;
-            margin-top: 40px;
+            gap: 16px;
+            margin-top: 28px;
             flex-wrap: wrap;
             position: relative;
             z-index: 10;
@@ -168,488 +297,339 @@
         }
 
         .action-btn {
-            padding: 20px 40px;
-            font-size: 1.3rem;
+            padding: 16px 36px;
+            font-size: 1.1rem;
             font-weight: 700;
             border: none;
-            border-radius: 12px;
+            border-radius: var(--radius-md);
             cursor: pointer;
-            transition: all 0.2s;
+            transition: transform 0.15s, box-shadow 0.15s;
             text-transform: uppercase;
-            letter-spacing: 1px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-            min-width: 140px;
+            letter-spacing: 1.5px;
+            min-width: 130px;
             position: relative;
             z-index: 11;
             pointer-events: auto;
         }
 
         .action-btn:hover:not(:disabled) {
-            transform: translateY(-3px);
-            box-shadow: 0 6px 25px rgba(0, 0, 0, 0.4);
+            transform: translateY(-4px);
         }
 
         .action-btn:active:not(:disabled) {
-            transform: translateY(0);
+            transform: translateY(-1px);
         }
 
         .action-btn:disabled {
-            opacity: 0.5;
+            opacity: 0.45;
             cursor: not-allowed;
+            transform: none;
+            filter: grayscale(0.3);
         }
 
-        /* Couleurs des boutons */
         .btn-fold {
-            background: linear-gradient(135deg, #ff5252 0%, #f44336 100%);
-            color: white;
+            background: linear-gradient(160deg, #a93226 0%, var(--fold-color) 100%);
+            color: #fff;
+            box-shadow: 0 4px 20px rgba(192,57,43,0.45), inset 0 1px 0 rgba(255,255,255,0.1);
+        }
+        .btn-fold:hover:not(:disabled) {
+            box-shadow: 0 8px 28px rgba(192,57,43,0.65), inset 0 1px 0 rgba(255,255,255,0.1);
         }
 
         .btn-call {
-            background: linear-gradient(135deg, #42a5f5 0%, #2196F3 100%);
-            color: white;
+            background: linear-gradient(160deg, #1a5276 0%, var(--call-color) 100%);
+            color: #fff;
+            box-shadow: 0 4px 20px rgba(36,113,163,0.45), inset 0 1px 0 rgba(255,255,255,0.1);
+        }
+        .btn-call:hover:not(:disabled) {
+            box-shadow: 0 8px 28px rgba(36,113,163,0.65), inset 0 1px 0 rgba(255,255,255,0.1);
         }
 
         .btn-check {
-            background: linear-gradient(135deg, #66bb6a 0%, #4CAF50 100%);
-            color: white;
+            background: linear-gradient(160deg, #145229 0%, var(--check-color) 100%);
+            color: #fff;
+            box-shadow: 0 4px 20px rgba(30,132,73,0.45), inset 0 1px 0 rgba(255,255,255,0.1);
+        }
+        .btn-check:hover:not(:disabled) {
+            box-shadow: 0 8px 28px rgba(30,132,73,0.65), inset 0 1px 0 rgba(255,255,255,0.1);
         }
 
         .btn-raise, .btn-open {
-            background: linear-gradient(135deg, #ffa726 0%, #ff9800 100%);
-            color: white;
+            background: linear-gradient(160deg, #935116 0%, var(--raise-color) 100%);
+            color: #fff;
+            box-shadow: 0 4px 20px rgba(202,111,30,0.45), inset 0 1px 0 rgba(255,255,255,0.1);
+        }
+        .btn-raise:hover:not(:disabled), .btn-open:hover:not(:disabled) {
+            box-shadow: 0 8px 28px rgba(202,111,30,0.65), inset 0 1px 0 rgba(255,255,255,0.1);
         }
 
-        /* Feedback */
+        /* ---- Feedback ---- */
         .feedback {
-            margin-top: 30px;
-            padding: 25px;
-            border-radius: 12px;
-            font-size: 1.1rem;
+            margin-top: 24px;
+            padding: 22px 26px;
+            border-radius: var(--radius-md);
+            font-size: 1rem;
             display: none;
-            animation: slideIn 0.3s ease-out;
+            animation: slideUp 0.25s ease-out;
             position: relative;
             z-index: 15;
+            border: 1px solid transparent;
         }
 
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(-20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(14px); }
+            to   { opacity: 1; transform: translateY(0); }
         }
 
         .feedback.correct {
-            background: linear-gradient(135deg, #4CAF50 0%, #66bb6a 100%);
-            color: white;
+            background: linear-gradient(135deg, rgba(20,82,41,0.96) 0%, rgba(30,132,73,0.96) 100%);
+            border-color: rgba(46,204,113,0.4);
+            color: #fff;
         }
 
         .feedback.incorrect {
-            background: linear-gradient(135deg, #f44336 0%, #ef5350 100%);
-            color: white;
+            background: linear-gradient(135deg, rgba(120,36,29,0.96) 0%, rgba(192,57,43,0.96) 100%);
+            border-color: rgba(231,76,60,0.4);
+            color: #fff;
         }
 
         .feedback-title {
-            font-size: 1.5rem;
-            font-weight: 700;
-            margin-bottom: 10px;
-        }
-
-        /* 🆕 Action Sequence Display (drill-down) */
-        .quiz-action-sequence {
-            margin-bottom: 20px;
-            padding: 15px;
-            background: rgba(255, 193, 7, 0.1);
-            border-radius: 8px;
-            border-left: 4px solid #FFC107;
-        }
-
-        .quiz-action-badge {
-            display: inline-block;
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-weight: 700;
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            white-space: nowrap;
-        }
-
-        .quiz-action-raise {
-            background: linear-gradient(135deg, #ffa726 0%, #ff9800 100%);
-            color: white;
-        }
-
-        .quiz-action-call {
-            background: linear-gradient(135deg, #66bb6a 0%, #4caf50 100%);
-            color: white;
-        }
-
-        .quiz-action-fold {
-            background: linear-gradient(135deg, #ef5350 0%, #e53935 100%);
-            color: white;
-        }
-
-        .quiz-action-check {
-            background: linear-gradient(135deg, #42a5f5 0%, #1e88e5 100%);
-            color: white;
-        }
-
-        .quiz-action-arrow {
-            color: #fff;
-            font-weight: bold;
-            font-size: 16px;
-            opacity: 0.7;
+            font-size: 1.4rem;
+            font-weight: 800;
+            margin-bottom: 6px;
+            letter-spacing: 0.02em;
         }
 
         .next-btn {
-            margin-top: 20px;
-            padding: 15px 40px;
-            font-size: 1.1rem;
-            font-weight: 600;
-            background: white;
-            color: #333;
-            border: none;
-            border-radius: 8px;
+            margin-top: 16px;
+            padding: 12px 36px;
+            font-size: 1rem;
+            font-weight: 700;
+            background: rgba(255,255,255,0.15);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: var(--radius-sm);
             cursor: pointer;
-            transition: all 0.2s;
+            transition: background 0.15s, transform 0.15s;
             position: relative;
             z-index: 20;
             pointer-events: auto;
+            letter-spacing: 0.5px;
         }
 
         .next-btn:hover {
-            transform: scale(1.05);
-            box-shadow: 0 4px 15px rgba(255, 255, 255, 0.3);
+            background: rgba(255,255,255,0.25);
+            transform: scale(1.03);
         }
 
-        /* Écran de résultats */
-        .results-screen {
-            display: none;
-            text-align: center;
-            padding: 40px;
-        }
-
-        .results-card {
-            background: rgba(255, 255, 255, 0.95);
-            color: #333;
-            padding: 40px;
-            border-radius: 16px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-        }
-
-        .results-title {
-            font-size: 2.5rem;
-            margin-bottom: 20px;
-            color: #1e3c72;
-        }
-
-        .results-score {
-            font-size: 4rem;
-            font-weight: 700;
-            margin: 30px 0;
-            color: #4CAF50;
-        }
-
-        .results-stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 20px;
-            margin: 30px 0;
-        }
-
-        .stat-item {
-            padding: 20px;
-            background: #f5f5f5;
-            border-radius: 8px;
-        }
-
-        .stat-value {
-            font-size: 2rem;
-            font-weight: 700;
-            color: #2196F3;
-        }
-
-        .stat-label {
-            font-size: 0.9rem;
-            color: #666;
-            margin-top: 5px;
-        }
-
-        .results-actions {
-            display: flex;
-            gap: 20px;
-            justify-content: center;
-            margin-top: 30px;
-        }
-
-        .results-btn {
-            padding: 15px 30px;
-            font-size: 1.1rem;
-            font-weight: 600;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .btn-retry {
-            background: #4CAF50;
-            color: white;
-        }
-
-        .btn-home {
-            background: #2196F3;
-            color: white;
-        }
-
+        /* ---- Loading ---- */
         .loading {
             text-align: center;
-            padding: 60px;
-            font-size: 1.3rem;
+            padding: 80px 20px;
+            color: var(--text-muted);
+            font-size: 1.1rem;
         }
 
-        .spinner {
-            border: 4px solid rgba(255, 255, 255, 0.3);
-            border-top: 4px solid white;
-            border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            animation: spin 1s linear infinite;
-            margin: 20px auto;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        /* Cartes PNG */
-        #handDisplay {
-            position: relative;
-            min-height: 110px;
-            margin-bottom: 24px;
-            display: flex;
-            justify-content: center;
-            gap: 0;
-        }
-
-        .card-slot {
-            width: 72px;
-            height: 96px;
-            border-radius: 10px;
-        }
-
-        .card-slot + .card-slot {
-            margin-left: -22px;
-        }
-
-        .card-img {
-            position: absolute;
-            z-index: 10;
-            image-rendering: -webkit-optimize-contrast;
-            image-rendering: crisp-edges;
-            transform: translateZ(0);
-        }
-
-        .card-img.from-center {
-            left: 50%;
-            top: 50%;
-            transform: translate(-50%, -50%) scale(0.25) rotate(var(--deal-rot, -3deg));
-            opacity: 0.0;
-            filter: blur(1px);
-        }
-
-        .card-img.to-slot {
-            transform: translate(0,0) scale(1) rotate(var(--deal-rot, 0deg));
-            opacity: 1;
-            filter: none;
-            transition: all 0.38s ease-out;
-        }
-
-        .card-img.arrived {
-            box-shadow: 0 6px 18px rgba(0,0,0,0.35);
-            transform: translate(0,0) scale(1.02) rotate(var(--deal-rot, 0deg));
-        }
-
-        /* 🆕 ANALYSE DÉTAILLÉE DES RÉSULTATS */
+        /* ---- Résultats (scores de performance) ---- */
         .results-score-big {
             font-size: 4.5rem;
             font-weight: 800;
             margin: 15px 0;
         }
-        .results-score-big.excellent { color: #4CAF50; }
-        .results-score-big.good { color: #7CB342; }
-        .results-score-big.average { color: #FFB300; }
-        .results-score-big.poor { color: #FF9800; }
-        .results-score-big.bad { color: #F44336; }
+        .results-score-big.excellent { color: #2ecc71; }
+        .results-score-big.good      { color: #7cb342; }
+        .results-score-big.average   { color: #f39c12; }
+        .results-score-big.poor      { color: #e67e22; }
+        .results-score-big.bad       { color: #e74c3c; }
 
-        .results-section {
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 12px;
+        .results-section, .analysis-section {
+            background: rgba(0,0,0,0.25);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md);
             padding: 20px;
-            margin-bottom: 20px;
+            margin-bottom: 18px;
             text-align: left;
         }
 
         .section-title {
-            font-size: 1.4rem;
+            font-size: 1.2rem;
             font-weight: 700;
-            margin-bottom: 15px;
+            margin-bottom: 14px;
+            color: var(--gold-light);
             display: flex;
             align-items: center;
             gap: 8px;
         }
 
-        .context-stats {
+        .context-stats, .context-stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 15px;
+            gap: 14px;
         }
 
         .context-card-result {
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(255,255,255,0.05);
             border-radius: 10px;
             padding: 15px;
             border-left: 4px solid;
         }
-        .context-card-result.excellent { border-color: #4CAF50; }
-        .context-card-result.good { border-color: #7CB342; }
-        .context-card-result.average { border-color: #FFB300; }
-        .context-card-result.poor { border-color: #FF9800; }
-        .context-card-result.bad { border-color: #F44336; }
+        .context-card-result.excellent { border-color: #2ecc71; }
+        .context-card-result.good      { border-color: #7cb342; }
+        .context-card-result.average   { border-color: #f39c12; }
+        .context-card-result.poor      { border-color: #e67e22; }
+        .context-card-result.bad       { border-color: #e74c3c; }
 
-        .context-name {
-            font-size: 1rem;
-            font-weight: 600;
-            margin-bottom: 8px;
-        }
+        .context-name  { font-size: 0.95rem; font-weight: 600; margin-bottom: 8px; }
+        .context-score { font-size: 2rem; font-weight: 800; }
+        .context-details { font-size: 0.82rem; opacity: 0.7; margin-top: 4px; }
 
-        .context-score {
-            font-size: 2rem;
-            font-weight: 800;
-        }
-
-        .context-details {
-            font-size: 0.85rem;
-            opacity: 0.8;
-            margin-top: 5px;
-        }
-
-        .errors-list {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
+        .errors-list { display: flex; flex-direction: column; gap: 10px; }
 
         .error-item {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 8px;
+            background: rgba(255,255,255,0.04);
+            border-radius: var(--radius-sm);
             padding: 12px 15px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-left: 3px solid #F44336;
+            border-left: 3px solid var(--fold-color);
         }
 
-        .error-hand {
-            font-size: 1.1rem;
-            font-weight: 700;
-            color: #FFB300;
-        }
+        .error-hand         { font-size: 1.1rem; font-weight: 700; color: var(--gold-light); }
+        .error-context      { font-size: 0.78rem; opacity: 0.65; margin-top: 3px; }
+        .error-actions      { text-align: right; }
+        .error-your-answer  { font-size: 0.82rem; color: #e74c3c; }
+        .error-correct-answer { font-size: 0.9rem; color: #2ecc71; font-weight: 600; margin-top: 3px; }
 
-        .error-context {
-            font-size: 0.8rem;
-            opacity: 0.7;
-            margin-top: 3px;
-        }
-
-        .error-actions {
-            text-align: right;
-        }
-
-        .error-your-answer {
-            font-size: 0.85rem;
-            color: #F44336;
-        }
-
-        .error-correct-answer {
-            font-size: 0.95rem;
-            color: #4CAF50;
-            font-weight: 600;
-            margin-top: 3px;
-        }
-
-        .recommendations {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
+        .recommendations { display: flex; flex-direction: column; gap: 10px; }
 
         .recommendation-item {
-            background: rgba(103, 126, 234, 0.15);
-            border-radius: 8px;
-            padding: 15px;
-            border-left: 3px solid #667eea;
+            background: rgba(201, 168, 76, 0.07);
+            border-radius: var(--radius-sm);
+            padding: 14px;
+            border-left: 3px solid var(--gold);
         }
 
         .recommendation-title {
-            font-size: 1.1rem;
+            font-size: 1rem;
             font-weight: 700;
-            margin-bottom: 8px;
-            color: #6B9FFF;
+            margin-bottom: 6px;
+            color: var(--gold-light);
         }
 
-        .recommendation-text {
-            font-size: 0.95rem;
-            line-height: 1.4;
+        .recommendation-text { font-size: 0.9rem; line-height: 1.5; color: var(--text-bright); }
+
+        .results-actions {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            margin-top: 26px;
+            flex-wrap: wrap;
         }
 
+        .results-btn {
+            padding: 13px 30px;
+            font-size: 1rem;
+            font-weight: 700;
+            border: none;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: transform 0.15s, box-shadow 0.15s;
+            letter-spacing: 0.5px;
+        }
+        .results-btn:hover { transform: translateY(-3px); }
+
+        .btn-retry {
+            background: linear-gradient(135deg, #145229, var(--check-color));
+            color: #fff;
+            box-shadow: 0 4px 16px rgba(30,132,73,0.4);
+        }
+        .btn-home {
+            background: linear-gradient(135deg, #1a5276, var(--call-color));
+            color: #fff;
+            box-shadow: 0 4px 16px rgba(36,113,163,0.4);
+        }
         .btn-export {
-            background: #43a047;
-            color: white;
+            background: linear-gradient(135deg, #145229, #27ae60);
+            color: #fff;
+            box-shadow: 0 4px 16px rgba(39,174,96,0.4);
         }
 
-        /* Sections d'analyse */
-        .analysis-section {
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 12px;
-            padding: 20px;
-            margin: 20px 0;
-            text-align: left;
+        .results-card {
+            background: var(--bg-card);
+            border: 1px solid var(--glass-border);
+            border-top: 2px solid var(--gold-dim);
+            color: var(--text-bright);
+            padding: 36px;
+            border-radius: var(--radius-lg);
+            backdrop-filter: blur(12px);
         }
 
-        .context-stats-grid {
+        .results-title {
+            font-size: 2rem;
+            margin-bottom: 16px;
+            color: var(--gold-light);
+        }
+
+        .results-stats {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 15px;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 18px;
+            margin: 26px 0;
+        }
+
+        .stat-item {
+            padding: 18px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md);
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--gold-light);
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 5px;
+        }
+
+        .results-screen {
+            display: none;
+            text-align: center;
+            padding: 20px 0;
         }
     </style>
 </head>
 <body>
     <div class="container">
+
         <!-- Header avec progression -->
         <div class="quiz-header">
             <div class="progress-bar">
                 <div class="progress-fill" id="progressBar"></div>
             </div>
             <div class="progress-text">
-                Question <span id="currentQuestion">0</span>/<span id="totalQuestions">0</span> : <span id="correctCount">0</span> point(s)
+                Q&nbsp;<span id="currentQuestion">0</span>&nbsp;/&nbsp;<span id="totalQuestions">0</span>
+            </div>
+            <div class="score-chip">
+                <span id="correctCount">0</span> pts
             </div>
         </div>
 
         <!-- Loading -->
         <div id="loading" class="loading">
             <div class="spinner"></div>
-            <p>Préparation du quiz...</p>
+            <p>Préparation du quiz…</p>
         </div>
 
         <!-- Zone de jeu -->
         <div id="quizZone" style="display: none;">
-            <!-- Contexte -->
+
+            <!-- Contexte (HUD) -->
             <div class="context-card">
                 <div class="context-info" id="contextInfo"></div>
             </div>
@@ -657,31 +637,31 @@
             <!-- Table de poker -->
             <div class="poker-table">
                 <div class="question-zone">
+
                     <!-- Variante -->
                     <div id="questionVariant" class="question-variant" style="display: none;"></div>
 
-                    <!-- 🆕 Séquence d'actions (drill-down) -->
+                    <!-- Séquence d'actions (drill-down) -->
                     <div id="actionSequence" class="quiz-action-sequence" style="display: none;"></div>
 
                     <div class="situation-text" id="situationText"></div>
 
-                    <div class="hand-display" id="handDisplay"></div>
+                    <div id="handDisplay"></div>
 
                     <div class="action-buttons" id="actionButtons"></div>
 
                     <div class="feedback" id="feedback">
                         <div class="feedback-title" id="feedbackTitle"></div>
                         <div id="feedbackText"></div>
-                        <button class="next-btn" id="nextBtn">
-                            Continuer →
-                        </button>
+                        <button class="next-btn" id="nextBtn">Continuer →</button>
                     </div>
+
                 </div>
             </div>
-        </div>
 
+        </div><!-- /quizZone -->
 
-    </div>
+    </div><!-- /container -->
 
     <script>
         // ============================================
@@ -689,21 +669,17 @@
         // ============================================
         let questions = [];
         let currentQuestionIndex = 0;
-        let currentQuestionNum = 1;  // 🔧 Commencer à 1 au lieu de 0
+        let currentQuestionNum = 1;
         let correctAnswers = 0;
         let currentQuestion = null;
 
-        // 🆕 TRACKING DÉT AILLÉ DES RÉSULTATS
         let quizResults = [];
-        
-        // 360237206225 v4.5 - Session ID pour historique en BDD
         let currentSessionId = null;
 
-        // Variables pour drill_down
         let isDrillDown = false;
         let currentLevel = 0;
         let drillDownLevels = [];
-        let drillDownAllCorrect = true;  // 🆕 Track si toute la séquence drill-down est correcte
+        let drillDownAllCorrect = true;
 
         // ============================================
         // INITIALISATION
@@ -723,8 +699,7 @@
 
             try {
                 questions = JSON.parse(questionsData);
-                
-                // 360237206225 v4.5 - Charger session_id depuis sessionStorage
+
                 currentSessionId = sessionStorage.getItem('quizSessionId');
                 console.log('[QUIZ] Session ID:', currentSessionId);
                 console.log('[QUIZ] Questions chargées:', questions.length);
@@ -733,7 +708,6 @@
                     throw new Error('Liste vide');
                 }
 
-                // Calculer total sous-questions
                 let totalSubQuestions = 0;
                 questions.forEach(q => {
                     if (q.type === 'drill_down' && q.levels) {
@@ -774,7 +748,7 @@
             if (isDrillDown) {
                 drillDownLevels = currentQuestion.levels;
                 currentLevel = 0;
-                drillDownAllCorrect = true;  // 🆕 Réinitialiser pour la nouvelle question
+                drillDownAllCorrect = true;
             }
 
             displayQuestion(currentQuestion);
@@ -791,7 +765,6 @@
 
             document.getElementById('feedback').style.display = 'none';
 
-            // Variante
             const variantDiv = document.getElementById('questionVariant');
             if (question.variant) {
                 variantDiv.textContent = question.variant;
@@ -806,7 +779,6 @@
             if (isDrillDown) {
                 displayDrillDownLevel(currentLevel);
             } else {
-                // Cacher la séquence d'actions pour les questions simples
                 document.getElementById('actionSequence').style.display = 'none';
                 document.getElementById('situationText').innerHTML = question.question;
                 displayActionButtons(question.options);
@@ -815,10 +787,7 @@
 
         function displayDrillDownLevel(levelIndex) {
             const level = drillDownLevels[levelIndex];
-            
-            // Afficher la séquence d'actions déjà effectuées
             displayDrillDownSequence(levelIndex);
-            
             document.getElementById('situationText').innerHTML = level.question;
             displayActionButtons(level.options);
         }
@@ -869,25 +838,20 @@
             return translations[action] || action;
         }
 
-        // 🆕 AFFICHAGE DE LA SÉQUENCE D'ACTIONS DÉJÀ EFFECTUÉES (drill-down)
-        // 🔧 v4.3.6 : Construction narrative au lieu d'un bandeau séparé
         function displayDrillDownSequence(currentLevel) {
             const sequenceDiv = document.getElementById('actionSequence');
-            
-            // Si on est au premier niveau, ne rien afficher
+
             if (currentLevel === 0) {
                 sequenceDiv.style.display = 'none';
                 return;
             }
-            
-            // Construire le texte narratif de l'historique
+
             const hand = currentQuestion.hand;
             const villainPos = currentQuestion.villain_position || currentQuestion.context_info?.villain_position || "Vilain";
             const primaryAction = currentQuestion.context_info?.primary_action || 'open';
-            
+
             let narrative = [];
-            
-            // Étape 1 : Action initiale du héros
+
             const firstAction = currentQuestion.sequence[0].action;
             if (primaryAction === 'open') {
                 narrative.push(`Vous avez ouvert avec ${hand}`);
@@ -900,14 +864,12 @@
             } else if (primaryAction === 'squeeze') {
                 narrative.push(`Vous avez squeezé avec ${hand}`);
             }
-            
-            // Étapes suivantes : alterner Vilain/Héros
+
             for (let i = 1; i < currentLevel; i++) {
                 const level = drillDownLevels[i];
                 const villainReaction = level.villain_reaction;
                 const heroAction = currentQuestion.sequence[i].action;
-                
-                // Réaction du Vilain
+
                 if (villainReaction) {
                     if (villainReaction.action === 'RAISE') {
                         if (villainReaction.sizing === '3bet') {
@@ -921,8 +883,7 @@
                         narrative.push(`${villainPos} all-in`);
                     }
                 }
-                
-                // Action du Héros
+
                 if (heroAction === 'RAISE') {
                     narrative.push(`vous sur-relancez`);
                 } else if (heroAction === 'CALL') {
@@ -931,10 +892,9 @@
                     narrative.push(`vous foldez`);
                 }
             }
-            
-            // Afficher le texte narratif
+
             const narrativeText = narrative.join(', ') + '.';
-            sequenceDiv.innerHTML = `<div style="font-size: 0.95rem; color: #E0E7FF; margin-bottom: 12px; line-height: 1.5;">
+            sequenceDiv.innerHTML = `<div style="font-size: 0.9rem; color: rgba(240,235,224,0.8); line-height: 1.5;">
                 ${narrativeText}
             </div>`;
             sequenceDiv.style.display = 'block';
@@ -952,15 +912,13 @@
                 handleSimpleAnswer(selectedAction);
             }
         }
-        // ============================================
-        // 🆕 v4.5 - SAUVEGARDE EN BDD
-        // ============================================
+
         async function saveAnswerToDatabase(answerData) {
             if (!currentSessionId) {
                 console.warn('[QUIZ] Pas de session_id, skip sauvegarde BDD');
                 return;
             }
-            
+
             try {
                 const response = await fetch('/api/quiz/submit-answer', {
                     method: 'POST',
@@ -970,33 +928,31 @@
                         ...answerData
                     })
                 });
-                
+
                 if (!response.ok) {
                     console.error('[QUIZ] Erreur sauvegarde BDD:', response.status);
                 }
             } catch (error) {
                 console.error('[QUIZ] Erreur réseau sauvegarde BDD:', error);
-                // Ne pas bloquer le quiz si la BDD fail
             }
         }
-
 
         async function handleSimpleAnswer(selectedAction) {
             const isCorrect = selectedAction === currentQuestion.correct_answer;
 
-            // 🆕 STOCKER LE RÉSULTAT
             quizResults.push({
                 hand: currentQuestion.hand,
                 context_id: currentQuestion.context_id,
                 context_name: currentQuestion.context_info.display_name,
                 context_action: currentQuestion.context_info.primary_action,
+                hero_position: currentQuestion.context_info.hero_position,
+                vs_position: currentQuestion.context_info.vs_position,
                 user_answer: selectedAction,
                 correct_answer: currentQuestion.correct_answer,
                 is_correct: isCorrect,
                 question_type: 'simple'
             });
-            
-            // 🆕 v4.5 - Sauvegarder en BDD
+
             await saveAnswerToDatabase({
                 question_number: currentQuestionNum,
                 hand: currentQuestion.hand,
@@ -1020,20 +976,21 @@
             const level = drillDownLevels[currentLevel];
             const isCorrect = selectedAction === level.correct_answer;
 
-            // 🆕 STOCKER LE RÉSULTAT
             quizResults.push({
                 hand: currentQuestion.hand,
                 context_id: currentQuestion.context_id,
                 context_name: currentQuestion.context_info.display_name,
                 context_action: currentQuestion.context_info.primary_action,
+                hero_position: currentQuestion.context_info.hero_position,
+                vs_position: currentQuestion.context_info.vs_position,
+                villain_position: currentQuestion.villain_position,
                 user_answer: selectedAction,
                 correct_answer: level.correct_answer,
                 is_correct: isCorrect,
                 question_type: 'drill_down',
                 level: currentLevel
             });
-            
-            // 🆕 v4.5 - Construire l'historique de la séquence
+
             const sequenceHistory = {
                 levels: drillDownLevels.slice(0, currentLevel + 1).map((lvl, idx) => ({
                     level: idx,
@@ -1043,8 +1000,7 @@
                     user_answer: idx === currentLevel ? selectedAction : null
                 }))
             };
-            
-            // 🆕 v4.5 - Sauvegarder en BDD
+
             await saveAnswerToDatabase({
                 question_number: currentQuestionNum,
                 hand: currentQuestion.hand,
@@ -1061,9 +1017,8 @@
                 is_correct: isCorrect
             });
 
-            // 🔧 Incrémenter à chaque étape du drill-down (chaque étape = 1 question)
             currentQuestionNum++;
-            
+
             if (isCorrect) correctAnswers++;
 
             updateScoreDisplay();
@@ -1141,25 +1096,22 @@
         }
 
         async function showResults() {
-            // Sauvegarder les résultats dans sessionStorage
             sessionStorage.setItem('quizResults', JSON.stringify(quizResults));
-            
-            // Sauvegarder les métadonnées du quiz
+
             const quizMetadata = {
                 totalQuestions: parseInt(document.getElementById('totalQuestions').textContent),
                 correctAnswers: correctAnswers
             };
             sessionStorage.setItem('quizMetadata', JSON.stringify(quizMetadata));
-            
+
             console.log('[QUIZ] Résultats sauvegardés, fin de session...');
-            
-            // 🆕 v4.5 - Terminer la session en BDD
+
             if (currentSessionId) {
                 try {
                     const response = await fetch(`/api/quiz/end-session/${currentSessionId}`, {
                         method: 'POST'
                     });
-                    
+
                     if (response.ok) {
                         const stats = await response.json();
                         console.log('[QUIZ] Session terminée:', stats);
@@ -1168,14 +1120,12 @@
                     console.error('[QUIZ] Erreur fin de session:', error);
                 }
             }
-            
-            // Rediriger vers la page d'analyse avec session_id
-            const redirectUrl = currentSessionId 
+
+            const redirectUrl = currentSessionId
                 ? `/quiz-result?session_id=${currentSessionId}`
                 : '/quiz-result';
             window.location.href = redirectUrl;
         }
-
 
         function retryQuiz() {
             window.location.href = '/quiz-setup';
@@ -1200,38 +1150,57 @@
         }, true);
 
         // ============================================
-        // CARTES PNG
+        // CARTES CSS
         // ============================================
-        const CARD_URL_PREFIX = '/cards/';
-        const SUITS_BLACK = ['s','c'];
-        const SUITS_RED   = ['h','d'];
+        const SUITS_BLACK = ['s', 'c'];
+        const SUITS_RED   = ['h', 'd'];
         const ALL_SUITS   = [...SUITS_BLACK, ...SUITS_RED];
-        const DEAL_MS     = 380;
-        const STAGGER     = 140;
+        const SUIT_SYMBOLS = { s: '♠', h: '♥', d: '♦', c: '♣' };
+        const DEAL_MS  = 400;
+        const STAGGER  = 150;
 
         const rand   = (min, max) => Math.random() * (max - min) + min;
         const choice = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
-        function handToCardFiles(handStr) {
+        function handToCards(handStr) {
             const suited  = /s$/.test(handStr);
-            const offsuit = /o$/.test(handStr);
             const r1 = handStr[0].toUpperCase();
             const r2 = handStr[1].toUpperCase();
 
-            if (!suited && !offsuit && r1 === r2) {
+            if (r1 === r2) {
+                // Paire : deux couleurs différentes
                 const s1 = choice(ALL_SUITS);
                 let s2; do { s2 = choice(ALL_SUITS); } while (s2 === s1);
-                return [`${r1}${s1}.png`, `${r2}${s2}.png`];
+                return [{ rank: r1, suit: s1 }, { rank: r2, suit: s2 }];
             }
-
             if (suited) {
                 const s = choice(ALL_SUITS);
-                return [`${r1}${s}.png`, `${r2}${s}.png`];
+                return [{ rank: r1, suit: s }, { rank: r2, suit: s }];
             }
+            // Offsuit : une noire, une rouge
+            return [
+                { rank: r1, suit: choice(SUITS_BLACK) },
+                { rank: r2, suit: choice(SUITS_RED) }
+            ];
+        }
 
-            const s1 = choice(SUITS_BLACK);
-            const s2 = choice(SUITS_RED);
-            return [`${r1}${s1}.png`, `${r2}${s2}.png`];
+        function buildCardEl(rank, suit) {
+            const sym = SUIT_SYMBOLS[suit];
+            const colorClass = SUITS_RED.includes(suit) ? 'card-red' : 'card-black';
+            const el = document.createElement('div');
+            el.className = `playing-card from-center ${colorClass}`;
+            el.style.setProperty('--deal-rot', rand(-5, 5).toFixed(2) + 'deg');
+            el.innerHTML = `
+                <div class="card-corner">
+                    <span class="card-rank">${rank}</span>
+                    <span class="card-suit-small">${sym}</span>
+                </div>
+                <span class="card-center-suit">${sym}</span>
+                <div class="card-corner card-corner-bottom">
+                    <span class="card-rank">${rank}</span>
+                    <span class="card-suit-small">${sym}</span>
+                </div>`;
+            return el;
         }
 
         function displayHand(hand) {
@@ -1246,26 +1215,22 @@
             container.appendChild(slot1);
             container.appendChild(slot2);
 
-            const files = handToCardFiles(hand);
+            const cards = handToCards(hand);
             const cRect = container.getBoundingClientRect();
             const targets = [slot1, slot2].map(slot => {
                 const r = slot.getBoundingClientRect();
                 return { left: r.left - cRect.left, top: r.top - cRect.top };
             });
 
-            files.forEach((file, i) => {
-                const img = document.createElement('img');
-                img.className = 'card-img from-center';
-                img.src = CARD_URL_PREFIX + file;
-                img.alt = file.replace('.png','');
-                img.style.setProperty('--deal-rot', rand(-6, 6).toFixed(2) + 'deg');
-                container.appendChild(img);
+            cards.forEach(({ rank, suit }, i) => {
+                const el = buildCardEl(rank, suit);
+                container.appendChild(el);
 
                 setTimeout(() => {
-                    img.style.left = targets[i].left + 'px';
-                    img.style.top  = targets[i].top  + 'px';
-                    img.classList.add('to-slot');
-                    setTimeout(() => img.classList.add('arrived'), DEAL_MS);
+                    el.style.left = targets[i].left + 'px';
+                    el.style.top  = targets[i].top  + 'px';
+                    el.classList.add('to-slot');
+                    setTimeout(() => el.classList.add('arrived'), DEAL_MS);
                 }, i * STAGGER);
             });
         }
