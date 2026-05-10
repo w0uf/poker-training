@@ -1073,7 +1073,8 @@ def api_import_run():
     def task(job):
         result = subprocess.run(
             [sys.executable, 'integrated_pipeline.py'],
-            cwd=project_root, capture_output=True, text=True
+            cwd=project_root, capture_output=True, text=True,
+            encoding='utf-8', errors='replace'
         )
         job.update({
             'status': 'completed',
@@ -1122,7 +1123,8 @@ def api_enrich_run():
         os.environ['POKER_WEB_MODE'] = '1'
         result = subprocess.run(
             [sys.executable, 'enrich_ranges.py'],
-            cwd=project_root, capture_output=True, text=True
+            cwd=project_root, capture_output=True, text=True,
+            encoding='utf-8', errors='replace'
         )
         job.update({
             'status': 'completed',
@@ -1156,7 +1158,14 @@ def api_import_pipeline():
 
         result = subprocess.run([
             sys.executable, 'integrated_pipeline.py'
-        ], cwd=project_root, capture_output=True, text=True)
+        ], cwd=project_root, capture_output=True, text=True,
+           encoding='utf-8', errors='replace')
+
+        print(f"[PIPELINE] returncode={result.returncode}")
+        if result.stdout:
+            print(f"[PIPELINE] stdout:\n{result.stdout[:500]}")
+        if result.stderr:
+            print(f"[PIPELINE] stderr:\n{result.stderr[:500]}")
 
         if result.returncode == 0:
             stats = get_pipeline_stats()
@@ -1181,6 +1190,8 @@ def api_import_pipeline():
             }), 500
 
     except Exception as e:
+        import traceback
+        print(f"[PIPELINE] Exception: {traceback.format_exc()}")
         return jsonify({
             'success': False,
             'status': 'error',
