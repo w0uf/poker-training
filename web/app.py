@@ -2040,6 +2040,11 @@ def history():
 if __name__ == '__main__':
     import threading
     import webbrowser
+    import logging
+
+    logging.getLogger('werkzeug').addFilter(
+        type('', (logging.Filter,), {'filter': staticmethod(lambda r: 'development server' not in r.getMessage())})()
+    )
 
     port = 5000
     url = f"http://localhost:{port}"
