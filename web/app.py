@@ -1074,7 +1074,8 @@ def api_import_run():
         result = subprocess.run(
             [sys.executable, 'integrated_pipeline.py'],
             cwd=project_root, capture_output=True, text=True,
-            encoding='utf-8', errors='replace'
+            encoding='utf-8', errors='replace',
+            env={**os.environ, 'PYTHONIOENCODING': 'utf-8', 'PYTHONUTF8': '1'}
         )
         job.update({
             'status': 'completed',
@@ -1124,7 +1125,8 @@ def api_enrich_run():
         result = subprocess.run(
             [sys.executable, 'enrich_ranges.py'],
             cwd=project_root, capture_output=True, text=True,
-            encoding='utf-8', errors='replace'
+            encoding='utf-8', errors='replace',
+            env={**os.environ, 'PYTHONIOENCODING': 'utf-8', 'PYTHONUTF8': '1'}
         )
         job.update({
             'status': 'completed',
