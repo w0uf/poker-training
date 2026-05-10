@@ -997,6 +997,151 @@ def get_validation_stats():
 
 
 # ============================================
+# ============================================
+# ROUTES PAGES IMPORT / ENRICH
+# ============================================
+
+@app.route('/import')
+def import_page():
+    return render_template('import.html')
+
+@app.route('/enrich')
+def enrich_page():
+    return render_template('enrich.html')
+
+# ============================================
+# JOBS ASYNCHRONES (stockage en mémoire)
+# ============================================
+
+import threading
+import uuid
+
+_jobs = {}  # job_id -> {status, success, stdout, stderr, progress, message}
+
+def _run_job(job_id, target_fn):
+    try:
+        _jobs[job_id]['status'] = 'running'
+        target_fn(_jobs[job_id])
+    except Exception as e:
+        _jobs[job_id].update({'status': 'completed', 'success': False, 'stderr': str(e)})
+
+# ============================================
+# ROUTES IMPORT
+# ============================================
+
+@app.route('/api/import/upload', methods=['POST'])
+def api_import_upload():
+    if 'file' not in request.files:
+        return jsonify({'error': 'Pas de fichier'}), 400
+    f = request.files['file']
+    if not f.filename.endswith('.json'):
+        return jsonify({'error': 'Fichier JSON requis'}), 400
+    ranges_dir = Path(__file__).parent.parent / 'data' / 'ranges'
+    ranges_dir.mkdir(parents=True, exist_ok=True)
+    f.save(ranges_dir / f.filename)
+    return jsonify({'success': True, 'filename': f.filename})
+
+@app.route('/api/import/files', methods=['GET'])
+def api_import_files():
+    ranges_dir = Path(__file__).parent.parent / 'data' / 'ranges'
+    ranges_dir.mkdir(parents=True, exist_ok=True)
+    json_files = list(ranges_dir.glob('*.json'))
+    db_path = Path(__file__).parent.parent / 'data' / 'poker_trainer.db'
+    imported = set()
+    if db_path.exists():
+        try:
+            with sqlite3.connect(db_path) as conn:
+                rows = conn.execute("SELECT filename FROM range_files WHERE status='success'").fetchall()
+                imported = {r[0] for r in rows}
+        except Exception:
+            pass
+    result = []
+    for jf in sorted(json_files):
+        result.append({
+            'name': jf.name,
+            'size': jf.stat().st_size,
+            'status': 'imported' if jf.name in imported else 'pending'
+        })
+    return jsonify(result)
+
+@app.route('/api/import/run', methods=['POST'])
+def api_import_run():
+    job_id = str(uuid.uuid4())
+    _jobs[job_id] = {'status': 'pending', 'success': False, 'stdout': '', 'stderr': ''}
+    project_root = Path(__file__).parent.parent
+
+    def task(job):
+        result = subprocess.run(
+            [sys.executable, 'integrated_pipeline.py'],
+            cwd=project_root, capture_output=True, text=True
+        )
+        job.update({
+            'status': 'completed',
+            'success': result.returncode == 0,
+            'stdout': result.stdout,
+            'stderr': result.stderr
+        })
+
+    threading.Thread(target=_run_job, args=(job_id, task), daemon=True).start()
+    return jsonify({'job_id': job_id})
+
+@app.route('/api/import/status/<job_id>', methods=['GET'])
+def api_import_status(job_id):
+    job = _jobs.get(job_id)
+    if not job:
+        return jsonify({'error': 'Job introuvable'}), 404
+    return jsonify(job)
+
+# ============================================
+# ROUTES ENRICH
+# ============================================
+
+@app.route('/api/enrich/contexts', methods=['GET'])
+def api_enrich_contexts():
+    try:
+        db_path = Path(__file__).parent.parent / 'data' / 'poker_trainer.db'
+        with sqlite3.connect(db_path) as conn:
+            rows = conn.execute("""
+                SELECT id, context_name, hero_position, primary_action, confidence_score
+                FROM range_contexts ORDER BY context_name
+            """).fetchall()
+        return jsonify([{
+            'id': r[0], 'name': r[1], 'position': r[2],
+            'action': r[3], 'confidence': r[4]
+        } for r in rows])
+    except Exception as e:
+        return jsonify([])
+
+@app.route('/api/enrich/run', methods=['POST'])
+def api_enrich_run():
+    job_id = str(uuid.uuid4())
+    _jobs[job_id] = {'status': 'pending', 'success': False, 'stdout': '', 'stderr': '', 'progress': 0}
+    project_root = Path(__file__).parent.parent
+
+    def task(job):
+        os.environ['POKER_WEB_MODE'] = '1'
+        result = subprocess.run(
+            [sys.executable, 'enrich_ranges.py'],
+            cwd=project_root, capture_output=True, text=True
+        )
+        job.update({
+            'status': 'completed',
+            'success': result.returncode == 0,
+            'stdout': result.stdout,
+            'stderr': result.stderr,
+            'progress': 100
+        })
+
+    threading.Thread(target=_run_job, args=(job_id, task), daemon=True).start()
+    return jsonify({'job_id': job_id})
+
+@app.route('/api/enrich/status/<job_id>', methods=['GET'])
+def api_enrich_status(job_id):
+    job = _jobs.get(job_id)
+    if not job:
+        return jsonify({'error': 'Job introuvable'}), 404
+    return jsonify(job)
+
 # ROUTES PIPELINE
 # ============================================
 

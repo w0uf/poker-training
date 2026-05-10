@@ -36,7 +36,7 @@ mkdir -p "$OUTPUT_DIR/python"
 echo "📋 Copie de l'application..."
 cp -r web/* "$OUTPUT_DIR/poker-training/web/" 2>/dev/null || echo "⚠️  Dossier web/ non trouvé"
 cp -r modules/* "$OUTPUT_DIR/poker-training/modules/" 2>/dev/null || echo "⚠️  Dossier modules/ non trouvé"
-cp integrated_pipeline.py "$OUTPUT_DIR/poker-training/" 2>/dev/null || echo "⚠️  integrated_pipeline.py non trouvé"
+cp integrated_pipeline.py "$OUTPUT_DIR/poker-training/" 2>/dev/null && cp enrich_ranges.py "$OUTPUT_DIR/poker-training/" 2>/dev/null || echo "⚠️  integrated_pipeline.py non trouvé"
 
 # Copier les fichiers de données (ranges JSON uniquement, pas les BDD — elles sont créées au premier démarrage)
 if [ -d "data/ranges" ]; then
